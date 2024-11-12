@@ -15,6 +15,7 @@
 #include "detdataformats/DetID.hpp"
 
 #include "larcore/Geometry/Geometry.h"
+#include "larcore/Geometry/WireReadout.h"
 
 #include "art/Persistency/Common/PtrMaker.h"
 #include "art/Framework/Core/EDProducer.h"
@@ -97,6 +98,7 @@ void duneana::TriggerActivityMakerTPC::produce(art::Event& e)
   
   //grab the geometry service
   art::ServiceHandle<geo::Geometry> geom;
+  geo::WireReadoutGeom const& wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
   
   //make output collections for the TriggerActivityData objects,
   //the TriggerPrimitives contained in them, and
@@ -122,7 +124,7 @@ void duneana::TriggerActivityMakerTPC::produce(art::Event& e)
 
     //TPs in the colleciton plane arrive in two sets (due to collection wires facing in two different directions)
     //merge them if mergecollwires_ is true
-    auto rop = geom->ChannelToROP(tp_vec[i_tp].channel);
+    auto rop = wireReadout.ChannelToROP(tp_vec[i_tp].channel);
 
     int tmp_plane = 0;
     for (short unsigned int i = 0; i < n_modules_; i ++) {

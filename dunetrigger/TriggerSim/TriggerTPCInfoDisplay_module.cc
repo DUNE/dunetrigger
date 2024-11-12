@@ -28,6 +28,7 @@
 #include "lardataobj/RawData/RDTimeStamp.h"
 
 #include "larcore/Geometry/Geometry.h"
+#include "larcore/Geometry/WireReadout.h"
 
 #include "art/Framework/Core/EDAnalyzer.h"
 #include "art/Framework/Core/ModuleMacros.h"
@@ -207,6 +208,7 @@ void duneana::TriggerTPCInfoDisplay::analyze(art::Event const& e)
 
   // Load the geometry service
   art::ServiceHandle<geo::Geometry> geom;
+  geo::WireReadoutGeom const& wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
 
   if(verbosity_ >= Verbosity::kInfo)
   {
@@ -230,7 +232,7 @@ void duneana::TriggerTPCInfoDisplay::analyze(art::Event const& e)
     fAlgorithm = static_cast<int>(fTriggerPrimitive[i].algorithm);
     
     // Get ROP ID (ReadOut Plane ID)
-    auto rop = geom->ChannelToROP(fChannelID);
+    auto rop = wireReadout.ChannelToROP(fChannelID);
     fROP_ID = rop.ROP;
      
     // Fill tree
