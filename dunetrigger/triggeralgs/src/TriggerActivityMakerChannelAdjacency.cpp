@@ -12,6 +12,7 @@
 #define TRACE_NAME "TriggerActivityMakerChannelAdjacencyPlugin"
 #include <math.h>
 #include <vector>
+#include <set>
 
 using namespace triggeralgs;
 
@@ -39,11 +40,8 @@ TriggerActivityMakerChannelAdjacency::operator()(const TriggerPrimitive& input_t
 
   // If the difference between the current TP's start time and the start of the window
   // is less than the specified window size, add the TP to the window.
-  bool adj_pass = 0;      // sets to true when adjacency logic is satisfied
-  bool window_filled = 1; // sets to true when window is ready to test the adjacency logic
   if ((input_tp.time_start - m_current_window.time_start) < m_window_length) {
     m_current_window.add(input_tp);
-    window_filled = 0;
     TLOG_DEBUG(TLVL_DEBUG_LOW) << "m_current_window.time_start " << m_current_window.time_start << "\n";
   }
 
@@ -52,6 +50,7 @@ TriggerActivityMakerChannelAdjacency::operator()(const TriggerPrimitive& input_t
 
     bool ta_found = 1;
     while (ta_found) {
+      // Each pass of this loop removes the TPs that formed a track from m_current_window
 
       // make m_current_window_tmp a copy of m_current_window and clear m_current_window
       TPWindow m_current_window_tmp = m_current_window;
@@ -74,7 +73,6 @@ TriggerActivityMakerChannelAdjacency::operator()(const TriggerPrimitive& input_t
       win_adj_max = check_adjacency();
       if (win_adj_max.inputs.size() > 0) {
 
-        adj_pass = 1;
         ta_found = 1;
         m_ta_count++;
         if (m_ta_count % m_prescale == 0) {
@@ -83,12 +81,7 @@ TriggerActivityMakerChannelAdjacency::operator()(const TriggerPrimitive& input_t
       } else
         ta_found = 0;
     }
-    if (adj_pass)
-      m_current_window.reset(input_tp);
-  }
-
-  // if adjacency logic is not true, slide the window along using the current TP.
-  if (window_filled && !adj_pass) {
+    // The rest of the TPs should moved along and considered with input_tp when we receive the next TP.
     m_current_window.move(input_tp, m_window_length);
   }
 
@@ -120,23 +113,24 @@ TriggerActivityMakerChannelAdjacency::construct_ta(TPWindow win_adj_max) const
 
   TriggerPrimitive last_tp = win_adj_max.inputs.back();
 
-  ta.time_start = last_tp.time_start;
-  ta.time_end = last_tp.time_start;
-  ta.time_peak = last_tp.time_peak;
-  ta.time_activity = last_tp.time_peak;
-  ta.channel_start = last_tp.channel;
-  ta.channel_end = last_tp.channel;
-  ta.channel_peak = last_tp.channel;
-  ta.adc_integral = win_adj_max.adc_integral;
-  ta.adc_peak = last_tp.adc_peak;
   ta.detid = last_tp.detid;
   ta.type = TriggerActivity::Type::kTPC;
   ta.algorithm = TriggerActivity::Algorithm::kChannelAdjacency;
   ta.inputs = win_adj_max.inputs;
+  
+  // Set information of first TP to prevent INVALID_CHANNEL and INVALID_TIMESTAMP messing up comparisons.
+  TriggerPrimitive first_tp = ta.inputs.at(0);
+  ta.time_start = first_tp.time_start;
+  ta.time_end = first_tp.time_start + first_tp.time_over_threshold;
+  ta.time_activity = first_tp.time_over_threshold;
+  ta.channel_start = first_tp.channel;
+  ta.channel_end = first_tp.channel;
+  ta.adc_peak = 0;
 
-  for (const auto& tp : ta.inputs) {
+  for (const TriggerPrimitive& tp : ta.inputs) {
     ta.time_start = std::min(ta.time_start, tp.time_start);
-    ta.time_end = std::max(ta.time_end, tp.time_start);
+    ta.time_end = std::max(ta.time_end, tp.time_start + tp.time_over_threshold);
+    ta.time_activity = std::max(ta.time_activity, tp.time_over_threshold);
     ta.channel_start = std::min(ta.channel_start, tp.channel);
     ta.channel_end = std::max(ta.channel_end, tp.channel);
     if (tp.adc_peak > ta.adc_peak) {
@@ -145,6 +139,7 @@ TriggerActivityMakerChannelAdjacency::construct_ta(TPWindow win_adj_max) const
       ta.channel_peak = tp.channel;
     }
   }
+  ta.adc_integral = win_adj_max.adc_integral;
 
   return ta;
 }
@@ -157,21 +152,22 @@ TriggerActivityMakerChannelAdjacency::check_adjacency()
   // all gaps < m_adj_tolerance), checks if track length > m_adjacency_threshold: return the tp window (win_adj_max,
   // which is subset of the input tp window)
 
-  unsigned int channel = 0;      // Current channel ID
-  unsigned int next_channel = 0; // Next channel ID
-  unsigned int next = 0;         // The next position in the hit channels vector
+  channel_t channel = 0;      // Current channel ID
+  channel_t next_channel = 0; // Next channel ID
+  size_t next = 0;         // The next position in the hit channels vector
   unsigned int tol_count = 0;    // Tolerance count, should not pass adj_tolerance
 
-  // Generate a channelID ordered list of hit channels for this window; second element of pair is tps
-  std::vector<std::pair<int, TriggerPrimitive>> chanTPList;
-  for (auto tp : m_current_window.inputs) {
-    chanTPList.push_back(std::make_pair(tp.channel, tp));
+  // Map all channel numbers to TPs.
+  // Also create a list of channel numebrs to do logic on
+  std::map<channel_t, std::vector<TriggerPrimitive>> chanTPMap;
+  std::set<channel_t> channel_id_set;
+  for (TriggerPrimitive tp: m_current_window.inputs) {
+    chanTPMap[tp.channel].push_back(tp);
+    channel_id_set.insert(tp.channel);
   }
-  std::sort(chanTPList.begin(),
-            chanTPList.end(),
-            [](const std::pair<int, TriggerPrimitive>& a, const std::pair<int, TriggerPrimitive>& b) {
-              return (a.first < b.first);
-            });
+  std::vector<channel_t> channel_id_list;
+  // sorted since coming from a set
+  channel_id_list.assign(channel_id_set.begin(), channel_id_set.end());
 
   // ADAJACENCY LOGIC ====================================================================
   // =====================================================================================
@@ -179,55 +175,61 @@ TriggerActivityMakerChannelAdjacency::check_adjacency()
   // the adjacency count (win_adj). This accounts for things like dead channels / missed TPs.
 
   // add first tp, and then if tps are on next channels (check code below to understand the definition)
-  TPWindow win_adj;
-  TPWindow win_adj_max; // if track length > m_adjacency_threshold, set win_adj_max = win_adj; return win_adj_max;
+  std::vector<channel_t> ch_adj;
+  std::vector<channel_t> ch_adj_max; // if track length > m_adjacency_threshold, set win_adj_max = win_adj; return win_adj_max;
 
-  for (int i = 0; i < chanTPList.size(); ++i) {
+  for (size_t current = 0; current < channel_id_list.size(); ++current) {
 
-    win_adj_max.clear();
+    ch_adj_max.clear();
 
-    next = (i + 1) % chanTPList.size(); // Loops back when outside of channel list range
-    channel = chanTPList.at(i).first;
-    next_channel = chanTPList.at(next).first; // Next channel with a hit
+    next = (current + 1) % channel_id_list.size(); // Loops back when outside of channel list range
+    channel = channel_id_list.at(current);
+    next_channel = channel_id_list.at(next); // Next channel with a hit
 
     // End of vector condition.
     if (next == 0) {
       next_channel = channel - 1;
     }
 
-    // Skip same channel hits.
+    // Skip same channel hits. Should never happen. 
     if (next_channel == channel)
       continue;
 
     // If win_adj size == zero, add current tp
-    if (win_adj.inputs.size() == 0)
-      win_adj.add(chanTPList[i].second);
+    if (ch_adj.size() == 0)
+      ch_adj.push_back(channel);
 
     // If next hit is on next channel, increment the adjacency count
     if (next_channel - channel == 1) {
-      win_adj.add(chanTPList[next].second);
+      ch_adj.push_back(next_channel);
     }
 
     // Allow a max gap of 5 channels (e.g., 45 and 50; 46, 47, 48, 49 are missing); increment the adjacency count
     // Sum of gaps should be < adj_tolerance (e.g., if toleance is 30, the max total gap can vary from 0 to 29+4 = 33)
     else if (next_channel - channel > 0 && next_channel - channel <= 5 && tol_count < m_adj_tolerance) {
-      win_adj.add(chanTPList[next].second);
+      ch_adj.push_back(next_channel);
       tol_count += next_channel - channel - 1;
     }
 
     // if track length > m_adjacency_threshold, set win_adj_max = win_adj;
-    else if (win_adj.inputs.size() > m_adjacency_threshold) {
-      win_adj_max = win_adj;
+    else if (ch_adj.size() > m_adjacency_threshold) {
+      ch_adj_max = ch_adj;
       break;
     }
 
     // If track length < m_adjacency_threshold, reset variables for next iteration.
     else {
       tol_count = 0;
-      win_adj.clear();
+      ch_adj.clear();
     }
   }
 
+  TPWindow win_adj_max;
+  for (channel_t chid : ch_adj_max) {
+    for (const TriggerPrimitive &tp: chanTPMap.at(chid)) {
+      win_adj_max.add(tp);
+    }
+  }
   return win_adj_max;
 }
 
