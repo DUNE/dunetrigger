@@ -294,8 +294,8 @@ void duneana::TriggerActivityMakerOnlineTPC::produce(art::Event &e) {
       for (auto &in_tp : out_ta.inputs) {
         // get an iterator to matching TPs with find_if
         std::vector<TriggerPrimitiveIdx>::iterator tp_it = std::find_if(tps.second.begin(), tps.second.end(), [&](TriggerPrimitiveIdx &t) { return isTPEqual(t.second, in_tp); });
-
-        // find_if will return tps.second.end() if none are found
+        if (tp_it == tps.second.end())
+          std::cout << "WARNING: TP recorded in TA is not found in the list of TPs!!!" << std::endl;
         while (tp_it != tps.second.end()) {
           // push back an art::Ptr pointing to the proper index in the vector
           // of input TPs
@@ -303,6 +303,8 @@ void duneana::TriggerActivityMakerOnlineTPC::produce(art::Event &e) {
               art::Ptr<TriggerPrimitive>(tpHandle, tp_it->first));
           // get an iterator to the next (if any) matching TP
           tp_it = std::find_if(++tp_it, tps.second.end(), [&](TriggerPrimitiveIdx &t) {return isTPEqual(t.second, in_tp); });
+          if (tp_it != tps.second.end())
+            std::cout << "WARNING: More than one match found for TP recorded in TA. Likely there's a duplicate in the TP list, or IsTPEqual is inadequate." << std::endl;
         }
       }
       // add the associations to the tp_in_ta assoc
