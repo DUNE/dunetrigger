@@ -206,12 +206,10 @@ void duneana::TriggerActivityMakerOnlineTPC::produce(art::Event &e) {
   
   // now we process each ROP
   for (auto &tps : tp_by_plane) {
-    if(maker_per_plane.count(tps.first) == 0){
-      if(verbosity >= Verbosity::kInfo){
-        std::cout << "Creating Maker on Plane " << tps.first << std::endl;
-      }
-      maker_per_plane[tps.first] = tf->build_maker(algname);
+    if(verbosity >= Verbosity::kInfo){
+      std::cout << "Creating Maker on Plane " << tps.first << std::endl;
     }
+    maker_per_plane[tps.first] = tf->build_maker(algname);
     // make the algorithm here so that we reset the internal state for each ROP
     // - since I believe those are independent for the TAMaker 
     std::shared_ptr<triggeralgs::TriggerActivityMaker> alg = maker_per_plane[tps.first];
