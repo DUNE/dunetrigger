@@ -60,7 +60,7 @@ TriggerActivityMakerChannelAdjacency::operator()(const TriggerPrimitive& input_t
       for (auto tp : m_current_window_tmp.inputs) {
         bool new_tp = 1;
         for (auto tp_sel : win_adj_max.inputs) {
-          if (tp.channel == tp_sel.channel) {
+          if (tp.channel == tp_sel.channel && tp.time_start == tp_sel.time_start) {
             new_tp = 0;
             break;
           }
