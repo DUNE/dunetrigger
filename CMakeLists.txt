@@ -56,6 +56,7 @@ find_package( art_root_io REQUIRED )
 find_package( ROOT REQUIRED )
 find_package( dunedaqdataformats REQUIRED EXPORT )
 find_package( dunedetdataformats REQUIRED EXPORT )
+find_package( HDF5 REQUIRED)
 
 #dune packages
 find_package( dunecore REQUIRED EXPORT )
