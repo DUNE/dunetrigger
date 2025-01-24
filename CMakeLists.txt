@@ -17,7 +17,7 @@
 cmake_minimum_required (VERSION 3.20 FATAL_ERROR)
 
 project(dunetrigger LANGUAGES CXX C)
-set(${PROJECT_NAME}_CMAKE_PROJECT_VERSION_STRING 10.03.01d00)
+set(${PROJECT_NAME}_CMAKE_PROJECT_VERSION_STRING 10.03.01d01)
 
 # cetbuildtools contains our cmake modules
 find_package(cetmodules REQUIRED)
@@ -56,6 +56,7 @@ find_package( art_root_io REQUIRED )
 find_package( ROOT REQUIRED )
 find_package( dunedaqdataformats REQUIRED EXPORT )
 find_package( dunedetdataformats REQUIRED EXPORT )
+find_package( HDF5 REQUIRED)
 
 #dune packages
 find_package( dunecore REQUIRED EXPORT )
