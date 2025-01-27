@@ -1,0 +1,45 @@
+BEGIN_PROLOG
+
+# these are producers
+standard_tpmakerTPC:
+{
+  module_type: TriggerPrimitiveMakerTPC
+  rawdigit_tag: "daq"
+  tpalg: {
+    tool_type: TPAlgTPCSimpleThreshold
+    threshold_tpg_plane0: -1
+    threshold_tpg_plane1: -1
+    threshold_tpg_plane2: 60
+    verbosity: 0
+  }
+  verbosity: 1
+}
+
+standard_tamakerTPC:
+     {
+        module_type: TriggerActivityMakerTPC
+        tp_tag: "tpmakerTPC"
+        taalg: {
+          tool_type: TAAlgTPCADCSimpleWindow 
+          adc_threshold: 20000000
+          window_length: 60000
+          verbosity: 2
+         }
+        nmodules: 4
+        mergecollwires: true
+        verbosity: 1
+     }
+
+standard_tcmakerTPC:
+     {
+        module_type: TriggerCandidateMakerTPC
+        ta_tag: "tamakerTPC"
+        tcalg: {
+            tool_type: TCAlgTPCExample
+            multiplicity: 1
+            verbosity: 1
+        }
+        verbosity: 1
+     }
+
+END_PROLOG
