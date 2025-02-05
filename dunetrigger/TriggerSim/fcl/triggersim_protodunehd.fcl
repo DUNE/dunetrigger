@@ -1,0 +1,19 @@
+#include "triggersim.fcl"
+
+process_name: TriggersimProtodunehd
+
+services:   @local::services_triggersim_protodunehd
+source:     @local::source_triggersim
+outputs:    @local::outputs_triggersim
+
+producers: {
+    tpmakerTPC: @local::standard_tpmakerTPC
+    tamakerTPC: @local::standard_tamakerTPC
+    tcmakerTPC: @local::standard_tcmakerTPC
+
+    stream1: [ out1 ]
+    reco: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    trigger_paths: [ reco ]
+    end_paths: [ stream1 ]
+}
+
