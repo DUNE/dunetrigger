@@ -14,45 +14,53 @@
 
 
 # use cmake 3.12 or later
-cmake_minimum_required (VERSION 3.12)
+cmake_minimum_required (VERSION 3.20 FATAL_ERROR)
 
 project(dunetrigger LANGUAGES CXX C)
-set(${PROJECT_NAME}_CMAKE_PROJECT_VERSION_STRING 09.89.01d01)
+set(${PROJECT_NAME}_CMAKE_PROJECT_VERSION_STRING 10.03.01d02)
 
 # cetbuildtools contains our cmake modules
-find_package(cetbuildtools REQUIRED)
+find_package(cetmodules REQUIRED)
 
-list(APPEND CMAKE_MODULE_PATH
-     $ENV{CANVAS_ROOT_IO_DIR}/Modules
-     $ENV{ART_DIR}/Modules
-#     ${CMAKE_CURRENT_SOURCE_DIR}/Modules
-)
+set(${PROJECT_NAME}_FW_DIR "config_data")
+
+## Make target names shorter (dunecore::X vs dunecore::dune_X).
+# set(dunecore_NAMESPACE dune)
+
+# Project variable defaults (_INIT) and overrides.
+set(${PROJECT_NAME}_SCRIPTS_DIR_INIT scripts)
 
 include(CetCMakeEnv)
 cet_cmake_env()
 
+# Find our own CMake modules, and tell everyone else where to find them.
+cet_cmake_module_directories(Modules BINARY)
+
 cet_set_compiler_flags(DIAGS CAUTIOUS
   WERROR
   NO_UNDEFINED
-  EXTRA_FLAGS -pedantic
-  EXTRA_CXX_FLAGS -Wno-unused-local-typedefs
+  EXTRA_FLAGS -pedantic -Wno-unused-local-typedefs
 )
-
 cet_report_compiler_flags()
 
-# these are minimum required versions, not the actual product versions
-find_ups_product( larsoft )
-find_package(larcore)
-find_ups_product( nutools )
-find_ups_product( art )
-find_ups_product( nlohmann_json )
-find_ups_root()
-find_ups_product( cetbuildtools ) # LIBRARY_OUTPUT_DIRECTORY, etc.
-find_ups_product ( TRACE )
+find_package( nufinder REQUIRED )
+find_package( larcore REQUIRED EXPORT)
+find_package( nuevdb REQUIRED EXPORT )
+find_package( nug4 REQUIRED EXPORT )
+find_package( nugen REQUIRED EXPORT )
+find_package( nurandom REQUIRED EXPORT )
+find_package( nusimdata REQUIRED EXPORT )
+find_package( nutools REQUIRED EXPORT )
+find_package( art 3.09.00 REQUIRED )
+find_package( art_root_io REQUIRED )
+find_package( ROOT REQUIRED )
+find_package( dunedaqdataformats REQUIRED EXPORT )
+find_package( dunedetdataformats REQUIRED EXPORT )
+find_package( HDF5 REQUIRED)
 
 #dune packages
-find_ups_product( dunecore )
-find_ups_product( dunedetdataformats )
+find_package( dunecore REQUIRED EXPORT )
+find_package( dunedetdataformats REQUIRED EXPORT )
 
 # macros for dictionary and simple_plugin
 include(ArtDictionary)

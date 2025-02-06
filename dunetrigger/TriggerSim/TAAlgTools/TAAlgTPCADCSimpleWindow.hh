@@ -64,7 +64,7 @@ namespace duneana {
     //process TPs one-by-one
     //if adc integral is greater than the specified threshold for a given TP window, construct a TA, and add it to the output TAs vector
     void process_tp(art::Ptr<dunedaq::trgdataformats::TriggerPrimitive> tp,
-		    std::vector<TriggerActivity> & tas_out)
+		    std::vector<TriggerActivity> & tas_out) override
     {
 
       dunedaq::trgdataformats::TriggerPrimitive input_tp = *tp;
