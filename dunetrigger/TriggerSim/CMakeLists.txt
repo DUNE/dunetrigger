@@ -1,4 +1,4 @@
-include_directories("${dunedetdataformats_DIR}/../../../include")
+include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 
 add_subdirectory(TPAlgTools)
 add_subdirectory(TAAlgTools)

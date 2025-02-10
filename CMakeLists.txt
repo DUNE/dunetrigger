@@ -24,9 +24,6 @@ find_package(cetmodules REQUIRED)
 
 set(${PROJECT_NAME}_FW_DIR "config_data")
 
-## Make target names shorter (dunecore::X vs dunecore::dune_X).
-# set(dunecore_NAMESPACE dune)
-
 # Project variable defaults (_INIT) and overrides.
 set(${PROJECT_NAME}_SCRIPTS_DIR_INIT scripts)
 
@@ -55,8 +52,9 @@ find_package( art 3.09.00 REQUIRED )
 find_package( art_root_io REQUIRED )
 find_package( ROOT REQUIRED )
 find_package( dunedaqdataformats REQUIRED EXPORT )
-find_package( dunedetdataformats REQUIRED EXPORT )
 find_package( HDF5 REQUIRED)
+find_ups_product( nlohmann_json ) # this seems to be deprecated but I can't find other working ways
+find_ups_product( TRACE ) # this seems to be deprecated but I can't find other working ways
 
 #dune packages
 find_package( dunecore REQUIRED EXPORT )
