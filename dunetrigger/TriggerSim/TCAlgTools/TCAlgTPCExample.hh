@@ -34,7 +34,7 @@ namespace duneana {
     //process a single TA
     //for now promote every TA to TC, then add it to the output vector
     void process_ta(dunedaq::trgdataformats::TriggerActivityData const& ta,
-		    std::vector<dunedaq::trgdataformats::TriggerCandidateData> & tcs_out)
+		    std::vector<dunedaq::trgdataformats::TriggerCandidateData> & tcs_out) override
     {
       ++count_;
 

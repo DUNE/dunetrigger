@@ -1,9 +1,9 @@
 cet_build_plugin(TCAlgTPCExample art::tool
   LIBRARIES
   dunecore::DuneObj
-  fhiclcpp 
+  fhiclcpp::fhiclcpp 
   cetlib::cetlib 
-  cetlib_except
+  cetlib_except::cetlib_except
 )
 
 install_fhicl()

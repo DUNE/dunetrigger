@@ -5,6 +5,7 @@
 
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "larcore/CoreUtils/ServiceUtil.h"
+#include "larcore/Geometry/Geometry.h"
 #include "larcore/Geometry/WireReadout.h"
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
@@ -32,8 +33,10 @@ namespace duneana {
     {
 
         //grab the geometry service
-        geo::WireReadoutGeom const* geom = &art::ServiceHandle<geo::WireReadout>()->Get();
-        auto plane = geom->ROPtoWirePlanes(geom->ChannelToROP(channel)).at(0).Plane;
+        art::ServiceHandle<geo::Geometry> geom;
+        geo::WireReadoutGeom const& wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
+
+        auto plane = wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(channel)).at(0).Plane;
 
         if(plane==0) threshold_=threshold_tpg_plane0_;
         else if(plane==1) threshold_=threshold_tpg_plane1_;
@@ -174,8 +177,8 @@ namespace duneana {
     int16_t threshold_;
     int16_t pedestal_;
     int16_t accum_;
-    int16_t accum25_;
-    int16_t accum75_;
+   //int16_t accum25_;
+   // int16_t accum75_;
 
     uint16_t prev_was_over_;
     uint16_t hit_charge_;

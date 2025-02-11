@@ -32,7 +32,7 @@ namespace duneana {
     //process a single tp
     //if we have met some condition for making a TA, then add it to the output vector
     void process_tp(art::Ptr<dunedaq::trgdataformats::TriggerPrimitive> tp,
-		            std::vector<TriggerActivity> & tas_out)
+		            std::vector<TriggerActivity> & tas_out) override
     {
 
       ta_current_.second.push_back(tp);
