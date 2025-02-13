@@ -1,0 +1,81 @@
+# triggersim_makers.fcl
+
+BEGIN_PROLOG
+
+## These are producers
+
+#======================================================================
+# TP makers
+
+tpmakerTPC_ADCSimpleThreshold:
+  {
+    module_type: TriggerPrimitiveMakerTPC
+    rawdigit_tag: "daq"
+    tpalg: {
+      tool_type: TPAlgTPCSimpleThreshold
+      threshold_tpg_plane0: -1
+      threshold_tpg_plane1: -1
+      threshold_tpg_plane2: 60
+      verbosity: 0
+    }
+    verbosity: 1
+  }
+
+#======================================================================
+# TA makers
+
+ta_algconfig_simplewindow:
+{
+	window_length: 60000
+	adc_threshold: 20000000
+}
+
+# more ta configs...
+
+nmodules_protodunehd: 4     # protoDUNE HD 2024
+nmodules_dune10kt_1x2x6: 12 # 12 APAs in the middle
+nmodules_dune10kt_1x2x2: 4  # 4 APAs in the middle
+
+tamakerTPC_ADCSimpleWindow:
+  {
+    module_type: TriggerActivityMakerOnlineTPC # anything non-online should not be used
+    tp_tag: "tpmakerTPC"
+    taalg: {
+      tool_type: TAAlgTPCADCSimpleWindow 
+      algconfig_plane0: @local::ta_algconfig_simplewindow # induction 1
+      algconfig_plane1: @local::ta_algconfig_simplewindow # induction 2
+      algconfig_plane2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
+      algconfig_plane3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
+      verbosity: 1
+    }
+    nmodules: nmodules_protodunehd # just a default
+    mergecollwires: true
+	  adj_tolerance: 5
+    verbosity: 1
+  }
+
+#======================================================================
+# TC makers
+
+# just template, will have variables at some point
+tcconfig_example:
+{
+}
+
+tcmakerTPC_Example:
+  {
+    module_type: TriggerCandidateMakerOnlineTPC
+    ta_tag: "tamakerTPC"
+    tcalg: {
+        tool_type: TCAlgTPCExample
+        algconfig: @local::tcconfig_example
+        multiplicity: 1 # keep?
+        verbosity: 1
+    }
+	  n_channels_threshold: 210
+    trigger_on_adc: true
+	  trigger_on_n_channels: false
+    verbosity: 1
+  }
+
+END_PROLOG
