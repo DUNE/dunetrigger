@@ -50,7 +50,10 @@ tamakerTPC_ADCSimpleWindow:
     }
     nmodules: nmodules_protodunehd # just a default
     mergecollwires: true
-	  adj_tolerance: 5
+	  adjacency_threshold: 15 # from triggeralgs default
+	  adj_tolerance: 3        # from triggeralgs default 
+	  prescale: 1
+    print_tp_info: false
     verbosity: 1
   }
 
@@ -60,6 +63,10 @@ tamakerTPC_ADCSimpleWindow:
 # just template, will have variables at some point
 tcconfig_example:
 {
+  adc_threshold: 1000       # Very loose! All TAs will pass through
+  n_channels_threshold: 10  # Very loose! All TAs will pass through
+  trigger_on_adc: true
+  trigger_on_n_channels: true
 }
 
 tcmakerTPC_Example:
@@ -72,9 +79,7 @@ tcmakerTPC_Example:
         multiplicity: 1 # keep?
         verbosity: 1
     }
-	  n_channels_threshold: 210
-    trigger_on_adc: true
-	  trigger_on_n_channels: false
+
     verbosity: 1
   }
 
