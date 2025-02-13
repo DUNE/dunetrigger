@@ -130,12 +130,12 @@ void duneana::TriggerActivityMakerTPC::produce(art::Event& e)
     for (short unsigned int i = 0; i < n_modules_; i ++) {
       for (short unsigned int j = 0; j < 4; j ++) {
 	
-	readout::ROPID tmp_rop = {0, i, j};
-	if (j < 2 && rop == tmp_rop) tmp_plane = j*n_modules_ + i;
-	else if (j >= 2 && rop == tmp_rop) {
-	  if (mergecollwires_) tmp_plane = 2*n_modules_ + i;
-	  else tmp_plane = j*n_modules_ + i;
-	}
+        readout::ROPID tmp_rop = {0, i, j};
+        if (j < 2 && rop == tmp_rop) tmp_plane = j*n_modules_ + i;
+        else if (j >= 2 && rop == tmp_rop) {
+          if (mergecollwires_) tmp_plane = 2*n_modules_ + i;
+          else tmp_plane = j*n_modules_ + i;
+        }
       }
     }
     tps_per_rop_map[tmp_plane].push_back( art::Ptr<dunedaq::trgdataformats::TriggerPrimitive>(tp_handle,i_tp) );

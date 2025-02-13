@@ -55,27 +55,27 @@ namespace duneana {
       // contributions to the hit counts.
       uint32_t n_tps_to_erase = 0;
       for (auto tp : inputs) {
-	if (!(input_tp.time_start - tp.time_start < window_length)) {
-	  n_tps_to_erase++;
-	  adc_integral -= tp.adc_integral;
-	  channel_states[tp.channel]--;
-	  // If a TP being removed from the window results in a channel no longer having
-	  // any hits, remove from the states map so map.size() can be used for number
-	  // channels hit.
-	  if (channel_states[tp.channel] == 0)
-	    channel_states.erase(tp.channel);
-	} else
-	  break;
+        if (!(input_tp.time_start - tp.time_start < window_length)) {
+          n_tps_to_erase++;
+          adc_integral -= tp.adc_integral;
+          channel_states[tp.channel]--;
+          // If a TP being removed from the window results in a channel no longer having
+          // any hits, remove from the states map so map.size() can be used for number
+          // channels hit.
+          if (channel_states[tp.channel] == 0)
+            channel_states.erase(tp.channel);
+        } else
+          break;
       }
       // Erase the TPs from the window.
       inputs.erase(inputs.begin(), inputs.begin() + n_tps_to_erase);
       // Make the window start time the start time of what is now the first TP.
       
       if (inputs.size() != 0) {
-	time_start = inputs.front().time_start;
-	add(input_tp);
+        time_start = inputs.front().time_start;
+        add(input_tp);
       } else {
-	reset(input_tp);
+	      reset(input_tp);
       }
     }
     
@@ -100,11 +100,11 @@ namespace duneana {
     friend std::ostream& operator<<(std::ostream& os, const TPWindow& window)
     {
       if (window.is_empty()) {
-	os << "Window is empty!\n";
+	      os << "Window is empty!\n";
       } else {
-	os << "Window start: " << window.time_start << ", end: " << window.inputs.back().time_start;
-	os << ". Total of: " << window.adc_integral << " ADC counts with " << window.inputs.size() << " TPs.\n";
-	os << window.channel_states.size() << " independent channels have hits.\n";
+        os << "Window start: " << window.time_start << ", end: " << window.inputs.back().time_start;
+        os << ". Total of: " << window.adc_integral << " ADC counts with " << window.inputs.size() << " TPs.\n";
+        os << window.channel_states.size() << " independent channels have hits.\n";
       }
       return os;
     }

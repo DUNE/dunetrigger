@@ -52,13 +52,13 @@ namespace duneana {
         //find the mode of the whole vector
         std::map<short,size_t> counts_per_value;
         for(auto const& adc : adcs)
-	  counts_per_value[adc] += 1;
+	        counts_per_value[adc] += 1;
         size_t max_counts=0;
         for(auto it=counts_per_value.begin(); it!= counts_per_value.end(); ++it) {
-	  if (it->second > max_counts){
-	    pedestal_ = it->first;
-	    max_counts = it->second;
-	  }
+          if (it->second > max_counts){
+            pedestal_ = it->first;
+            max_counts = it->second;
+          }
         }
 	
         accum_ = 0;
@@ -106,11 +106,11 @@ namespace duneana {
 
         for(size_t i_t=0; i_t<adcs.size(); ++i_t){
 
-	  //if threshold < 0, the plane is not used to produce TPs
-	  if (threshold_ < 0) continue; 
+            //if threshold < 0, the plane is not used to produce TPs
+            if (threshold_ < 0) continue; 
 
             //get the sample
-	    int16_t sample = adcs[i_t];
+	          int16_t sample = adcs[i_t];
 
             //update the pedestal estimate
             frugal_accum_update(sample);
@@ -143,7 +143,7 @@ namespace duneana {
             {
                 //we've reached the end of the hit, so need to create a TP and write it out
 
-	        this_tp.time_start = start_time + (i_t - hit_tover_ )*this->ADC_SAMPLING_RATE_IN_DTS;
+	              this_tp.time_start = start_time + (i_t - hit_tover_ )*this->ADC_SAMPLING_RATE_IN_DTS;
                 this_tp.time_over_threshold = hit_tover_*this->ADC_SAMPLING_RATE_IN_DTS;
                 this_tp.time_peak = start_time + (i_t - hit_tover_ + hit_peak_time_)*this->ADC_SAMPLING_RATE_IN_DTS;
                 this_tp.adc_integral = hit_charge_;
@@ -159,8 +159,6 @@ namespace duneana {
             prev_was_over_ = is_over;
 
         }
-
-
 
     }
     
