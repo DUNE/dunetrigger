@@ -41,15 +41,15 @@ namespace duneana {
       ta.algorithm = dunedaq::trgdataformats::TriggerActivityData::Algorithm::kADCSimpleWindow;
 
       for (const auto& tp : current_window_.inputs) {
-	ta.time_start = std::min(ta.time_start, tp.time_start);
-	ta.time_end = std::max(ta.time_end, tp.time_start);
-	ta.channel_start = std::min(ta.channel_start, tp.channel);
-	ta.channel_end = std::max(ta.channel_end, tp.channel);
-	if (tp.adc_peak > ta.adc_peak) {
-	  ta.time_peak = tp.time_peak;
-	  ta.adc_peak = tp.adc_peak;
-	  ta.channel_peak = tp.channel;
-	}
+        ta.time_start = std::min(ta.time_start, tp.time_start);
+        ta.time_end = std::max(ta.time_end, tp.time_start);
+        ta.channel_start = std::min(ta.channel_start, tp.channel);
+        ta.channel_end = std::max(ta.channel_end, tp.channel);
+        if (tp.adc_peak > ta.adc_peak) {
+          ta.time_peak = tp.time_peak;
+          ta.adc_peak = tp.adc_peak;
+          ta.channel_peak = tp.channel;
+        }
       }
       
       return ta;
@@ -83,8 +83,8 @@ namespace duneana {
       // If the difference between the current TP's start time and the window's start time
       // is less than the specified window length, add the TP to the window
       if ((input_tp.time_start - current_window_.time_start) < window_length_) {
-	current_window_.add(input_tp);
-	ta_current_.second.push_back(tp);
+        current_window_.add(input_tp);
+        ta_current_.second.push_back(tp);
       }
       // If the addition of the current TP to the window makes it longer
       // than the specified window length, don't add it but check whether the adc integral in
@@ -110,11 +110,11 @@ namespace duneana {
 	for (const auto tp_window : current_window_.inputs) {
 	  for (const auto& tp_tmp : tmp_tp_vec) {
 	    if (tp_window.channel == (*tp_tmp).channel &&
-		tp_window.time_start == (*tp_tmp).time_start && 
-		tp_window.time_over_threshold == (*tp_tmp).time_over_threshold &&
-		tp_window.time_peak == (*tp_tmp).time_peak &&
-		tp_window.adc_integral == (*tp_tmp).adc_integral && 
-		tp_window.adc_peak == (*tp_tmp).adc_peak) {
+          tp_window.time_start == (*tp_tmp).time_start && 
+          tp_window.time_over_threshold == (*tp_tmp).time_over_threshold &&
+          tp_window.time_peak == (*tp_tmp).time_peak &&
+          tp_window.adc_integral == (*tp_tmp).adc_integral && 
+          tp_window.adc_peak == (*tp_tmp).adc_peak) {
 	      ta_current_.second.push_back(tp_tmp);
 	      break;
 	    }

@@ -122,16 +122,16 @@ private:
     nlohmann::json algconfig;
     for(auto k : pset_config.get_all_keys()){
       try {
-	algconfig[k] = pset_config.get<uint64_t>(k);
+	      algconfig[k] = pset_config.get<uint64_t>(k);
       }
       catch (const fhicl::exception& e) {
-	try {
-	  // If false, try retrieving the parameter as a boolean
-	  algconfig[k] = pset_config.get<bool>(k);
-	}
-	catch (const fhicl::exception& e) {
-	  std::cerr << "Error: FHiCL parameter is neither an int nor a bool in the FHiCL file. \n";
-	}
+        try {
+          // If false, try retrieving the parameter as a boolean
+          algconfig[k] = pset_config.get<bool>(k);
+        }
+        catch (const fhicl::exception& e) {
+          std::cerr << "Error: FHiCL parameter is neither an int nor a bool in the FHiCL file. \n";
+        }
       }
     }
     return algconfig;
