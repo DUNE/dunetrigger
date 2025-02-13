@@ -1,11 +1,12 @@
 # trigggersim.fcl
 
+# This is the high-level configuration file for all dunetrigger tools
+# It is imported in almost all fcls both of TriggerSim and TriggerAna
+
 #include "services_dune.fcl"
 #include "triggersim_makers.fcl"
 
 BEGIN_PROLOG
-
-# Defaults for the triggersim job
 
 services_triggersim: {
     TFileService:           { fileName: "triggersim_hist.root" }

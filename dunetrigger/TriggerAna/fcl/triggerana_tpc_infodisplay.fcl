@@ -1,0 +1,50 @@
+# triggerana_tpc_infodisplay.fcl
+
+#include "triggersim.fcl"
+
+BEGIN_PROLOG
+
+services_triggerana_tpc_infodisplay: @local::services_triggersim
+services_triggerana_tpc_infodisplay.TFileService.fileName: "triggerTPCInfoDisplay_hist.root"
+
+source_triggerana_tpc_infodisplay: @local::source_triggersim
+
+outputs_triggerana_tpc_infodisplay: @local::outputs_triggersim
+outputs_triggerana_tpc_infodisplay.out1.fileName: "triggerTPCInfodisplay.root"
+
+## These are analyzers
+
+# generated from the algorithms in dunetrigger
+offlineTriggerTPCInfoDisplay: {
+    module_type: TriggerTPCInfoDisplay
+    tp_tag: "tpmakerTPC"
+    ta_tag: "tamakerTPC"
+    tc_tag: "tcmakerTPC"
+    verbosity: 1
+}
+
+# from the raw data coming from the detector
+onlineTriggerTPCInfoDisplay: {
+    module_type: TriggerTPCInfoDisplay
+    tp_tag: "trigrawdecoder:daq"
+    ta_tag: "trigrawdecoder:daq"
+    tc_tag: "trigrawdecoder:daq"
+    verbosity: 1
+}
+
+analyzers_trigger_tpc_infodisplay: {
+    offlineTriggerTPCInfoDisplay: @local::offlineTriggerTPCInfoDisplay
+    onlineTriggerTPCInfoDisplay: @local::onlineTriggerTPCInfoDisplay
+}
+
+# basic example of a physics configuration, better to create your own
+physics_triggerana_tpc_infodisplay: {
+
+    analyzers: @local::analyzers_trigger_tpc_infodisplay
+
+    ana:       [ offlineTriggerTPCInfoDisplay, onlineTriggerTPCInfoDisplay ]
+    stream1:   [ out1 ]
+    end_paths: [ stream1, ana ]
+}
+
+END_PROLOG

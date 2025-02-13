@@ -17,5 +17,4 @@ source:     @local::source_triggersim
 outputs:    @local::outputs_triggersim
 
 producers:  @local::producers_triggersim_simpleThr_simpleWin_example
-
 producers.tamakerTPC.nmodules: nmodules_protodunehd
