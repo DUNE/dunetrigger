@@ -62,12 +62,12 @@
 #include <algorithm>
 #include <iostream>
 
-namespace duneana {
+namespace dunetrigger {
   class TriggerTPCInfoDisplay;
 }
 
 
-class duneana::TriggerTPCInfoDisplay : public art::EDAnalyzer {
+class dunetrigger::TriggerTPCInfoDisplay : public art::EDAnalyzer {
 public:
   explicit TriggerTPCInfoDisplay(fhicl::ParameterSet const& p);
   // The compiler-generated destructor is fine for non-base
@@ -165,7 +165,7 @@ private:
 };
 
 
-duneana::TriggerTPCInfoDisplay::TriggerTPCInfoDisplay(fhicl::ParameterSet const& p)
+dunetrigger::TriggerTPCInfoDisplay::TriggerTPCInfoDisplay(fhicl::ParameterSet const& p)
   : EDAnalyzer{p}  // ,
   , tp_tag_(p.get<art::InputTag>("tp_tag"))
   , ta_tag_(p.get<art::InputTag>("ta_tag"))
@@ -179,7 +179,7 @@ duneana::TriggerTPCInfoDisplay::TriggerTPCInfoDisplay(fhicl::ParameterSet const&
   consumes<std::vector<dunedaq::trgdataformats::TriggerCandidateData>>(tc_tag_);
 }
 
-void duneana::TriggerTPCInfoDisplay::analyze(art::Event const& e)
+void dunetrigger::TriggerTPCInfoDisplay::analyze(art::Event const& e)
 {
   // Set all general event information
   fRun    = e.run();
@@ -298,7 +298,7 @@ void duneana::TriggerTPCInfoDisplay::analyze(art::Event const& e)
   }
 }
 
-void duneana::TriggerTPCInfoDisplay::beginJob()
+void dunetrigger::TriggerTPCInfoDisplay::beginJob()
 {
   // Make our handle to the TFileService
   art::ServiceHandle<art::TFileService> tfs;
@@ -379,4 +379,4 @@ void duneana::TriggerTPCInfoDisplay::beginJob()
   fTCTree -> Branch( "Algorithm" , &fAlgorithm_TC);
 }
 
-DEFINE_ART_MODULE(duneana::TriggerTPCInfoDisplay)
+DEFINE_ART_MODULE(dunetrigger::TriggerTPCInfoDisplay)

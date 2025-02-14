@@ -15,7 +15,7 @@
 #include <limits>
 #include <inttypes.h>
 
-namespace duneana {
+namespace dunetrigger {
 
  class TPAlgTPCSimpleThreshold : public TPAlgTPCTool {
 

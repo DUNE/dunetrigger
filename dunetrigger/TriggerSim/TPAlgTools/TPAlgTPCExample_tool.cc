@@ -2,4 +2,4 @@
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCExample.hh"
 
-DEFINE_ART_CLASS_TOOL(duneana::TPAlgTPCExample)
+DEFINE_ART_CLASS_TOOL(dunetrigger::TPAlgTPCExample)

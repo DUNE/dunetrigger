@@ -57,11 +57,11 @@ struct ExtTriggerActivity : public TriggerActivity {
 };
 } // namespace triggeralgs
 
-namespace duneana {
+namespace dunetrigger {
 class TriggerCandidateMakerTPC;
 }
 
-class duneana::TriggerCandidateMakerTPC : public art::EDProducer {
+class dunetrigger::TriggerCandidateMakerTPC : public art::EDProducer {
 public:
   explicit TriggerCandidateMakerTPC(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
@@ -109,7 +109,7 @@ private:
   }
 };
 
-duneana::TriggerCandidateMakerTPC::TriggerCandidateMakerTPC(
+dunetrigger::TriggerCandidateMakerTPC::TriggerCandidateMakerTPC(
     fhicl::ParameterSet const &p)
     : EDProducer{p}, ta_tag(p.get<art::InputTag>("ta_tag")),
       algname(p.get<std::string>("algorithm")),
@@ -123,7 +123,7 @@ duneana::TriggerCandidateMakerTPC::TriggerCandidateMakerTPC(
   produces<art::Assns<TriggerCandidateData, TriggerActivityData>>();
 }
 
-void duneana::TriggerCandidateMakerTPC::beginJob() {
+void dunetrigger::TriggerCandidateMakerTPC::beginJob() {
   // build alg using the factory
   alg = alg_factory->build_maker(algname);
 
@@ -147,7 +147,7 @@ void duneana::TriggerCandidateMakerTPC::beginJob() {
   alg->configure(alg_json);
 }
 
-void duneana::TriggerCandidateMakerTPC::produce(art::Event &e) {
+void dunetrigger::TriggerCandidateMakerTPC::produce(art::Event &e) {
   using dunedaq::trgdataformats::TriggerActivityData;
   using dunedaq::trgdataformats::TriggerCandidateData;
 
@@ -246,4 +246,4 @@ void duneana::TriggerCandidateMakerTPC::produce(art::Event &e) {
   e.put(std::move(ta_in_tc_assn_ptr));
 }
 
-DEFINE_ART_MODULE(duneana::TriggerCandidateMakerTPC)
+DEFINE_ART_MODULE(dunetrigger::TriggerCandidateMakerTPC)

@@ -34,8 +34,11 @@ using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
 using dunedaq::trgdataformats::TriggerPrimitive;
 
-class TriggerAnaTree;
-class TriggerAnaTree : public art::EDAnalyzer {
+namespace dunetrigger{
+  class TriggerAnaTree;
+}
+
+class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
 public:
   explicit TriggerAnaTree(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
@@ -89,7 +92,7 @@ private:
   float ide_numElectrons, ide_energy, ide_x, ide_y, ide_z;
 };
 
-TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
+dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")),
       dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
       dump_mctruths(p.get<bool>("dump_mctruths", true)),
@@ -99,7 +102,7 @@ TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
 // More initializers here.
 {}
 
-void TriggerAnaTree::beginJob() {
+void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_mctruths) {
     mctruth_tree = tfs->make<TTree>("mctruths", "mctruths");
     mctruth_tree->Branch("Event", &fEventID, "Event/I");
@@ -132,7 +135,7 @@ void TriggerAnaTree::beginJob() {
   }
 }
 
-void TriggerAnaTree::analyze(art::Event const &e) {
+void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   fRun = e.run();
   fSubRun = e.subRun();
   fEventID = e.id().event();
@@ -265,7 +268,7 @@ void TriggerAnaTree::analyze(art::Event const &e) {
   }
 }
 
-void TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool assn) {
+void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool assn) {
   std::string map_tag = "tp/" + tag;
   if (!tree_map.count(map_tag)) {
     art::TFileDirectory tp_dir =
@@ -297,7 +300,7 @@ void TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool assn) {
   }
 }
 
-void TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool assn) {
+void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool assn) {
   std::string map_tag = "ta/" + tag;
   if (!tree_map.count(map_tag)) {
     art::TFileDirectory ta_dir =
@@ -332,7 +335,7 @@ void TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool assn) {
   }
 }
 
-void TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
+void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
   std::string map_tag = "tc/" + tag;
   if (!tree_map.count(map_tag)) {
     art::TFileDirectory tc_dir =
@@ -358,4 +361,4 @@ void TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
   }
 }
 
-DEFINE_ART_MODULE(TriggerAnaTree)
+DEFINE_ART_MODULE(dunetrigger::TriggerAnaTree)

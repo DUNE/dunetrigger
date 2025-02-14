@@ -31,11 +31,11 @@
 #include <iostream>
 #include <memory>
 
-namespace duneana {
+namespace dunetrigger {
 class TriggerPrimitiveMakerTPC;
 }
 
-class duneana::TriggerPrimitiveMakerTPC : public art::EDProducer {
+class dunetrigger::TriggerPrimitiveMakerTPC : public art::EDProducer {
 public:
   explicit TriggerPrimitiveMakerTPC(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
@@ -59,7 +59,7 @@ private:
   int verbosity_;
 };
 
-duneana::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
+dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
     fhicl::ParameterSet const &p)
     : EDProducer{p} // ,
       ,
@@ -75,7 +75,7 @@ duneana::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
   consumes<art::Assns<raw::RDTimeStamp, raw::RawDigit>>(rawdigit_tag_);
 }
 
-void duneana::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
+void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   // Implementation of required member function here.
 
   // make output collection for the TriggerPrimitive objects
@@ -119,4 +119,4 @@ void duneana::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   e.put(std::move(tp_col_ptr));
 }
 
-DEFINE_ART_MODULE(duneana::TriggerPrimitiveMakerTPC)
+DEFINE_ART_MODULE(dunetrigger::TriggerPrimitiveMakerTPC)

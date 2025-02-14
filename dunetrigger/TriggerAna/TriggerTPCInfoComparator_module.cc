@@ -70,12 +70,12 @@
 #include <algorithm>
 #include <iostream>
 
-namespace duneana {
+namespace dunetrigger {
   class TriggerTPCInfoComparator;
 }
 
 
-class duneana::TriggerTPCInfoComparator : public art::EDAnalyzer {
+class dunetrigger::TriggerTPCInfoComparator : public art::EDAnalyzer {
 public:
   explicit TriggerTPCInfoComparator(fhicl::ParameterSet const& p);
   // The compiler-generated destructor is fine for non-base
@@ -122,7 +122,7 @@ private:
 };
 
 
-duneana::TriggerTPCInfoComparator::TriggerTPCInfoComparator(fhicl::ParameterSet const& p)
+dunetrigger::TriggerTPCInfoComparator::TriggerTPCInfoComparator(fhicl::ParameterSet const& p)
   : EDAnalyzer{p}  // ,
   , tp_tag_(p.get<art::InputTag>("tp_tag"))
   , ta_tag_(p.get<art::InputTag>("ta_tag"))
@@ -141,7 +141,7 @@ duneana::TriggerTPCInfoComparator::TriggerTPCInfoComparator(fhicl::ParameterSet 
   consumes<std::vector<dunedaq::trgdataformats::TriggerCandidateData> >(daq_tag);
 }
 
-void duneana::TriggerTPCInfoComparator::analyze(art::Event const& e)
+void dunetrigger::TriggerTPCInfoComparator::analyze(art::Event const& e)
 {
   // Set all general event information
   fRun    = e.run();
@@ -267,7 +267,7 @@ void duneana::TriggerTPCInfoComparator::analyze(art::Event const& e)
   fTCComparisonTree->Fill();
 }
 
-void duneana::TriggerTPCInfoComparator::beginJob()
+void dunetrigger::TriggerTPCInfoComparator::beginJob()
 {
   // Make our handle to the TFileService
   art::ServiceHandle<art::TFileService> tfs;
@@ -304,4 +304,4 @@ void duneana::TriggerTPCInfoComparator::beginJob()
 
 }
 
-DEFINE_ART_MODULE(duneana::TriggerTPCInfoComparator)
+DEFINE_ART_MODULE(dunetrigger::TriggerTPCInfoComparator)

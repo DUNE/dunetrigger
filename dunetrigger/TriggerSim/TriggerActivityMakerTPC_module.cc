@@ -36,12 +36,12 @@
 #include <string>
 #include <utility>
 
-namespace duneana {
+namespace dunetrigger {
 class TriggerActivityMakerTPC;
 typedef std::pair<readout::TPCsetID, geo::View_t> TAMakerScopeID_t;
 
 std::ostream &operator<<(std::ostream &os,
-                         const duneana::TAMakerScopeID_t &scope) {
+                         const dunetrigger::TAMakerScopeID_t &scope) {
   return (os << scope.first << " P:" << scope.second);
 }
 
@@ -51,9 +51,9 @@ static TAMakerScopeID_t getTAScopeID(readout::ROPID &ropid,
                              geom.View(ropid)};
   return result;
 }
-} // namespace duneana
+} // namespace dunetrigger
 
-class duneana::TriggerActivityMakerTPC : public art::EDProducer {
+class dunetrigger::TriggerActivityMakerTPC : public art::EDProducer {
 public:
   explicit TriggerActivityMakerTPC(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
@@ -139,7 +139,7 @@ private:
   }
 };
 
-duneana::TriggerActivityMakerTPC::TriggerActivityMakerTPC(
+dunetrigger::TriggerActivityMakerTPC::TriggerActivityMakerTPC(
     fhicl::ParameterSet const &p)
     : EDProducer{p}, algname(p.get<std::string>("algorithm")),
       algconfig_plane0(p.get<fhicl::ParameterSet>("algconfig_plane0")),
@@ -160,7 +160,7 @@ duneana::TriggerActivityMakerTPC::TriggerActivityMakerTPC(
   consumes<std::vector<TriggerPrimitive>>(tp_tag);
 }
 
-void duneana::TriggerActivityMakerTPC::beginJob() {
+void dunetrigger::TriggerActivityMakerTPC::beginJob() {
   // nice printout of channel mask
   if (verbosity >= Verbosity::kInfo) {
     std::cout << "Masked Channels:";
@@ -174,7 +174,7 @@ void duneana::TriggerActivityMakerTPC::beginJob() {
   }
 }
 
-void duneana::TriggerActivityMakerTPC::produce(art::Event &e) {
+void dunetrigger::TriggerActivityMakerTPC::produce(art::Event &e) {
   // these things end up getting written about 5000 times, so let's do this here
   using dunedaq::trgdataformats::TriggerActivityData;
   using dunedaq::trgdataformats::TriggerPrimitive;
@@ -329,4 +329,4 @@ void duneana::TriggerActivityMakerTPC::produce(art::Event &e) {
   e.put(std::move(tp_in_tas_assn_ptr));
 }
 
-DEFINE_ART_MODULE(duneana::TriggerActivityMakerTPC)
+DEFINE_ART_MODULE(dunetrigger::TriggerActivityMakerTPC)

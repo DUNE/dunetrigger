@@ -1,7 +1,7 @@
 #ifndef DUNETRIGGER_TRIGGERSIM_VERSBOSITY_HH
 #define DUNETRIGGER_TRIGGERSIM_VERSBOSITY_HH
 
-namespace duneana {
+namespace dunetrigger {
 enum Verbosity {
   // these would all implicitly have these values
   // but it's best to explicitly define things

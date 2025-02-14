@@ -28,10 +28,11 @@
 #include <fcntl.h>
 #include <larcore/Geometry/Geometry.h>
 
-class TriggerActivityTxtDump;
+namespace dunetrigger{
+  class TriggerActivityTxtDump;
+}
 
-
-class TriggerActivityTxtDump : public art::EDAnalyzer {
+class dunetrigger::TriggerActivityTxtDump : public art::EDAnalyzer {
 public:
   explicit TriggerActivityTxtDump(fhicl::ParameterSet const& p);
   // The compiler-generated destructor is fine for non-base
@@ -57,7 +58,7 @@ private:
 };
 
 
-TriggerActivityTxtDump::TriggerActivityTxtDump(fhicl::ParameterSet const& p)
+dunetrigger::TriggerActivityTxtDump::TriggerActivityTxtDump(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
     sim_ta_tag(p.get<art::InputTag>("sim_ta_tag"))
     // ,
@@ -69,11 +70,11 @@ TriggerActivityTxtDump::TriggerActivityTxtDump(fhicl::ParameterSet const& p)
   consumes<std::vector<TriggerActivityData>>(sim_ta_tag);
 }
 
-void TriggerActivityTxtDump::beginJob() {
+void dunetrigger::TriggerActivityTxtDump::beginJob() {
   sim_out.open("sim_tas.txt");
 }
 
-void TriggerActivityTxtDump::analyze(art::Event const& e)
+void dunetrigger::TriggerActivityTxtDump::analyze(art::Event const& e)
 {
   using dunedaq::trgdataformats::TriggerActivityData;
   // Implementation of required member function here.
@@ -105,6 +106,6 @@ void TriggerActivityTxtDump::analyze(art::Event const& e)
 
 }
 
-DEFINE_ART_MODULE(TriggerActivityTxtDump)
+DEFINE_ART_MODULE(dunetrigger::TriggerActivityTxtDump)
 
 
