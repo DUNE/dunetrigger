@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       TriggerActivityMakerOnlineTPC
+// Class:       TriggerActivityMakerTPC
 // Plugin Type: producer (Unknown Unknown)
-// File:        TriggerActivityMakerOnlineTPC_module.cc
+// File:        TriggerActivityMakerTPC_module.cc
 //
 // Generated at Tue Aug 13 11:03:40 2024 by ddrobner using cetskelgen
 // from cetlib version 3.18.02.
@@ -37,7 +37,7 @@
 #include <utility>
 
 namespace duneana {
-class TriggerActivityMakerOnlineTPC;
+class TriggerActivityMakerTPC;
 typedef std::pair<readout::TPCsetID, geo::View_t> TAMakerScopeID_t;
 
 std::ostream &operator<<(std::ostream &os,
@@ -53,19 +53,19 @@ static TAMakerScopeID_t getTAScopeID(readout::ROPID &ropid,
 }
 } // namespace duneana
 
-class duneana::TriggerActivityMakerOnlineTPC : public art::EDProducer {
+class duneana::TriggerActivityMakerTPC : public art::EDProducer {
 public:
-  explicit TriggerActivityMakerOnlineTPC(fhicl::ParameterSet const &p);
+  explicit TriggerActivityMakerTPC(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
   // classes without bare pointers or other resource use.
 
   // Plugins should not be copied or assigned.
-  TriggerActivityMakerOnlineTPC(TriggerActivityMakerOnlineTPC const &) = delete;
-  TriggerActivityMakerOnlineTPC(TriggerActivityMakerOnlineTPC &&) = delete;
-  TriggerActivityMakerOnlineTPC &
-  operator=(TriggerActivityMakerOnlineTPC const &) = delete;
-  TriggerActivityMakerOnlineTPC &
-  operator=(TriggerActivityMakerOnlineTPC &&) = delete;
+  TriggerActivityMakerTPC(TriggerActivityMakerTPC const &) = delete;
+  TriggerActivityMakerTPC(TriggerActivityMakerTPC &&) = delete;
+  TriggerActivityMakerTPC &
+  operator=(TriggerActivityMakerTPC const &) = delete;
+  TriggerActivityMakerTPC &
+  operator=(TriggerActivityMakerTPC &&) = delete;
 
   void beginJob() override;
   void produce(art::Event &e) override;
@@ -139,7 +139,7 @@ private:
   }
 };
 
-duneana::TriggerActivityMakerOnlineTPC::TriggerActivityMakerOnlineTPC(
+duneana::TriggerActivityMakerTPC::TriggerActivityMakerTPC(
     fhicl::ParameterSet const &p)
     : EDProducer{p}, algname(p.get<std::string>("algorithm")),
       algconfig_plane0(p.get<fhicl::ParameterSet>("algconfig_plane0")),
@@ -160,7 +160,7 @@ duneana::TriggerActivityMakerOnlineTPC::TriggerActivityMakerOnlineTPC(
   consumes<std::vector<TriggerPrimitive>>(tp_tag);
 }
 
-void duneana::TriggerActivityMakerOnlineTPC::beginJob() {
+void duneana::TriggerActivityMakerTPC::beginJob() {
   // nice printout of channel mask
   if (verbosity >= Verbosity::kInfo) {
     std::cout << "Masked Channels:";
@@ -174,7 +174,7 @@ void duneana::TriggerActivityMakerOnlineTPC::beginJob() {
   }
 }
 
-void duneana::TriggerActivityMakerOnlineTPC::produce(art::Event &e) {
+void duneana::TriggerActivityMakerTPC::produce(art::Event &e) {
   // these things end up getting written about 5000 times, so let's do this here
   using dunedaq::trgdataformats::TriggerActivityData;
   using dunedaq::trgdataformats::TriggerPrimitive;
@@ -329,4 +329,4 @@ void duneana::TriggerActivityMakerOnlineTPC::produce(art::Event &e) {
   e.put(std::move(tp_in_tas_assn_ptr));
 }
 
-DEFINE_ART_MODULE(duneana::TriggerActivityMakerOnlineTPC)
+DEFINE_ART_MODULE(duneana::TriggerActivityMakerTPC)

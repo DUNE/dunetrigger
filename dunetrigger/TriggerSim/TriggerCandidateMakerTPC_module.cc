@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       TriggerCandidateMakerOnlineTPC
+// Class:       TriggerCandidateMakerTPC
 // Plugin Type: producer (Unknown Unknown)
-// File:        TriggerCandidateMakerOnlineTPC_module.cc
+// File:        TriggerCandidateMakerTPC_module.cc
 //
 // Generated at Tue Aug 13 16:43:32 2024 by ddrobner using cetskelgen
 // from cetlib version 3.18.02.
@@ -58,23 +58,23 @@ struct ExtTriggerActivity : public TriggerActivity {
 } // namespace triggeralgs
 
 namespace duneana {
-class TriggerCandidateMakerOnlineTPC;
+class TriggerCandidateMakerTPC;
 }
 
-class duneana::TriggerCandidateMakerOnlineTPC : public art::EDProducer {
+class duneana::TriggerCandidateMakerTPC : public art::EDProducer {
 public:
-  explicit TriggerCandidateMakerOnlineTPC(fhicl::ParameterSet const &p);
+  explicit TriggerCandidateMakerTPC(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
   // classes without bare pointers or other resource use.
 
   // Plugins should not be copied or assigned.
-  TriggerCandidateMakerOnlineTPC(TriggerCandidateMakerOnlineTPC const &) =
+  TriggerCandidateMakerTPC(TriggerCandidateMakerTPC const &) =
       delete;
-  TriggerCandidateMakerOnlineTPC(TriggerCandidateMakerOnlineTPC &&) = delete;
-  TriggerCandidateMakerOnlineTPC &
-  operator=(TriggerCandidateMakerOnlineTPC const &) = delete;
-  TriggerCandidateMakerOnlineTPC &
-  operator=(TriggerCandidateMakerOnlineTPC &&) = delete;
+  TriggerCandidateMakerTPC(TriggerCandidateMakerTPC &&) = delete;
+  TriggerCandidateMakerTPC &
+  operator=(TriggerCandidateMakerTPC const &) = delete;
+  TriggerCandidateMakerTPC &
+  operator=(TriggerCandidateMakerTPC &&) = delete;
 
   void beginJob() override;
   void produce(art::Event &e) override;
@@ -109,7 +109,7 @@ private:
   }
 };
 
-duneana::TriggerCandidateMakerOnlineTPC::TriggerCandidateMakerOnlineTPC(
+duneana::TriggerCandidateMakerTPC::TriggerCandidateMakerTPC(
     fhicl::ParameterSet const &p)
     : EDProducer{p}, ta_tag(p.get<art::InputTag>("ta_tag")),
       algname(p.get<std::string>("algorithm")),
@@ -123,7 +123,7 @@ duneana::TriggerCandidateMakerOnlineTPC::TriggerCandidateMakerOnlineTPC(
   produces<art::Assns<TriggerCandidateData, TriggerActivityData>>();
 }
 
-void duneana::TriggerCandidateMakerOnlineTPC::beginJob() {
+void duneana::TriggerCandidateMakerTPC::beginJob() {
   // build alg using the factory
   alg = alg_factory->build_maker(algname);
 
@@ -147,7 +147,7 @@ void duneana::TriggerCandidateMakerOnlineTPC::beginJob() {
   alg->configure(alg_json);
 }
 
-void duneana::TriggerCandidateMakerOnlineTPC::produce(art::Event &e) {
+void duneana::TriggerCandidateMakerTPC::produce(art::Event &e) {
   using dunedaq::trgdataformats::TriggerActivityData;
   using dunedaq::trgdataformats::TriggerCandidateData;
 
@@ -246,4 +246,4 @@ void duneana::TriggerCandidateMakerOnlineTPC::produce(art::Event &e) {
   e.put(std::move(ta_in_tc_assn_ptr));
 }
 
-DEFINE_ART_MODULE(duneana::TriggerCandidateMakerOnlineTPC)
+DEFINE_ART_MODULE(duneana::TriggerCandidateMakerTPC)
