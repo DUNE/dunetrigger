@@ -1,8 +1,6 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 
 add_subdirectory(TPAlgTools)
-add_subdirectory(TAAlgTools)
-add_subdirectory(TCAlgTools)
 
 art_make( BASENAME_ONLY MODULE_LIBRARIES
   lardataobj::RawData

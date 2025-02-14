@@ -14,8 +14,8 @@
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "art_root_io/TFileDirectory.h"
 #include "art_root_io/TFileService.h"
-#include "canvas/Utilities/InputTag.h"
 #include "canvas/Persistency/Common/FindManyP.h"
+#include "canvas/Utilities/InputTag.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -23,12 +23,12 @@
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 
+#include "lardataobj/Simulation/SimChannel.h"
+#include "nusimdata/SimulationBase/MCParticle.h"
+#include "nusimdata/SimulationBase/MCTruth.h"
 #include <TDirectory.h>
 #include <TFile.h>
 #include <TTree.h>
-#include "nusimdata/SimulationBase/MCParticle.h"
-#include "nusimdata/SimulationBase/MCTruth.h"
-#include "lardataobj/Simulation/SimChannel.h"
 
 using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
@@ -67,12 +67,12 @@ private:
 
   bool dump_tp, dump_ta, dump_tc;
 
-  void make_tp_tree_if_needed(std::string tag, bool assn=false);
-  void make_ta_tree_if_needed(std::string tag, bool assn=false);
+  void make_tp_tree_if_needed(std::string tag, bool assn = false);
+  void make_ta_tree_if_needed(std::string tag, bool assn = false);
   void make_tc_tree_if_needed(std::string tag);
-  
+
   bool dump_mctruths;
-  TTree* mctruth_tree;
+  TTree *mctruth_tree;
   int mctruth_pdg;
   std::string mctruth_process;
   int mctruth_status;
@@ -83,7 +83,7 @@ private:
 
   bool dump_simides;
   std::string simchannel_tag;
-  TTree* simide_tree;
+  TTree *simide_tree;
   unsigned int sim_channel_id;
   unsigned short tdc;
   float ide_numElectrons, ide_energy, ide_x, ide_y, ide_z;
@@ -91,11 +91,11 @@ private:
 
 TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")),
-      dump_ta(p.get<bool>("dump_ta")), 
-      dump_tc(p.get<bool>("dump_tc")),
+      dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
       dump_mctruths(p.get<bool>("dump_mctruths", true)),
       dump_simides(p.get<bool>("dump_simides", true)),
-      simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
+      simchannel_tag(
+          p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 // More initializers here.
 {}
 
@@ -164,7 +164,8 @@ void TriggerAnaTree::analyze(art::Event const &e) {
     }
   }
   if (dump_simides) {
-    auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
+    auto simchannels =
+        e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
     for (const sim::SimChannel &sc : *simchannels) {
       sim_channel_id = sc.Channel();
       sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
@@ -199,15 +200,21 @@ void TriggerAnaTree::analyze(art::Event const &e) {
     std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
         e.getMany<std::vector<TriggerActivityData>>();
     for (auto const &taHandle : taHandles) {
-      art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
+      art::FindManyP<TriggerPrimitive> assns(
+          taHandle, e, taHandle.provenance()->moduleLabel());
       std::string tag = taHandle.provenance()->inputTag().encode();
       std::string map_tag = "ta/" + tag;
       make_ta_tree_if_needed(tag);
       for (unsigned int i = 0; i < taHandle->size(); i++) {
-        const TriggerActivityData &ta = *art::Ptr<TriggerActivityData>(taHandle, i);
-        if (assns.isValid()){
+        const TriggerActivityData &ta =
+            *art::Ptr<TriggerActivityData>(taHandle, i);
+        if (assns.isValid()) {
           art::InputTag ta_input_tag = taHandle.provenance()->inputTag();
-          std::string tpInTaTag = art::InputTag(ta_input_tag.label(), ta_input_tag.instance() + "inTAs", ta_input_tag.process()).encode();
+          std::string tpInTaTag =
+              art::InputTag(ta_input_tag.label(),
+                            ta_input_tag.instance() + "inTAs",
+                            ta_input_tag.process())
+                  .encode();
           std::string map_tpInTaTag = "tp/" + tpInTaTag;
           make_tp_tree_if_needed(tpInTaTag, true);
           fAssnIdx = i;
@@ -227,15 +234,21 @@ void TriggerAnaTree::analyze(art::Event const &e) {
     std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
         e.getMany<std::vector<TriggerCandidateData>>();
     for (auto const &tcHandle : tcHandles) {
-      art::FindManyP<TriggerActivityData> assns(tcHandle, e, tcHandle.provenance()->moduleLabel());
+      art::FindManyP<TriggerActivityData> assns(
+          tcHandle, e, tcHandle.provenance()->moduleLabel());
       std::string tag = tcHandle.provenance()->inputTag().encode();
       std::string map_tag = "tc/" + tag;
       make_tc_tree_if_needed(tag);
       for (unsigned int i = 0; i < tcHandle->size(); i++) {
-        const TriggerCandidateData &tc = *art::Ptr<TriggerCandidateData>(tcHandle, i);
-        if (assns.isValid()){
+        const TriggerCandidateData &tc =
+            *art::Ptr<TriggerCandidateData>(tcHandle, i);
+        if (assns.isValid()) {
           art::InputTag tc_input_tag = tcHandle.provenance()->inputTag();
-          std::string taInTcTag = art::InputTag(tc_input_tag.label(), tc_input_tag.instance() + "inTCs", tc_input_tag.process()).encode();
+          std::string taInTcTag =
+              art::InputTag(tc_input_tag.label(),
+                            tc_input_tag.instance() + "inTCs",
+                            tc_input_tag.process())
+                  .encode();
           std::string map_taInTcTag = "ta/" + taInTcTag;
           make_ta_tree_if_needed(taInTcTag, true);
           fAssnIdx = i;

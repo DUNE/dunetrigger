@@ -38,25 +38,24 @@
 #include <utility>
 
 namespace triggeralgs {
-  struct ExtTriggerActivity : public TriggerActivity
-  {
-    ExtTriggerActivity(const dunedaq::trgdataformats::TriggerActivityData& data) {
-      this->time_start = data.time_start;
-      this->time_end = data.time_end;
-      this->time_peak = data.time_peak;
-      this->time_activity = data.time_activity;
-      this->channel_start = data.channel_start;
-      this->channel_end = data.channel_end;
-      this->channel_peak = data.channel_peak;
-      this->adc_integral = data.adc_integral;
-      this->adc_peak = data.adc_peak;
-      this->detid = data.detid;
-      this->type = data.type;
-      this->algorithm = data.algorithm;
-      this->version = data.version;
-    }
-  };
-}
+struct ExtTriggerActivity : public TriggerActivity {
+  ExtTriggerActivity(const dunedaq::trgdataformats::TriggerActivityData &data) {
+    this->time_start = data.time_start;
+    this->time_end = data.time_end;
+    this->time_peak = data.time_peak;
+    this->time_activity = data.time_activity;
+    this->channel_start = data.channel_start;
+    this->channel_end = data.channel_end;
+    this->channel_peak = data.channel_peak;
+    this->adc_integral = data.adc_integral;
+    this->adc_peak = data.adc_peak;
+    this->detid = data.detid;
+    this->type = data.type;
+    this->algorithm = data.algorithm;
+    this->version = data.version;
+  }
+};
+} // namespace triggeralgs
 
 namespace duneana {
 class TriggerCandidateMakerOnlineTPC;
@@ -91,7 +90,6 @@ private:
   std::unique_ptr<triggeralgs::TriggerCandidateMaker> alg;
 
   int verbosity;
-
 
   typedef std::pair<size_t, dunedaq::trgdataformats::TriggerActivityData>
       TriggerActivityIdx;
@@ -134,18 +132,17 @@ void duneana::TriggerCandidateMakerOnlineTPC::beginJob() {
   for (auto &k : algconfig.get_all_keys()) {
     try {
       alg_json[k] = algconfig.get<uint64_t>(k);
-    }
-    catch (const fhicl::exception& e) {
+    } catch (const fhicl::exception &e) {
       try {
-	// If false, try retrieving the parameter as a boolean
-	alg_json[k] = algconfig.get<bool>(k);
-      }
-      catch (const fhicl::exception& e) {
-	std::cerr << "Error: FHiCL parameter is neither an int nor a bool in the FHiCL file. \n";
+        // If false, try retrieving the parameter as a boolean
+        alg_json[k] = algconfig.get<bool>(k);
+      } catch (const fhicl::exception &e) {
+        std::cerr << "Error: FHiCL parameter is neither an int nor a bool in "
+                     "the FHiCL file. \n";
       }
     }
   }
-  
+
   // and pass that on to the trigger algorithm
   alg->configure(alg_json);
 }
@@ -167,14 +164,15 @@ void duneana::TriggerCandidateMakerOnlineTPC::produce(art::Event &e) {
   art::PtrMaker<TriggerCandidateData> tc_ptr_maker{e};
 
   // create a vector of inputs with the 'file' index of the TA
-  std::vector<TriggerActivityIdx> input_tas;//(ta_vec.size());
+  std::vector<TriggerActivityIdx> input_tas; //(ta_vec.size());
   for (size_t i = 0; i < ta_vec.size(); ++i) {
     input_tas.push_back(TriggerActivityIdx(i, ta_vec.at(i)));
   }
 
   // now we sort the TAs by time using a lambda as the comparison function which
   // pulls out the second element of the pair. Alternatively, we can rewrite the
-  // comparison function to use the pairs (although that makes it less versatile)
+  // comparison function to use the pairs (although that makes it less
+  // versatile)
   std::sort(input_tas.begin(), input_tas.end(),
             [](TriggerActivityIdx &ta1, TriggerActivityIdx &ta2) {
               return compareTriggerActivity(ta1.second, ta2.second);
@@ -190,7 +188,7 @@ void duneana::TriggerCandidateMakerOnlineTPC::produce(art::Event &e) {
   // create a vector of online TCs for the online algorithm to store it's
   // outputs in
   std::vector<triggeralgs::TriggerCandidate> produced_tcs = {};
-  
+
   // process the input TAs
   for (const auto &ta : input_tas) {
     dunedaq::trgdataformats::TriggerActivityData ta_data = ta.second;
@@ -231,7 +229,7 @@ void duneana::TriggerCandidateMakerOnlineTPC::produce(art::Event &e) {
       }
 
       // pritn a debug message if we can't find and associated TAs
-      if(tas_in_tc_ptr.empty() && verbosity >= Verbosity::kDebug ){
+      if (tas_in_tc_ptr.empty() && verbosity >= Verbosity::kDebug) {
         std::cout << "No associated TAs found for TC!" << std::endl;
       }
     }
@@ -243,7 +241,7 @@ void duneana::TriggerCandidateMakerOnlineTPC::produce(art::Event &e) {
     std::cout << "Created " << produced_tcs.size() << " TCs" << std::endl;
   }
 
-  // move the produced things onto the event 
+  // move the produced things onto the event
   e.put(std::move(tc_vec_ptr));
   e.put(std::move(ta_in_tc_assn_ptr));
 }

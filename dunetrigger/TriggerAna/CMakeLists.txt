@@ -1,22 +1,22 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 
-art_make( BASENAME_ONLY MODULE_LIBRARIES
+art_make(BASENAME_ONLY MODULE_LIBRARIES
   lardataobj::RawData
   dunecore::DuneObj
   lardata::ArtDataHelper
-  nusimdata::SimulationBase	
+  nusimdata::SimulationBase
   art::Framework_Core
   art::Framework_Principal
   art::Framework_Services_Registry
   art_root_io::tfile_support
   ROOT::Core
   art_root_io::TFileService_service
-  art::Persistency_Common 
-  art::Persistency_Provenance 
-  art::Utilities 
+  art::Persistency_Common
+  art::Persistency_Provenance
+  art::Utilities
   canvas::canvas
   messagefacility::MF_MessageLogger
-  cetlib::cetlib 
+  cetlib::cetlib
   cetlib_except::cetlib_except
   ROOT::Tree
   triggeralgs_module
