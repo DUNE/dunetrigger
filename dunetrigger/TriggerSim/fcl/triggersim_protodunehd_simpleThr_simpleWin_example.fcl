@@ -1,0 +1,20 @@
+# triggersim_protodunehd_simpleThr_simpleWin_example.fcl
+
+#include "triggersim.fcl"
+
+#include "services_refactored_pdune.fcl"
+#include "protodune_tools_dune.fcl"
+
+process_name: Triggersim_ProtoduneHD_SimpleThr_SimpleWin_Example
+
+services:{
+    @table::services_triggersim
+    @table::protodunehd_reco_services
+}
+
+source:     @local::source_triggersim
+
+outputs:    @local::outputs_triggersim
+
+producers:  @local::producers_triggersim_simpleThr_simpleWin_example
+producers.tamakerTPC.nmodules: nmodules_protodunehd

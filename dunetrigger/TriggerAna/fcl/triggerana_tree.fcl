@@ -1,0 +1,46 @@
+# triggerana_tree.fcl
+
+#include "triggersim.fcl"
+
+BEGIN_PROLOG
+
+services_triggerana_tree: @local::services_triggersim
+services_triggerana_tree.TFileService.fileName: "triggerAnaTree_hist.root"
+
+source_triggerana_tree: @local::source_triggersim
+
+outputs_triggerana_tree: @local::outputs_triggersim
+outputs_triggerana_tree.out1.fileName: "triggerAnaTree.root"
+
+## These are analyzers
+
+triggerAnaTree_dumpAll:
+{
+  module_type: TriggerAnaTree
+  dump_tp: true
+  dump_ta: true
+  dump_tc: true
+  # If true, dump all information about mctruth particles in a tree named "mctruths"
+  dump_mctruths: true 
+  # If true, dump all simChannels and their IDEs in a tree named "simides" 
+  dump_simides: true
+
+  simchannel_tag: "tpcrawdecoder:simpleSC"
+}
+
+# basic example of a physics configuration, better to create your own
+physics_triggerana_tree: {
+
+  # This is just a basic example that reads the trigger information from the TPC and dumps it to a tree
+  # (equivalent to a reco2 step, if reco1 is generating trigger data from rawDigits).
+
+  analyzers: {
+    triggerAnaTree_dumpAll: @local::triggerAnaTree_dumpAll
+  }
+
+  ana:            [ triggerAnaTree_dumpAll ]
+  stream1:        [ out1 ]
+  end_paths:      [ stream1, ana ]
+}
+
+END_PROLOG

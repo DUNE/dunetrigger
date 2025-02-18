@@ -1,0 +1,18 @@
+# triggerana_tree_1x2x2.fcl
+
+#include "triggerana_tree.fcl"
+
+process_name: TriggerAna_Tree_1x2x2
+
+services:   {
+    @table::services_triggersim
+    @table::dunefd_1x2x2_reco_services
+}
+
+source:     @local::source_triggerana_tree
+
+outputs:    @local::outputs_triggerana_tree
+
+# This block only has analyers, accepts a file with already produced TPs, TAs, and TCs
+physics:    @local::physics_triggerana_tree
+

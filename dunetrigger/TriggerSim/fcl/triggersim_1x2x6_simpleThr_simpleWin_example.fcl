@@ -1,0 +1,18 @@
+# triggersim_1x2x6_simpleThr_simpleWin_example.fcl
+
+#include "triggersim.fcl"
+
+process_name: Triggersim_1x2x6_SimpleThr_SimpleWin_Example
+
+services:{
+    @table::services_triggersim
+    @table::dunefd_1x2x6_reco_services
+}
+
+source:     @local::source_triggersim
+
+outputs:    @local::outputs_triggersim
+
+physics.producers:  @local::producers_triggersim_simpleThr_simpleWin_example
+
+physics.producers.tamakerTPC.nmodules: nmodules_dune10kt_1x2x6

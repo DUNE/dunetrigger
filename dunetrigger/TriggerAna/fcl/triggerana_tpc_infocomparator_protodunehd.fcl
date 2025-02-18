@@ -1,0 +1,20 @@
+# triggerana_tpc_infocomparator_protodunehd.fcl
+
+#include "triggerana_tpc_infocomparator.fcl"
+
+#include "services_refactored_pdune.fcl"
+#include "protodune_tools_dune.fcl"
+
+process_name: TriggerAna_TPC_InfoComparator_ProtoduneHD
+
+services: {
+    @table::services_triggerana_tpc_infocomparator
+    @table::protodunehd_reco_services
+}
+
+source:    @local::source_triggerana_tpc_infocomparator
+
+outputs:   @local::outputs_triggerana_tpc_infocomparator
+
+# This block only has analyers, accepts a file with already produced TPs, TAs, and TCs
+physics:   @local::physics_triggerana_tpc_info_comparator
