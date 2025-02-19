@@ -34,6 +34,3 @@ basic_plugin(triggeralgs module
   src/dbscan/dbscan.cpp
   src/dbscan/Hit.cpp
 )
-
-# TODO PAR 2021-04-15: What is in autogen? Is it actually used?
-add_subdirectory(autogen)
