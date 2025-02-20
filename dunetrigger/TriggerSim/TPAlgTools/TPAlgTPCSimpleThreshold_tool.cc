@@ -2,4 +2,4 @@
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCSimpleThreshold.hh"
 
-DEFINE_ART_CLASS_TOOL(duneana::TPAlgTPCSimpleThreshold)
+DEFINE_ART_CLASS_TOOL(dunetrigger::TPAlgTPCSimpleThreshold)

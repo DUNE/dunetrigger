@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace duneana {
+namespace dunetrigger {
 
   class TPAlgTPCTool {
 
