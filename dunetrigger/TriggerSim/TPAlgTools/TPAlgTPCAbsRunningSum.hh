@@ -10,7 +10,6 @@
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
-
 #include <inttypes.h>
 #include <limits>
 #include <map>
