@@ -5,7 +5,7 @@
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 
-namespace duneana {
+namespace dunetrigger {
 
   class TPAlgTPCExample : public TPAlgTPCTool {
 
