@@ -3,9 +3,10 @@
 #include "triggerana_tree.fcl"
 
 #include "services_refactored_pdune.fcl"
+# This is not a prolog file, it  has to go just before the actual config
 #include "protodune_tools_dune.fcl"
 
-process_name: TriggerAna_Tree_ProtoduneHD
+process_name: TriggerAnaTreeProtoduneHD
 
 services:   {
     @table::services_triggersim

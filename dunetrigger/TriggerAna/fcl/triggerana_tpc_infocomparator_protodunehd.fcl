@@ -5,7 +5,7 @@
 #include "services_refactored_pdune.fcl"
 #include "protodune_tools_dune.fcl"
 
-process_name: TriggerAna_TPC_InfoComparator_ProtoduneHD
+process_name: TriggerAnaTPCInfoComparatorProtoduneHD
 
 services: {
     @table::services_triggerana_tpc_infocomparator

@@ -3,9 +3,10 @@
 #include "triggersim.fcl"
 
 #include "services_refactored_pdune.fcl"
+# this is not a prolog, it has to go just before the actual config
 #include "protodune_tools_dune.fcl"
 
-process_name: Triggersim_ProtoduneHD_SimpleThr_SimpleWin_Example
+process_name: TriggersimProtoduneHDSimpleThrSimpleWinSimpleWin
 
 services:{
     @table::services_triggersim
@@ -16,5 +17,5 @@ source:     @local::source_triggersim
 
 outputs:    @local::outputs_triggersim
 
-producers:  @local::producers_triggersim_simpleThr_simpleWin_example
-producers.tamakerTPC.nmodules: nmodules_protodunehd
+physics:  @local::physics_triggersim_simpleThr_simpleWin_simpleWin
+producers.tamakerTPC.nmodules: @local::nmodules_protodunehd

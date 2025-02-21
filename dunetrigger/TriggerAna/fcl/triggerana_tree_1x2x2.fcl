@@ -2,7 +2,7 @@
 
 #include "triggerana_tree.fcl"
 
-process_name: TriggerAna_Tree_1x2x2
+process_name: TriggerAnaTree1x2x2
 
 services:   {
     @table::services_triggersim

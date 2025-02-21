@@ -1,5 +1,7 @@
 # triggersim_makers.fcl
 
+#include "services_dune.fcl"
+
 BEGIN_PROLOG
 
 ## These are producers
@@ -9,10 +11,10 @@ BEGIN_PROLOG
 
 tpmakerTPC_ADCSimpleThreshold:
   {
-    module_type: TriggerPrimitiveMakerTPC
+    module_type: "TriggerPrimitiveMakerTPC"
     rawdigit_tag: "daq"
     tpalg: {
-      tool_type: TPAlgTPCSimpleThreshold
+      tool_type: "TPAlgTPCSimpleThreshold"
       threshold_tpg_plane0: -1
       threshold_tpg_plane1: -1
       threshold_tpg_plane2: 60
@@ -38,17 +40,16 @@ nmodules_dune10kt_1x2x2: 4  # 4 APAs in the middle
 
 tamakerTPC_ADCSimpleWindow:
   {
-    module_type: TriggerActivityMakerOnlineTPC # anything non-online should not be used
+    module_type: "TriggerActivityMakerTPC"
     tp_tag: "tpmakerTPC"
-    taalg: {
-      tool_type: TAAlgTPCADCSimpleWindow 
-      algconfig_plane0: @local::ta_algconfig_simplewindow # induction 1
-      algconfig_plane1: @local::ta_algconfig_simplewindow # induction 2
-      algconfig_plane2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
-      algconfig_plane3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
-      verbosity: 1
-    }
-    nmodules: nmodules_protodunehd # just a default
+    algorithm: "TAMakerADCSimpleWindowAlgorithm"
+     # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
+    # tool_type: "TAAlgTPCADCSimpleWindow" 
+    algconfig_plane0: @local::ta_algconfig_simplewindow # induction 1
+    algconfig_plane1: @local::ta_algconfig_simplewindow # induction 2
+    algconfig_plane2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
+    algconfig_plane3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
+    nmodules: @local::nmodules_protodunehd # just a default
     mergecollwires: true
 	  adjacency_threshold: 15 # from triggeralgs default
 	  adj_tolerance: 3        # from triggeralgs default 
@@ -60,7 +61,7 @@ tamakerTPC_ADCSimpleWindow:
 #======================================================================
 # TC makers
 
-# just template, will have variables at some point
+# just the most basic and loose example
 tcconfig_example:
 {
   adc_threshold: 1000       # Very loose! All TAs will pass through
@@ -69,17 +70,13 @@ tcconfig_example:
   trigger_on_n_channels: true
 }
 
-tcmakerTPC_Example:
+tcmakerTPC_ADCSimpleWindow:
   {
-    module_type: TriggerCandidateMakerOnlineTPC
+    module_type: "TriggerCandidateMakerTPC"
     ta_tag: "tamakerTPC"
-    tcalg: {
-        tool_type: TCAlgTPCExample
-        algconfig: @local::tcconfig_example
-        multiplicity: 1 # keep?
-        verbosity: 1
-    }
-
+    algorithm: "TCMakerADCSimpleWindowAlgorithm"
+    algconfig: @local::tcconfig_example
+    multiplicity: 1 # keep?
     verbosity: 1
   }
 
