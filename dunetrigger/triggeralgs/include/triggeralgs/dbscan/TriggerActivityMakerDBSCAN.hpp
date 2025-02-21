@@ -27,7 +27,7 @@ public:
 private:  
   int m_eps{10};
   int m_min_pts{3}; // Minimum number of points to form a cluster
-  timestamp_t m_first_timestamp{0};
+  //timestamp_t m_first_timestamp{0};
   timestamp_t m_prev_timestamp{0};
   std::vector<dbscan::Cluster> m_dbscan_clusters;
   std::unique_ptr<dbscan::IncrementalDBSCAN> m_dbscan;

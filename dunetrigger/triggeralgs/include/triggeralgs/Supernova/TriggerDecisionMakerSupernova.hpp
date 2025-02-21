@@ -40,7 +40,7 @@ protected:
   {
     dunedaq::trgdataformats::timestamp_diff_t how_far = time_now - m_time_window;
     auto end = std::remove_if(
-                              m_candidate.begin(), m_candidate.end(), [how_far, this](auto& c) -> bool { return (static_cast<dunedaq::trgdataformats::timestamp_diff_t>(c.time_start) < how_far); });
+                              m_candidate.begin(), m_candidate.end(), [how_far](auto& c) -> bool { return (static_cast<dunedaq::trgdataformats::timestamp_diff_t>(c.time_start) < how_far); });
     m_candidate.erase(end, m_candidate.end());
   }
 };

@@ -49,14 +49,14 @@ private:
   bool m_trigger_on_n_channels = true;
   bool m_trigger_on_adjacency = true;    // Default use of the triggering
   uint16_t m_adjacency_threshold = 15;   // Default is 15 wire track for testing
-  int m_max_adjacency = 0;               // The maximum adjacency seen so far in any window
-  uint32_t m_tot_threshold = 2000;       // Work out good values for this
+  //int m_max_adjacency = 0;               // The maximum adjacency seen so far in any window
+  //uint32_t m_tot_threshold = 2000;       // Work out good values for this
   uint32_t m_adc_threshold = 300000;     // AbsRunningSum HF Alg Finds Induction ADC ~10x higher
   uint16_t m_n_channels_threshold = 20;  // Set this to ~80 for frames.bin, ~150-300 for tps_link_11.txt
   uint16_t m_adj_tolerance = 5;          // Adjacency tolerance - default is 3 from coldbox testing.
-  int index = 0;
-  uint16_t ta_adc = 0;
-  uint16_t ta_channels = 0;
+  //int index = 0;
+  //uint16_t ta_adc = 0;
+  //uint16_t ta_channels = 0;
   timestamp_t m_window_length = 3000;    // Shouldn't exceed the max drift
 
   // Channel map object, for separating TPs by the plane view they come from

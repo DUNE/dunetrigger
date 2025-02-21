@@ -70,8 +70,9 @@ public:
 };
 
 //======================================================================
-struct Hit
+class Hit
 {
+  public:
     Hit(float _time, int _chan, const triggeralgs::TriggerPrimitive* _prim=nullptr);
 
     void reset(float _time, int _chan, const triggeralgs::TriggerPrimitive* _prim=nullptr);
