@@ -40,9 +40,9 @@ private:
   uint32_t m_adc_threshold = 3000000;    // Not currently triggering on this
   uint16_t m_n_channels_threshold = 400; // Set this to ~80 for frames.bin, ~150-300 for tps_link_11.txt
   uint16_t m_adj_tolerance = 3;          // Adjacency tolerance - default is 3 from coldbox testing.
-  int index = 0;
-  uint16_t ta_adc = 0;
-  uint16_t ta_channels = 0;
+  //int index = 0;
+  //uint16_t ta_adc = 0;
+  //uint16_t ta_channels = 0;
   timestamp_t m_window_length = 8000; // Shouldn't exceed the max drift which is ~9375 62.5 MHz ticks for VDCB
   uint16_t ta_count = 0;              // Use for prescaling
   uint16_t m_prescale = 1;            // Prescale value, defult is one, trigger every TA
