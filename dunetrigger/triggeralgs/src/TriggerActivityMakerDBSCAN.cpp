@@ -32,7 +32,7 @@ TriggerActivityMakerDBSCAN::operator()(const TriggerPrimitive& input_tp, std::ve
   m_dbscan_clusters.clear();
   m_dbscan->add_primitive(input_tp, &m_dbscan_clusters);
 
-  uint64_t t0=m_dbscan->get_first_prim_time();
+  //uint64_t t0=m_dbscan->get_first_prim_time();
   
   for(auto const& cluster : m_dbscan_clusters){
     auto& ta=output_ta.emplace_back();

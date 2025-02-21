@@ -60,7 +60,7 @@ public:
     IncrementalDBSCAN(float eps, unsigned int minPts, size_t pool_size=100000)
         : m_eps(eps)
         , m_minPts(minPts)
-        , m_pool_begin(0)
+        //, m_pool_begin(0)
         , m_pool_end(0)
     {
         for(size_t i=0; i<pool_size; ++i){
@@ -94,7 +94,8 @@ private:
     float m_eps;
     float m_minPts;
     std::vector<Hit> m_hit_pool;
-    size_t m_pool_begin, m_pool_end;
+    //size_t m_pool_begin, m_pool_end;
+    size_t m_pool_end;
     std::vector<Hit*> m_hits; // All the hits we've seen so far, in time order
     float m_latest_time{ 0 }; // The latest time of a hit in the vector of hits
     uint64_t m_first_prim_time{0};
