@@ -1,4 +1,4 @@
-# triggerana_tpc_infocomparator_protodunehd.fcl
+# triggerana_tpc_infocomparator_protodunehd_simpleThr_simpleWin_simpleWin.fcl
 
 #include "triggerana_tpc_infocomparator.fcl"
 
@@ -17,4 +17,4 @@ source:    @local::source_triggerana_tpc_infocomparator
 outputs:   @local::outputs_triggerana_tpc_infocomparator
 
 # This block only has analyers, accepts a file with already produced TPs, TAs, and TCs
-physics:   @local::physics_triggerana_tpc_info_comparator
+physics:   @local::physics_triggerana_tpc_info_comparator_simpleThr_simpleWin_simpleWin

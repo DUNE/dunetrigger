@@ -39,6 +39,7 @@ producers_triggersim_simpleThr_simpleWin_simpleWin: {
     tcmakerTPC: @local::tcmakerTPC_ADCSimpleWindow
 }
 
+# this does not have analyzers! Add them
 physics_triggersim_simpleThr_simpleWin_simpleWin: {
     producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
     stream1: [ out1 ]

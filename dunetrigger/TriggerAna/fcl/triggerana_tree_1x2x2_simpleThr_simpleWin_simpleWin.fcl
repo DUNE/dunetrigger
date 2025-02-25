@@ -1,6 +1,7 @@
-# triggerana_tree_1x2x2.fcl
+# triggerana_tree_1x2x2_simpleThr_simpleWin_simpleWin.fcl
 
 #include "triggerana_tree.fcl"
+#include "tools_dune.fcl"
 
 process_name: TriggerAnaTree1x2x2
 
@@ -13,6 +14,5 @@ source:     @local::source_triggerana_tree
 
 outputs:    @local::outputs_triggerana_tree
 
-# This block only has analyers, accepts a file with already produced TPs, TAs, and TCs
-physics:    @local::physics_triggerana_tree
-
+# Just an example with the basic producers
+physics:    @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin

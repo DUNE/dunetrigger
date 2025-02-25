@@ -1,4 +1,4 @@
-# triggerana_tpc_infodisplay_protodunehd.fcl
+# triggerana_tpc_infodisplay_protodunehd_simpleThr_simpleWin_simpleWin.fcl
 
 #include "triggerana_tpc_infodisplay.fcl"
 
@@ -15,4 +15,4 @@ source:    @local::source_triggerana_tpc_infodisplay
 outputs:   @local::outputs_triggerana_tpc_infodisplay
 
 # This block only has analyers, accepts a file with already produced TPs, TAs, and TCs
-physics:   @local::physics_triggerana_tpc_infodisplay
+physics:   @local::physics_triggerana_tpc_infodisplay_simpleThr_simpleWin_simpleWin

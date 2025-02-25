@@ -28,17 +28,22 @@ triggerAnaTree_dumpAll:
   simchannel_tag: "tpcrawdecoder:simpleSC"
 }
 
-# basic example of a physics configuration, better to create your own
-physics_triggerana_tree: {
+## Basic example of a physics configuration, better to create your own
+physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
+
+  # basic producers from triggersim.fcl
+  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
+  makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+  trigger_paths: [ makers ]
 
   # This is just a basic example that reads the trigger information from the TPC and dumps it to a tree
   # (equivalent to a reco2 step, if reco1 is generating trigger data from rawDigits).
 
   analyzers: {
-    triggerAnaTree_dumpAll: @local::triggerAnaTree_dumpAll
+    triggerAnaDumpAll: @local::triggerAnaTree_dumpAll
   }
 
-  ana:            [ triggerAnaTree_dumpAll ]
+  ana:            [ triggerAnaDumpAll ]
   stream1:        [ out1 ]
   end_paths:      [ stream1, ana ]
 }

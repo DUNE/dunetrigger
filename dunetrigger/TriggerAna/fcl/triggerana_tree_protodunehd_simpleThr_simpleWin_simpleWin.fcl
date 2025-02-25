@@ -1,4 +1,4 @@
-# triggerana_tree_protodunehd.fcl
+# triggerana_tree_protodunehd_simpleThr_simpleWin_simpleWin.fcl
 
 #include "triggerana_tree.fcl"
 
@@ -17,6 +17,5 @@ source:     @local::source_triggerana_tree
 
 outputs:    @local::outputs_triggerana_tree
 
-# This block only has analyers, accepts a file with already produced TPs, TAs, and TCs
-physics:    @local::physics_triggerana_tree
-
+# Just an example with the basic producers
+physics:    @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin

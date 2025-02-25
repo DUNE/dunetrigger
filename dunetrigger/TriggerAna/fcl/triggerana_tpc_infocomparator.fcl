@@ -27,8 +27,13 @@ analyzers_triggerana_tpc_infocomparator: {
   triggerTPCInfoComparator: @local::triggerTPCInfoComparator
 }
 
-# basic example of a physics configuration, better to create your own
-physics_triggerana_tpc_info_comparator: {
+## Basic example of a physics configuration
+physics_triggerana_tpc_info_comparator_simpleThr_simpleWin_simpleWin: {
+  
+  # basic producers from triggersim.fcl
+  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
+  makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+  trigger_paths: [ makers ]
 
   analyzers: @local::analyzers_triggerana_tpc_infocomparator
 

@@ -6,9 +6,6 @@
 
 process_name: "Triggersim1x2x6SimplethrSimplewinSimplewin"
 
-# need tools for AdcDigitReader (actually called AcdDigitReader, there's a typo in the name)
-# tools.digitReader: @local::tools.digitReader
-
 services:{
     @table::services_triggersim
     @table::dunefd_1x2x6_reco_services
@@ -18,5 +15,5 @@ source:     @local::source_triggersim
 
 outputs:    @local::outputs_triggersim
 
+# note that this does not have analyzers
 physics:    @local::physics_triggersim_simpleThr_simpleWin_simpleWin
-physics.producers.tamakerTPC.nmodules: @local::nmodules_dune10kt_1x2x6
