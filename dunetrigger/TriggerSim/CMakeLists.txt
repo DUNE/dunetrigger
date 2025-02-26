@@ -21,6 +21,7 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   cetlib::cetlib
   cetlib_except::cetlib_except
   ROOT::Tree
+  triggeralgs_module
 )
 
 install_fhicl()
