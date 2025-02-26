@@ -2,6 +2,9 @@
 
 #include "triggersim.fcl"
 
+# This configuration is made to run on an input file 
+# coming from protodune data, not simulation.
+
 BEGIN_PROLOG
 
 services_triggerana_tpc_infodisplay: @local::services_triggersim
@@ -37,14 +40,9 @@ analyzers_trigger_tpc_infodisplay: {
     onlineTriggerTPCInfoDisplay: @local::onlineTriggerTPCInfoDisplay
 }
 
-# Basic example of a physics configuration
+## Basic example of a physics configuration
 physics_triggerana_tpc_infodisplay_simpleThr_simpleWin_simpleWin: {
     
-    # basic producers from triggersim.fcl
-    producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
-    makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
-    trigger_paths: [ makers ]
-
     analyzers: @local::analyzers_trigger_tpc_infodisplay
 
     ana:       [ offlineTriggerTPCInfoDisplay, onlineTriggerTPCInfoDisplay ]

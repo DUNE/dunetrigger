@@ -5,6 +5,9 @@
 #include "services_refactored_pdune.fcl"
 #include "protodune_tools_dune.fcl"
 
+# This configuration is made to run on an input file 
+# coming from protodune data, not simulation.
+
 services: {
     @table::services_triggerana_tpc_infodisplay
     @table::protodunehd_reco_services
