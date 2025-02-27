@@ -1,0 +1,21 @@
+# triggerana_tpc_infodisplay_protodunehd_simpleThr_simpleWin_simpleWin.fcl
+
+#include "triggerana_tpc_infodisplay.fcl"
+
+#include "services_refactored_pdune.fcl"
+#include "protodune_tools_dune.fcl"
+
+# This configuration is made to run on an input file 
+# coming from protodune data, not simulation.
+
+services: {
+    @table::services_triggerana_tpc_infodisplay
+    @table::protodunehd_reco_services
+}
+
+source:    @local::source_triggerana_tpc_infodisplay
+
+outputs:   @local::outputs_triggerana_tpc_infodisplay
+
+# This block only has analyers, accepts a file with already produced TPs, TAs, and TCs
+physics:   @local::physics_triggerana_tpc_infodisplay_simpleThr_simpleWin_simpleWin

@@ -1,0 +1,51 @@
+# trigggersim.fcl
+
+# This is the high-level configuration file for all dunetrigger tools
+# It is imported in almost all fcls both of TriggerSim and TriggerAna
+
+#include "triggersim_makers.fcl"
+
+BEGIN_PROLOG
+
+services_triggersim: {
+    TFileService:           { fileName: "triggersim_hist.root" }
+    TimeTracker:            @local::dune_time_tracker
+    MemoryTracker:          @local::dune_memory_tracker
+    RandomNumberGenerator:  {} #ART native random number generator
+    message:                @local::dune_message_services_prod
+    #FileCatalogMetadata:    @local::art_file_catalog_mc 
+    IFDH:                   {}
+}
+
+source_triggersim: {
+    module_type: RootInput
+    maxEvents:  10        # Number of events to create
+    saveMemoryObjectThreshold: 0
+}
+
+outputs_triggersim: {
+    out1: {
+        module_type: RootOutput
+        fileName: "triggersim.root"
+        compressionLevel: 1
+        saveMemoryObjectThreshold: 0
+    }
+}
+
+# the simplest configurations are here as default
+producers_triggersim_simpleThr_simpleWin_simpleWin: {
+    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold
+    tamakerTPC: @local::tamakerTPC_ADCSimpleWindow
+    tcmakerTPC: @local::tcmakerTPC_ADCSimpleWindow
+}
+
+# this does not have analyzers! Add them
+physics_triggersim_simpleThr_simpleWin_simpleWin: {
+    producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
+    stream1: [ out1 ]
+    makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    trigger_paths: [ makers ]
+    end_paths: [ stream1 ]
+}
+
+END_PROLOG

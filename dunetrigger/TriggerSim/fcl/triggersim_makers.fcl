@@ -1,0 +1,100 @@
+# triggersim_makers.fcl
+
+#include "services_dune.fcl"
+
+BEGIN_PROLOG
+
+## These are producers
+
+#======================================================================
+# TP makers
+
+tpmakerTPC_ADCSimpleThreshold:
+  {
+    module_type: TriggerPrimitiveMakerTPC
+    rawdigit_tag: "tpcrawdecoder:daq"
+    tpalg: {
+      tool_type: TPAlgTPCSimpleThreshold
+      threshold_tpg_plane0: -1
+      threshold_tpg_plane1: -1
+      threshold_tpg_plane2: 60
+      verbosity: 0
+    }
+  }
+
+#======================================================================
+# TA makers
+
+ta_algconfig_simplewindow:
+{
+	window_length: 6000
+	adc_threshold: 2000
+}
+
+ta_algconfig_adjacencyplugin:
+{
+	window_length: 4000
+  adjacency_threshold: 15 # from triggeralgs default
+	adj_tolerance: 3        # from triggeralgs default
+}
+
+# more ta configs...
+
+# drop these?
+nmodules_protodunehd: 4     # protoDUNE HD 2024
+nmodules_dune10kt_1x2x6: 12 # 12 APAs in the middle
+nmodules_dune10kt_1x2x2: 4  # 4 APAs in the middle
+
+tamakerTPC_ADCSimpleWindow:
+  {
+    module_type: TriggerActivityMakerTPC
+    tp_tag: "tpmakerTPC"
+    # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
+    algorithm: "TriggerActivityMakerADCSimpleWindowPlugin" # another basic option is TriggerActivityMakerChannelAdjacencyPlugin
+    algconfig_plane0: @local::ta_algconfig_simplewindow # induction 1
+    algconfig_plane1: @local::ta_algconfig_simplewindow # induction 2
+    algconfig_plane2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
+    algconfig_plane3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
+    nmodules: @local::nmodules_protodunehd # just a default
+    mergecollwires: true
+    flush: true
+	  prescale: 1
+    print_tp_info: false
+    verbosity: 1
+  }
+
+#======================================================================
+# TC makers
+
+# just the most basic and loose example
+tcconfig_simplewindow:
+{
+  adc_threshold: 1000       # Very loose! All TAs will pass through
+  n_channels_threshold: 10  # Very loose! All TAs will pass through
+  trigger_on_adc: true
+  trigger_on_adjacency: 0
+  trigger_on_n_channels: true
+  adj_tolerance: 4
+  adjacency_threshold: 6
+  bundle_size: 100
+  eps: 20
+  max_channel_distance: 50
+  max_tp_count: 1000
+  min_pts: 7
+  min_tps: 20
+  prescale: 1
+  print_tp_info: 0
+  window_length: 8000
+}
+
+tcmakerTPC_ADCSimpleWindow:
+  {
+    module_type: TriggerCandidateMakerTPC
+    ta_tag: "tamakerTPC"
+    algorithm: "TriggerCandidateMakerADCSimpleWindowPlugin"
+    algconfig: @local::tcconfig_simplewindow
+    multiplicity: 1 # keep?
+    verbosity: 1
+  }
+
+END_PROLOG
