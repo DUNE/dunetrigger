@@ -1,0 +1,49 @@
+# triggerana_tpc_infocomparator.fcl
+
+#include "triggersim.fcl"
+
+# This configuration is made to run on an input file 
+# coming from protodune data, not simulation.
+
+BEGIN_PROLOG
+
+services_triggerana_tpc_infocomparator: @local::services_triggersim
+services_triggerana_tpc_infocomparator.TFileService.fileName: "triggerTPCInfoComparator_hist.root"
+
+source_triggerana_tpc_infocomparator: @local::source_triggersim
+
+outputs_triggerana_tpc_infocomparator: @local::outputs_triggersim
+outputs_triggerana_tpc_infocomparator.out1.fileName: "triggerTPCInfoComparator.root"
+
+## These are analyzers
+
+triggerTPCInfoComparator:
+{
+  module_type: TriggerTPCInfoComparator
+  tp_tag: "tpmakerTPC"
+  ta_tag: "tamakerTPC"
+  tc_tag: "tcmakerTPC"
+  daq_tag: "trigrawdecoder:daq"
+  verbosity: 1
+}
+
+
+analyzers_triggerana_tpc_infocomparator: {
+  triggerTPCInfoComparator: @local::triggerTPCInfoComparator
+}
+
+## Basic example of a physics configuration
+physics_triggerana_tpc_info_comparator_simpleThr_simpleWin_simpleWin: {
+    
+  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
+  makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+  trigger_paths: [ makers ]  
+  
+  analyzers: @local::analyzers_triggerana_tpc_infocomparator
+
+  ana:       [ triggerTPCInfoComparator ]
+  stream1:   [ out1 ]
+  end_paths: [ stream1, ana ]
+}
+
+END_PROLOG
