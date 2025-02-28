@@ -1,5 +1,7 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 
+add_subdirectory(fcl)
+
 art_make(BASENAME_ONLY MODULE_LIBRARIES
   lardataobj::RawData
   dunecore::DuneObj

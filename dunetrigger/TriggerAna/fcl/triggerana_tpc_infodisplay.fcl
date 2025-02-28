@@ -1,0 +1,57 @@
+# triggerana_tpc_infodisplay.fcl
+
+#include "triggersim.fcl"
+
+# This configuration is made to run on an input file 
+# coming from protodune data, not simulation.
+
+BEGIN_PROLOG
+
+services_triggerana_tpc_infodisplay: @local::services_triggersim
+services_triggerana_tpc_infodisplay.TFileService.fileName: "triggerTPCInfoDisplay_hist.root"
+
+source_triggerana_tpc_infodisplay: @local::source_triggersim
+
+outputs_triggerana_tpc_infodisplay: @local::outputs_triggersim
+outputs_triggerana_tpc_infodisplay.out1.fileName: "triggerTPCInfodisplay.root"
+
+## These are analyzers
+
+# generated from the algorithms in dunetrigger
+offlineTriggerTPCInfoDisplay: {
+    module_type: TriggerTPCInfoDisplay
+    tp_tag: "tpmakerTPC"
+    ta_tag: "tamakerTPC"
+    tc_tag: "tcmakerTPC"
+    verbosity: 1
+}
+
+# from the raw data coming from the detector
+onlineTriggerTPCInfoDisplay: {
+    module_type: TriggerTPCInfoDisplay
+    tp_tag: "trigrawdecoder:daq"
+    ta_tag: "trigrawdecoder:daq"
+    tc_tag: "trigrawdecoder:daq"
+    verbosity: 1
+}
+
+analyzers_trigger_tpc_infodisplay: {
+    offlineTriggerTPCInfoDisplay: @local::offlineTriggerTPCInfoDisplay
+    onlineTriggerTPCInfoDisplay: @local::onlineTriggerTPCInfoDisplay
+}
+
+## Basic example of a physics configuration
+physics_triggerana_tpc_infodisplay_simpleThr_simpleWin_simpleWin: {
+    
+    producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
+    makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    trigger_paths: [ makers ]
+
+    analyzers: @local::analyzers_trigger_tpc_infodisplay
+
+    ana:       [ offlineTriggerTPCInfoDisplay, onlineTriggerTPCInfoDisplay ]
+    stream1:   [ out1 ]
+    end_paths: [ stream1, ana ]
+}
+
+END_PROLOG
