@@ -1,5 +1,5 @@
-#ifndef DUNETRIGGER_TRIGGERSIM_ABSRUNNINGSUM_hh
-#define DUNETRIGGER_TRIGGERSIM_ABSRUNNINGSUM_hh
+#ifndef DUNETRIGGER_TRIGGERSIM_RUNNINGSUM_hh
+#define DUNETRIGGER_TRIGGERSIM_RUNNINGSUM_hh
 
 #include "fhiclcpp/ParameterSet.h"
 
@@ -16,14 +16,14 @@
 
 namespace dunetrigger {
 
-class TPAlgTPCAbsRunningSum : public TPAlgTPCTool {
+class TPAlgTPCRunningSum : public TPAlgTPCTool {
 
 public:
-  explicit TPAlgTPCAbsRunningSum(fhicl::ParameterSet const &ps)
+  explicit TPAlgTPCRunningSum(fhicl::ParameterSet const &ps)
       : verbosity_(ps.get<int>("verbosity", 0)),
         accum_limit_(ps.get<int>("accum_limit", 10)),
-        scale_factor_(ps.get<int>( "scale_factor", 2)), // AbsRS-specific parameter ensuring the scale of hit parameters remains in the same ballpark as raw ADCs 
-        r_value_(ps.get<int>("r_value", 9)), // AbsRS-specific "memory" parameter.
+        scale_factor_(ps.get<int>( "scale_factor", 2)), //RS-specific parameter ensuring the scale of hit parameters remains in the same ballpark as raw ADCs 
+        r_value_(ps.get<int>("r_value", 9)), // RS-specific "memory" parameter.
         threshold_tpg_plane0_(ps.get<int16_t>("threshold_tpg_plane0")),
         threshold_tpg_plane1_(ps.get<int16_t>("threshold_tpg_plane1")),
         threshold_tpg_plane2_(ps.get<int16_t>("threshold_tpg_plane2")) {}
@@ -64,9 +64,7 @@ public:
 
     // initialise the running sum/second pedestal variables for this waveform
     running_sum_ = 0;
-    abs_pedestal_ = 0;
-    abs_accum_ = 0;
-
+    
     prev_was_over_ = 0;
     hit_charge_ = 0;
     hit_tover_ = 0;
@@ -90,11 +88,11 @@ public:
     }
   }
 
-  // Absolute-value running sum
-  void abs_run_sum(const int16_t sample) {
+  // Standard running sum
+  void run_sum(const int16_t sample) {
     // R-value should be a float in range [0,1], but we're working with integers
     // online. So multiply everything by 10 and then de-scale.
-    running_sum_ =   r_value_ * running_sum_ + std::abs((sample * 10) / scale_factor_);
+    running_sum_ =   r_value_ * running_sum_ + (sample * 10) / scale_factor_;
     running_sum_ = running_sum_ / 10;
   }
 
@@ -103,41 +101,17 @@ public:
 			dunedaq::trgdataformats::detid_t const detid,  dunedaq::trgdataformats::timestamp_t const start_time,
 			std::vector<dunedaq::trgdataformats::TriggerPrimitive> &tps_out) {
 
-    // setup a TP and initialize it with the common things for this
-    // algorithm/channel
+    // setup a TP and initialize it with the common things for this algorithm/channel
     dunedaq::trgdataformats::TriggerPrimitive this_tp;
 
     this_tp.channel = channel;
     this_tp.detid = detid;
     this_tp.type = dunedaq::trgdataformats::TriggerPrimitive::Type::kTPC;
-    this_tp.algorithm = dunedaq::trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
+    this_tp.algorithm = dunedaq::trgdataformats::TriggerPrimitive::Algorithm::kRunningSum;
     this_tp.flag = 0;
 
     // for this channel, reinitialize the channel state variables
     initialize_channel_state(channel, adcs);
-
-
-    // Dry-run Phase: Process the first ~300 samples (no hit detection, only pedestal stabilization)
-    // once that's done, process the waveform normally from the top, otherwise we get a lot of noise TPs before the baseline plateaus
-    // this wouldn't be necessary in the online system where we only get 'dead time' at the beginning of the run, and then we have continuous readout 
-    // but it becomes noticable in the simulation where the waveform has to be initialised over and over for each event  
-    for (size_t jj = 0; jj < 300 ; ++jj) {
-      int16_t sample = adcs[jj];
-
-      // Update the pedestal estimate
-      frugal_accum_update(sample, pedestal_, accum_);
-      sample -= pedestal_;  // Subtract the pedestal for normalization
-
-      //running sum
-      abs_run_sum(sample);
-      sample = running_sum_;
-     
-      //running sum pedestal estimation + subtraction
-      frugal_accum_update(sample, abs_pedestal_, abs_accum_);
-      sample -= abs_pedestal_;
-      //**no hit finding**
-
-    }
 
     for (size_t i_t = 0; i_t < adcs.size(); ++i_t) {
 
@@ -154,12 +128,8 @@ public:
       sample -= pedestal_;
 
       // apply the running sum
-      abs_run_sum(sample);
+      run_sum(sample);
       sample = running_sum_;
-
-      // second pedestal estimation + subtraction
-      frugal_accum_update(sample, abs_pedestal_, abs_accum_);
-      sample -= abs_pedestal_;
 
       // check if we are over threshold
       bool is_over = sample > threshold_;
@@ -208,7 +178,7 @@ private:
   const int verbosity_;
   const int accum_limit_;
 
-  // AbsRS-specific configuration parameters
+  // RS-specific configuration parameters
   const int scale_factor_;
   const int r_value_;
 
@@ -222,8 +192,6 @@ private:
   int16_t pedestal_;
   int16_t accum_;
 
-  int16_t abs_pedestal_;
-  int16_t abs_accum_;
   int16_t running_sum_;
   // int16_t accum25_;
   //  int16_t accum75_;
