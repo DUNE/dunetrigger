@@ -20,6 +20,15 @@ cet_build_plugin(TPAlgTPCAbsRunningSum art::tool
   cetlib::cetlib
   cetlib_except::cetlib_except
 )
+cet_build_plugin(TPAlgTPCRunningSum art::tool
+  LIBRARIES
+  larcore::Geometry_Geometry_service
+  art::Framework_Services_Registry
+  fhiclcpp::fhiclcpp
+  cetlib::cetlib
+  cetlib_except::cetlib_except
+)
+
 install_fhicl()
 install_headers()
 install_source()
