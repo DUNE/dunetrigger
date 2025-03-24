@@ -42,6 +42,10 @@ cet_report_compiler_flags()
 
 find_package( nufinder REQUIRED )
 find_package( larcore REQUIRED EXPORT)
+find_package( larrecodnn REQUIRED EXPORT )
+find_package( CLHEP REQUIRED )
+find_package( GSL REQUIRED )
+find_package( hep_hpc REQUIRED )
 find_package( nuevdb REQUIRED EXPORT )
 find_package( nug4 REQUIRED EXPORT )
 find_package( nugen REQUIRED EXPORT )
@@ -52,6 +56,7 @@ find_package( art 3.09.00 REQUIRED )
 find_package( art_root_io REQUIRED )
 find_package( ROOT REQUIRED )
 find_package( dunedaqdataformats REQUIRED EXPORT )
+find_package( TensorFlow REQUIRED EXPORT )
 find_package( HDF5 REQUIRED)
 find_ups_product( nlohmann_json ) # this seems to be deprecated but I can't find other working ways
 find_ups_product( TRACE ) # this seems to be deprecated but I can't find other working ways
