@@ -1,0 +1,38 @@
+# triggersim_protodunehd_simpleThr_aeWin_example.fcl
+
+#include "triggersim.fcl"
+
+#include "services_refactored_pdune.fcl"
+# this is not a prolog, it has to go just before the actual config
+#include "protodune_tools_dune.fcl"
+
+process_name: TriggersimProtoduneHDSimpleThrAEWinAEWin
+
+services:{
+    @table::services_triggersim
+    @table::protodunehd_reco_services
+}
+
+source:     @local::source_triggersim
+
+outputs:    @local::outputs_triggersim
+
+# the simplest configurations are here as default
+producers_triggersim_simpleThr_aeWin_aeWin: {
+    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold
+    tamakerTPC: @local::tamakerTPC_AEAnomalyWindow
+    tcmakerTPC: @local::tcmakerTPC_AEAnomalyWindow
+}
+
+# this does not have analyzers! Add them
+physics_triggersim_simpleThr_aeWin_aeWin: {
+    producers: @local::producers_triggersim_simpleThr_aeWin_aeWin
+    stream1: [ out1 ]
+    makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    trigger_paths: [ makers ]
+    end_paths: [ stream1 ]
+}
+
+physics:  @local::physics_triggersim_simpleThr_aeWin_aeWin
+producers.tamakerTPC.nmodules: @local::nmodules_protodunehd
+producers.tamakerTPC.verbosity: 3

@@ -27,8 +27,11 @@ tpmakerTPC_ADCSimpleThreshold:
 
 ta_algconfig_simplewindow:
 {
-	window_length: 6000
-	adc_threshold: 2000
+	window_length: 20000
+  bin_length: 250
+	adc_threshold: 4000000
+  mse_threshold: 50 # *E-3
+  use_ae: false
 }
 
 ta_algconfig_adjacencyplugin:
@@ -63,6 +66,24 @@ tamakerTPC_ADCSimpleWindow:
     verbosity: 1
   }
 
+tamakerTPC_AEAnomalyWindow:
+  {
+    module_type: TriggerActivityMakerTPC
+    tp_tag: "tpmakerTPC"
+    # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
+    algorithm: "TriggerActivityMakerAEAnomalyWindowPlugin" # another basic option is TriggerActivityMakerChannelAdjacencyPlugin
+    algconfig_plane0: @local::ta_algconfig_simplewindow # induction 1
+    algconfig_plane1: @local::ta_algconfig_simplewindow # induction 2
+    algconfig_plane2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
+    algconfig_plane3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
+    nmodules: @local::nmodules_protodunehd # just a default
+    mergecollwires: true
+    flush: true
+	  prescale: 1
+    print_tp_info: false
+    verbosity: 3
+  }
+
 #======================================================================
 # TC makers
 
@@ -95,6 +116,16 @@ tcmakerTPC_ADCSimpleWindow:
     algconfig: @local::tcconfig_simplewindow
     multiplicity: 1 # keep?
     verbosity: 1
+  }
+
+tcmakerTPC_AEAnomalyWindow:
+  {
+    module_type: TriggerCandidateMakerTPC
+    ta_tag: "tamakerTPC"
+    algorithm: "TriggerCandidateMakerAEAnomalyWindowPlugin"
+    algconfig: @local::tcconfig_simplewindow
+    multiplicity: 1 # keep?
+    verbosity: 3
   }
 
 END_PROLOG

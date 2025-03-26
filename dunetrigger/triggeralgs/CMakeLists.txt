@@ -1,4 +1,4 @@
-add_compile_options(-O2 -flto -Wno-error=sign-compare -Wno-error=unused-variable)
+add_compile_options(-O3 -flto -march=native -funroll-loops -Wno-error=sign-compare -Wno-error=unused-variable)
 
 include(BasicPlugin)
 include_directories("${dunedetdataformats_DIR}/../../../include")

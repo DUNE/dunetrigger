@@ -16,6 +16,7 @@
 #include "tensorflow/core/platform/env.h"
 
 #include <vector>
+#include <algorithm>
 
 namespace triggeralgs {
 class TriggerActivityMakerAEAnomalyWindow : public TriggerActivityMaker
@@ -98,7 +99,11 @@ private:
     public:
       void addbin(WindowBin const &input_bin) {
         tp_window_bins.push_back(input_bin);
-        ae_input.push_back(input_bin.adc_integral);
+        //ae_input.push_back(input_bin.adc_integral);
+        // Want floats ready for normalisation
+        ae_input.push_back(static_cast<float>(input_bin.adc_integral));
+        // normalise ae_input
+        //minMaxNormalize(ae_input);
       };
       void resetwindow(WindowBin const &input_bin) {
         window_time_start = input_bin.time_start;
@@ -113,6 +118,8 @@ private:
 
         ae_input.erase(ae_input.begin());
         ae_input.push_back(input_bin.adc_integral);
+        // normalise ae_input
+        //minMaxNormalize(ae_input);
       };
 
       float sumadc() const {
@@ -124,9 +131,130 @@ private:
         return (int)ae_input.size();
       };
 
+      /*
+      float computeMSE(const std::vector<float>& input, const std::vector<float>& output) {
+        if (input.size() != output.size()) {
+          std::cerr << "Error: Input and output vectors must have the same size." << std::endl;
+          return -1.0;
+        }
+
+        float mse = 0.0;
+        for (size_t i = 0; i < input.size(); i++) {
+          float diff = input[i] - output[i];
+          mse += diff * diff;
+        }
+        return mse / input.size();
+      };
+      */
+      /*
+      void minMaxNormalize(std::vector<float>& data) {
+        if (data.empty()) return;
+        // Find the min and max in the vector
+        auto [min_it, max_it] = std::minmax_element(data.begin(), data.end());
+        float min_val = *min_it;
+        float max_val = *max_it;
+        std::cout << "min = " << min_val << ", max = " << max_val << std::endl;
+        // Prevent division by zero if all values are equal
+        if (max_val == min_val) {
+          std::fill(data.begin(), data.end(), 0.0f);
+          return;
+        }
+
+        // Normalize each element: (x - min) / (max - min)
+        for (float &x : data) {
+          x = (x - min_val) / (max_val - min_val);
+          std::cout << x << ", ";
+        }
+        std::cout << std::endl;
+      }*/
+
       timestamp_t window_time_start;
       std::vector<WindowBin> tp_window_bins;
       std::vector<float> ae_input;
+  };
+
+  //void minMaxNormalize(std::vector<float>& data) {
+  std::vector<float> minMaxNormalize(const std::vector<float>& data) {
+    if (data.empty()) return {};
+
+    // define return normalised vector
+    std::vector<float> data_norm(data.size());
+
+    // Find the min and max in the vector
+    auto [min_it, max_it] = std::minmax_element(data.begin(), data.end());
+    float min_val = *min_it;
+    float max_val = *max_it;
+    //std::cout << "min = " << min_val << ", max = " << max_val << std::endl;
+    // Prevent division by zero if all values are equal
+    if (max_val == min_val) {
+      std::fill(data_norm.begin(), data_norm.end(), 0.0f);
+      return data_norm;
+    }
+
+    // Normalize each element: (x - min) / (max - min)
+    //for (float &x : data) {
+    for (int i = 0; i < (int)data.size(); i++) {
+      data_norm[i] = (data[i] - min_val) / (max_val - min_val);
+      //x = (x - min_val) / (max_val - min_val);
+      //std::cout << x << ", ";
+    }
+    //std::cout << std::endl;
+    return data_norm;
+  }
+      
+  float computeMSE(const std::vector<float>& input, const std::vector<float>& output) {
+    if (input.size() != output.size()) {
+      std::cerr << "Error: Input and output vectors must have the same size." << std::endl;
+      return -1.0;
+    }
+
+    auto input_norm = minMaxNormalize(input);
+
+    float mse = 0.0;
+    for (size_t i = 0; i < input_norm.size(); i++) {
+      float diff = input_norm[i] - output[i];
+      mse += diff * diff;
+    }
+    return mse / input_norm.size();
+  };
+
+  // function to provide output data through nn inference
+  std::vector<float> run_inference(std::vector<float> &input) {
+    // Normalise input data
+    auto input_norm = minMaxNormalize(input);
+    
+    for (size_t i = 0; i < input_norm.size(); i++) {
+      m_input_tensor.flat<float>()(i) = input_norm[i];
+    }
+    std::vector<std::pair<std::string, tensorflow::Tensor>> t_inputs = {
+      {"keras_tensor_36", m_input_tensor} };
+    std::vector<tensorflow::Tensor> outputs;
+    m_status = m_session->Run(t_inputs, {"StatefulPartitionedCall/Identity:0"}, {}, &outputs);
+
+    if (!m_status.ok()) {
+      std::cerr << "Error during inference: " << m_status.ToString() << std::endl;
+    }
+
+    //std::cout << "Output tensor type: " << outputs[0].dtype() << std::endl;
+    //std::cout << "Output tensor shape: " << outputs[0].shape().DebugString() << std::endl;
+
+    if (outputs.empty()) {
+      std::cerr << "Error: No outputs were returned from the session." << std::endl;
+    }
+
+    if (outputs[0].dtype() != tensorflow::DT_FLOAT) {
+      std::cerr << "Error: Output tensor is not of type float." << std::endl;
+      return {};
+    }
+
+    auto output_tensor_map = outputs[0].flat<float>();
+    std::vector<float> output_data(output_tensor_map.data(), output_tensor_map.data() + output_tensor_map.size());
+    //std::cout << "INPUT DATA: \n";
+    //for (const auto &i : input_norm) std::cout << i << ", ";
+    //std::cout << "OUTPUT DATA: \n";
+    //for (const auto &o : output_data) std::cout << o << ", ";
+    //std::cout << std::endl;
+    return output_data;
   };
 
   TriggerActivity construct_ta() const;
@@ -137,10 +265,19 @@ private:
 
   // Configurable parameters.
   uint32_t m_adc_threshold = 1200000;
+  float m_mse_threshold = 0.0001;
   // now the length of the bin
   // 250 tick bins and 80 bins in window
   timestamp_t m_bin_length = 250;
   int nbins = 80;
+  bool m_use_ae = false;
+  std::string m_model;
+  // tensorflow session for inference
+  tensorflow::GraphDef graph_def;
+  tensorflow::Session *m_session;
+  tensorflow::Status m_status;
+  tensorflow::Tensor m_input_tensor;
+
 };
 } // namespace triggeralgs
 
