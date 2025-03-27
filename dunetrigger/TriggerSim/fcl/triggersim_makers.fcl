@@ -30,8 +30,8 @@ ta_algconfig_simplewindow:
 	window_length: 20000
   bin_length: 250
 	adc_threshold: 4000000
-  mse_threshold: 50 # *E-3
-  use_ae: false
+  mse_threshold: 1 # *E-3
+  use_ae: true
 }
 
 ta_algconfig_adjacencyplugin:
