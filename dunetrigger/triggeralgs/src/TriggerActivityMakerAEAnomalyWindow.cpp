@@ -107,7 +107,7 @@ TriggerActivityMakerAEAnomalyWindow::configure(const nlohmann::json &config)
     if (config.contains("adc_threshold")) m_adc_threshold = config["adc_threshold"];
     if (config.contains("mse_threshold")) {
       uint64_t int_mse_threshold = config["mse_threshold"];
-      m_mse_threshold = static_cast<float>(int_mse_threshold * 1E-3);
+      m_mse_threshold = static_cast<float>(int_mse_threshold * 5E-4);
     }
     if (config.contains("use_ae")) m_use_ae = config["use_ae"];
   }
@@ -122,7 +122,8 @@ TriggerActivityMakerAEAnomalyWindow::configure(const nlohmann::json &config)
   std::string model_loc = std::string(std::getenv("MRB_SOURCE")) + 
     "/dunetrigger/dunetrigger/triggeralgs/include/triggeralgs/AEAnomalyWindow/models/";
   std::cout << "Model location: " << model_loc << std::endl;
-  m_model_config = loadModelConfig(model_loc + "model_1dcnn_dnnlayer_config.json");
+  //m_model_config = loadModelConfig(model_loc + "model_1dcnn_dnnlayer_config.json");
+  m_model_config = loadModelConfig(model_loc + "model_1dcnn_dnnlayer_v3compact_config.json");
   //m_model = "/exp/dune/app/users/chasnip/CERN_Fellowship/dunetrigger_aeta/ae_window_model_1dcnn_dnnlayer_graph.pb";
   m_model = model_loc + m_model_config.modelName;
   std::cout << "model loading: " << m_model << std::endl;

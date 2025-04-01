@@ -1,0 +1,12 @@
+{
+  "frozen_graph_file": "ae_window_model_1dcnn_dnnlayer_graph_v3compact.pb",
+  "tensors": {
+    "input": "keras_tensor_151:0",
+    "output": "StatefulPartitionedCall/Identity:0"
+  },
+  "model_name": "model_1dcnn_dnnlayer",
+  "normalization": {
+    "min": 0,
+    "max": 3982619
+  }
+}
