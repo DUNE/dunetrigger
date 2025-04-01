@@ -30,6 +30,8 @@ public:
   
   void configure(const nlohmann::json &config);
 
+  ~TriggerActivityMakerAEAnomalyWindow() override;
+
 private:
 
   // Information on the model

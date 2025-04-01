@@ -154,6 +154,16 @@ TriggerActivityMakerAEAnomalyWindow::configure(const nlohmann::json &config)
   m_input_tensor = tensorflow::Tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1, nbins, 1}));
 }
 
+// Override destructor to clean up TF session
+TriggerActivityMakerAEAnomalyWindow::~TriggerActivityMakerAEAnomalyWindow() {
+  if (m_session) {
+    (void)m_session->Close();
+    delete m_session;
+  }
+}
+
+
+
 TriggerActivity
 TriggerActivityMakerAEAnomalyWindow::construct_ta() const
 {
@@ -177,9 +187,7 @@ TriggerActivityMakerAEAnomalyWindow::construct_ta() const
   ta.type = TriggerActivity::Type::kTPC;
   //ta.algorithm = TriggerActivity::Algorithm::kAEAnomalyWindow;
   ta.algorithm = TriggerActivity::Algorithm::kUnknown;
-  // TODO: save the all the TPs, not just the ones in the latest bin
-  //ta.inputs = m_current_window.tp_list;
-  ta.inputs = m_current_bin.tp_list;
+  ta.inputs = m_current_window.flattenTPbins();
   return ta;
 }
   

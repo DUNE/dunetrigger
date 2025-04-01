@@ -22,6 +22,10 @@ public:
 
   int bincount() const;
 
+  std::vector<std::vector<TriggerPrimitive>> getTPbins() const;
+
+  std::vector<TriggerPrimitive> flattenTPbins() const;
+
   timestamp_t window_time_start;
   std::vector<WindowBin> tp_window_bins;
   std::vector<float> ae_input;

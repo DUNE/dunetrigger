@@ -32,4 +32,28 @@ int BinnedWindow::bincount() const {
   return (int)ae_input.size();
 }
 
+std::vector<std::vector<TriggerPrimitive>> BinnedWindow::getTPbins() const {
+  // Place the TPs from each bin into a vector  
+  std::vector<std::vector<TriggerPrimitive>> ret;
+  for (const auto &win_bin : tp_window_bins) {
+    ret.push_back(win_bin.tp_list);
+  }
+
+  return ret;
+}
+
+std::vector<TriggerPrimitive> BinnedWindow::flattenTPbins() const {
+
+  auto tps_by_bin = getTPbins();
+
+  std::vector<TriggerPrimitive> ret;
+  for (const auto &tps : tps_by_bin) {
+    for (const auto &tp : tps) {
+      ret.push_back(tp);
+    }
+  }
+
+  return ret;
+}
+
 } // namespace triggeralgs
