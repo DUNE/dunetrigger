@@ -166,11 +166,7 @@ public:
       if (is_over) {
         // we are over threshold, so need to update the hit charge and check for
         // peak time
-
-        int32_t tmp_charge = hit_charge_;
-        tmp_charge += sample;
-        // tmp_charge = std::min(tmp_charge,
-        // (int32_t)std::numeric_limits<int16_t>::max()); // 32767
+        hit_charge_ += sample;
 
         // check if we're at the peak adc
         if (sample > hit_peak_adc_) {
@@ -178,8 +174,7 @@ public:
           hit_peak_time_ = hit_tover_;
         }
 
-        // update charge and time over threshold
-        hit_charge_ = (uint32_t)tmp_charge;
+        // update time over threshold
         ++hit_tover_;
       }
       if (prev_was_over_ && !is_over) {
@@ -229,10 +224,10 @@ private:
   //  int16_t accum75_;
 
   uint16_t prev_was_over_;
-  uint16_t hit_charge_;
   uint16_t hit_tover_;
   uint16_t hit_peak_time_;
   uint16_t hit_peak_adc_;
+  uint32_t hit_charge_;
 };
 
 } // namespace dunetrigger
