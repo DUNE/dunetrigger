@@ -22,7 +22,7 @@ public:
   explicit TPAlgTPCAbsRunningSum(fhicl::ParameterSet const &ps)
       : verbosity_(ps.get<int>("verbosity", 0)),
         accum_limit_(ps.get<int>("accum_limit", 10)),
-        scale_factor_(ps.get<int>( "scale_factor", 2)), // AbsRS-specific parameter ensuring the scale of hit parameters remains in the same ballpark as raw ADCs 
+        scale_factor_(ps.get<int>( "scale_factor", 5)), // AbsRS-specific parameter ensuring the scale of hit parameters remains in the same ballpark as raw ADCs 
         r_value_(ps.get<int>("r_value", 9)), // AbsRS-specific "memory" parameter.
         threshold_tpg_plane0_(ps.get<int16_t>("threshold_tpg_plane0")),
         threshold_tpg_plane1_(ps.get<int16_t>("threshold_tpg_plane1")),
@@ -94,7 +94,7 @@ public:
   void abs_run_sum(const int16_t sample) {
     // R-value should be a float in range [0,1], but we're working with integers
     // online. So multiply everything by 10 and then de-scale.
-    running_sum_ =   r_value_ * running_sum_ + std::abs((sample * 10) / scale_factor_);
+    running_sum_ =   r_value_ * running_sum_ + std::abs(sample) * scale_factor_;
     running_sum_ = running_sum_ / 10;
   }
 
