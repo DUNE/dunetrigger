@@ -3,6 +3,7 @@
 
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 
+#include <cstdint>
 #include <vector>
 
 namespace dunetrigger {
@@ -21,6 +22,15 @@ namespace dunetrigger {
 				  dunedaq::trgdataformats::detid_t const detid,
 				  dunedaq::trgdataformats::timestamp_t const start_time,
 				  std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) = 0;
+
+    inline int16_t avx2_divide(const int16_t& a, const int16_t& b) {
+      int16_t vb = (1 << 15) / b;         //  1 / b * 2^15
+      int32_t mulhrs = a * vb;            //  a / b * 2^15
+      mulhrs = (mulhrs >> 14) + 1;        // (a / b * 2^15) * 2^-14 + 1 ~ a / b * 2 + 1
+      mulhrs = mulhrs >> 1;               //~ a / b. The +1 causes unorthodox rounding.
+      return (int16_t)(mulhrs);
+    }
+
   };
 }
 
