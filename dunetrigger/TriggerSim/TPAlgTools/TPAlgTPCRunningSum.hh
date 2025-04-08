@@ -91,9 +91,8 @@ public:
   // Standard running sum
   void run_sum(const int16_t sample) {
     // R-value should be a float in range [0,1], but we're working with integers
-    // online. So multiply everything by 10 and then de-scale.
-    running_sum_ =   r_value_ * running_sum_ + sample * scale_factor_;
-    running_sum_ = running_sum_ / 10;
+    // online. Divide using online division first, then scale up.
+    running_sum_ = r_value_ * avx2_divide(running_sum_, 10) + avx2_divide(sample, 10) * scale_factor_;
   }
 
 
