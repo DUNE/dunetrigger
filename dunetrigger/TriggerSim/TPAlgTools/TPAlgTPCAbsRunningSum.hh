@@ -94,7 +94,13 @@ public:
   void abs_run_sum(const int16_t sample) {
     // R-value should be a float in range [0,1], but we're working with integers
     // online. Divide using online division first, then scale up.
-    running_sum_ = r_value_ * avx2_divide(running_sum_, 10) + avx2_divide(std::abs(sample), 10) * scale_factor_;
+    const int16_t tmp_sum = r_value_ * avx2_divide(running_sum_, 10) + avx2_divide(std::abs(sample), 10) * scale_factor_;
+
+    // Saturated additions. AbsRS should be strictly positive, so a negative tmp_sum indicates overflow.
+    if (tmp_sum < 0)
+      running_sum_ = std::numeric_limits<int16_t>::max();  // Set the sum to the saturation limit.
+    else
+      running_sum_ = tmp_sum;
   }
 
 

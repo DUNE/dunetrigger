@@ -92,7 +92,16 @@ public:
   void run_sum(const int16_t sample) {
     // R-value should be a float in range [0,1], but we're working with integers
     // online. Divide using online division first, then scale up.
-    running_sum_ = r_value_ * avx2_divide(running_sum_, 10) + avx2_divide(sample, 10) * scale_factor_;
+    const int16_t tmp_sum = r_value_ * avx2_divide(running_sum_, 10) + avx2_divide(sample, 10) * scale_factor_;
+
+    // Saturated additions. Running sum is not strictly positive. Need to check the direction the sum should
+    // go, then apply the correct saturation limit.
+    if (sample > 0 && running_sum_ > 0 && tmp_sum < 0)      // Both terms positive, so overflow would be negative.
+      running_sum_ = std::numeric_limits<int16_t>::max();   // Set the RS to saturated max.
+    else if (sample < 0 && running_sum < 0 && tmp_sum > 0)  // Both terms negative, so overflow would be positive.
+      running_sum_ = std::numeric_limits<int16_t>::min();   // Set the RS to saturated min.
+    else
+      running_sum_ = tmp_sum;
   }
 
 
