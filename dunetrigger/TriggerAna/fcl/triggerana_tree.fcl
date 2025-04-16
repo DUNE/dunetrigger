@@ -22,6 +22,8 @@ triggerAnaTree_dumpAll:
   dump_tc: true
   # If true, dump all information about mctruth particles in a tree named "mctruths"
   dump_mctruths: true 
+  # If true, dump all information about particles in the G4 simulation in a tree named "mcparticles"
+  dump_mcparticles: true 
   # If true, dump all simChannels and their IDEs in a tree named "simides" 
   dump_simides: true
 

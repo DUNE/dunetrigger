@@ -64,6 +64,7 @@ private:
   int fSubRun;
   int fAssnIdx;
 
+  std::unordered_map<int, int> trkId_to_truthBlockId;
   std::map<std::string, dunedaq::trgdataformats::TriggerPrimitive> tp_bufs;
   std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
   std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
@@ -78,11 +79,21 @@ private:
   TTree *mctruth_tree;
   int mctruth_pdg;
   std::string mctruth_process;
-  int mctruth_status;
+  int mctruth_status, mctruth_id;
   std::string mctruth_gen_name;
   double mctruth_x, mctruth_y, mctruth_z;
   double mctruth_Px, mctruth_Py, mctruth_Pz;
   double mctruth_en;
+
+  bool dump_mcparticles;
+  TTree *mcparticle_tree;
+  int mcparticle_pdg;
+  std::string mcparticle_process;
+  int mcparticle_status, mcparticle_trackid, mcparticle_truthid;
+  std::string mcparticle_gen_name;
+  double mcparticle_x, mcparticle_y, mcparticle_z;
+  double mcparticle_Px, mcparticle_Py, mcparticle_Pz;
+  double mcparticle_en;
 
   bool dump_simides;
   std::string simchannel_tag;
@@ -90,12 +101,14 @@ private:
   unsigned int sim_channel_id;
   unsigned short tdc;
   float ide_numElectrons, ide_energy, ide_x, ide_y, ide_z;
+  int ide_trkId, ide_origTrkId;
 };
 
 dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")),
       dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
       dump_mctruths(p.get<bool>("dump_mctruths", true)),
+      dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
       dump_simides(p.get<bool>("dump_simides", true)),
       simchannel_tag(
           p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
@@ -108,6 +121,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mctruth_tree->Branch("Event", &fEventID, "Event/I");
     mctruth_tree->Branch("Run", &fRun, "Run/I");
     mctruth_tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    mctruth_tree->Branch("block_id", &mctruth_id);
     mctruth_tree->Branch("pdg", &mctruth_pdg);
     mctruth_tree->Branch("generator_name", &mctruth_gen_name);
     mctruth_tree->Branch("status_code", &mctruth_status);
@@ -119,6 +133,25 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mctruth_tree->Branch("Pz", &mctruth_Pz);
     mctruth_tree->Branch("en", &mctruth_en);
     mctruth_tree->Branch("process", &mctruth_process);
+  }
+  if (dump_mcparticles) {
+    mcparticle_tree = tfs->make<TTree>("mcparticles", "mcparticles");
+    mcparticle_tree->Branch("Event", &fEventID, "Event/I");
+    mcparticle_tree->Branch("Run", &fRun, "Run/I");
+    mcparticle_tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    mcparticle_tree->Branch("pdg", &mcparticle_pdg);
+    mcparticle_tree->Branch("generator_name", &mcparticle_gen_name);
+    mcparticle_tree->Branch("status_code", &mcparticle_status);
+    mcparticle_tree->Branch("track_id", &mcparticle_trackid);
+    mcparticle_tree->Branch("truth_id", &mcparticle_truthid);
+    mcparticle_tree->Branch("x", &mcparticle_x);
+    mcparticle_tree->Branch("y", &mcparticle_y);
+    mcparticle_tree->Branch("z", &mcparticle_z);
+    mcparticle_tree->Branch("Px", &mcparticle_Px);
+    mcparticle_tree->Branch("Py", &mcparticle_Py);
+    mcparticle_tree->Branch("Pz", &mcparticle_Pz);
+    mcparticle_tree->Branch("en", &mcparticle_en);
+    mcparticle_tree->Branch("process", &mcparticle_process);
   }
   if (dump_simides) {
     simide_tree = tfs->make<TTree>("simides", "simides");
@@ -132,6 +165,8 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree->Branch("x", &ide_x, "ide_x");
     simide_tree->Branch("y", &ide_y, "ide_y");
     simide_tree->Branch("z", &ide_z, "ide_z");
+    simide_tree->Branch("trackID", &ide_trkId, "ide_trkId");
+    simide_tree->Branch("origTrackID", &ide_origTrkId, "ide_origTrkId");
   }
 }
 
@@ -142,18 +177,30 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_mctruths) {
     std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruthHandles =
         e.getMany<std::vector<simb::MCTruth>>();
+    int truth_block_counter = 0;
+    trkId_to_truthBlockId.clear();
     for (auto const &mctruthHandle : mctruthHandles) {
       std::string generator_name =
           mctruthHandle.provenance()->inputTag().label();
-      for (const simb::MCTruth &truthblock : *mctruthHandle) {
+      // NOTE: here we are making an assumption that the geant4 stage's process name is largeant.
+      // This should be safe mostly.
+      art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
+      for (size_t i = 0; i < mctruthHandle->size(); i++){
+        const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
         int nparticles = truthblock.NParticles();
+        if (dump_mcparticles){
+          std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
+          for (art::Ptr<simb::MCParticle> mcpart: matched_mcparts) {
+            trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
+          }
+        }
         for (int ipart = 0; ipart < nparticles; ipart++) {
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
+          mctruth_id = truth_block_counter;
           mctruth_pdg = part.PdgCode();
           mctruth_gen_name = generator_name;
           mctruth_status = part.StatusCode();
           mctruth_process = part.Process();
-
           mctruth_x = part.Vx();
           mctruth_y = part.Vy();
           mctruth_z = part.Vz();
@@ -163,6 +210,31 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           mctruth_en = part.E();
           mctruth_tree->Fill();
         }
+        truth_block_counter++;
+      }
+    }
+  }
+  if (dump_mcparticles) {
+    std::vector<art::Handle<std::vector<simb::MCParticle>>> mcparticleHandles =
+        e.getMany<std::vector<simb::MCParticle>>();
+    for (auto const &mcparticleHandle : mcparticleHandles) {
+      std::string generator_name =
+          mcparticleHandle.provenance()->inputTag().label();
+      for (const simb::MCParticle &part : *mcparticleHandle) {
+        mcparticle_pdg = part.PdgCode();
+        mcparticle_gen_name = generator_name;
+        mcparticle_status = part.StatusCode();
+        mcparticle_trackid = part.TrackId();
+        mcparticle_truthid = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
+        mcparticle_process = part.Process();
+        mcparticle_x = part.Vx();
+        mcparticle_y = part.Vy();
+        mcparticle_z = part.Vz();
+        mcparticle_Px = part.Px();
+        mcparticle_Py = part.Py();
+        mcparticle_Pz = part.Pz();
+        mcparticle_en = part.E();
+        mcparticle_tree->Fill();
       }
     }
   }
@@ -180,6 +252,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           ide_x = ide.x;
           ide_y = ide.y;
           ide_z = ide.z;
+          ide_trkId = ide.trackID;
+          ide_origTrkId = ide.origTrackID;
           simide_tree->Fill();
         }
       }
