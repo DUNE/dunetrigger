@@ -65,7 +65,7 @@ public:
     // initialise the running sum/second pedestal variables for this waveform
     running_sum_ = 0;
     
-    prev_was_over_ = 0;
+    prev_was_over_ = false;
     hit_charge_ = 0;
     hit_tover_ = 0;
     hit_peak_adc_ = 0;
@@ -199,7 +199,7 @@ private:
   // int16_t accum25_;
   //  int16_t accum75_;
 
-  uint16_t prev_was_over_;
+  bool prev_was_over_;
   uint16_t hit_tover_;
   uint16_t hit_peak_time_;
   uint16_t hit_peak_adc_;
