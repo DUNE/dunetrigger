@@ -22,7 +22,7 @@ public:
   explicit TPAlgTPCRunningSum(fhicl::ParameterSet const &ps)
       : verbosity_(ps.get<int>("verbosity", 0)),
         accum_limit_(ps.get<int>("accum_limit", 10)),
-        scale_factor_(ps.get<int>( "scale_factor", 2)), //RS-specific parameter ensuring the scale of hit parameters remains in the same ballpark as raw ADCs 
+        scale_factor_(ps.get<int>( "scale_factor", 5)), //RS-specific parameter ensuring the scale of hit parameters remains in the same ballpark as raw ADCs 
         r_value_(ps.get<int>("r_value", 9)), // RS-specific "memory" parameter.
         threshold_tpg_plane0_(ps.get<int16_t>("threshold_tpg_plane0")),
         threshold_tpg_plane1_(ps.get<int16_t>("threshold_tpg_plane1")),
@@ -65,7 +65,7 @@ public:
     // initialise the running sum/second pedestal variables for this waveform
     running_sum_ = 0;
     
-    prev_was_over_ = 0;
+    prev_was_over_ = false;
     hit_charge_ = 0;
     hit_tover_ = 0;
     hit_peak_adc_ = 0;
@@ -91,9 +91,17 @@ public:
   // Standard running sum
   void run_sum(const int16_t sample) {
     // R-value should be a float in range [0,1], but we're working with integers
-    // online. So multiply everything by 10 and then de-scale.
-    running_sum_ =   r_value_ * running_sum_ + (sample * 10) / scale_factor_;
-    running_sum_ = running_sum_ / 10;
+    // online. Divide using online division first, then scale up.
+    const int16_t tmp_sum = r_value_ * avx2_divide(running_sum_, 10) + avx2_divide(sample, 10) * scale_factor_;
+
+    // Saturated additions. Running sum is not strictly positive. Need to check the direction the sum should
+    // go, then apply the correct saturation limit.
+    if (sample > 0 && running_sum_ > 0 && tmp_sum < 0)      // Both terms positive, so overflow would be negative.
+      running_sum_ = std::numeric_limits<int16_t>::max();   // Set the RS to saturated max.
+    else if (sample < 0 && running_sum_ < 0 && tmp_sum > 0)  // Both terms negative, so overflow would be positive.
+      running_sum_ = std::numeric_limits<int16_t>::min();   // Set the RS to saturated min.
+    else
+      running_sum_ = tmp_sum;
   }
 
 
@@ -136,11 +144,7 @@ public:
       if (is_over) {
         // we are over threshold, so need to update the hit charge and check for
         // peak time
-
-        int32_t tmp_charge = hit_charge_;
-        tmp_charge += sample;
-        // tmp_charge = std::min(tmp_charge,
-        // (int32_t)std::numeric_limits<int16_t>::max()); // 32767
+        hit_charge_ += sample;
 
         // check if we're at the peak adc
         if (sample > hit_peak_adc_) {
@@ -148,8 +152,7 @@ public:
           hit_peak_time_ = hit_tover_;
         }
 
-        // update charge and time over threshold
-        hit_charge_ = (uint32_t)tmp_charge;
+        // update time over threshold
         ++hit_tover_;
       }
       if (prev_was_over_ && !is_over) {
@@ -196,11 +199,11 @@ private:
   // int16_t accum25_;
   //  int16_t accum75_;
 
-  uint16_t prev_was_over_;
-  uint16_t hit_charge_;
+  bool prev_was_over_;
   uint16_t hit_tover_;
   uint16_t hit_peak_time_;
   uint16_t hit_peak_adc_;
+  uint32_t hit_charge_;
 };
 
 } // namespace dunetrigger
