@@ -432,7 +432,7 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
     tree->Branch("time_candidate", &tc.time_candidate);
     tree->Branch("detid", &tc.detid);
     tree->Branch("type", &tc.type, "type/I");
-    tree->Branch("algorithm", &tc.algorithm, "type/I");
+    tree->Branch("algorithm", &tc.algorithm, "algorithm/I");
   }
 }
 
