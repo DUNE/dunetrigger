@@ -42,6 +42,7 @@ cet_report_compiler_flags()
 
 find_package( nufinder REQUIRED )
 find_package( larcore REQUIRED EXPORT)
+find_package( larcorealg REQUIRED EXPORT)
 find_package( nuevdb REQUIRED EXPORT )
 find_package( nug4 REQUIRED EXPORT )
 find_package( nugen REQUIRED EXPORT )
@@ -75,7 +76,8 @@ add_subdirectory(test)
 
 # ups - table and config files
 # must be AFTER all other subdirectories
-add_subdirectory(ups)
+#add_subdirectory(ups)
 
 # packaging utility - must be last
-include(UseCPack)
+# include(UseCPack)
+cet_cmake_config()

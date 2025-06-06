@@ -1,17 +1,7 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 
 add_subdirectory(fcl)
-
-cet_make_exec(geo_dump
-  SOURCE
-    geo_dump.cxx
-  LIBRARIES
-    dunecore::ArtSupport
-    dunecore::Geometry
-    larcorealg::Geometry
-    larcore::headers
-    larcore::Geometry_Geometry_service
-)
+add_subdirectory(exe)
 
 art_make(BASENAME_ONLY MODULE_LIBRARIES
   larcore::Geometry_Geometry_service

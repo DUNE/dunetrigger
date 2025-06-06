@@ -3,6 +3,9 @@ include_directories("${dunedetdataformats_DIR}/../../../include") # there's a ne
 add_subdirectory(fcl)
 
 art_make(BASENAME_ONLY MODULE_LIBRARIES
+  larcore::Geometry_Geometry_service
+  lardataalg::DetectorInfo
+  larcorealg::Geometry
   lardataobj::RawData
   dunecore::DuneObj
   lardata::ArtDataHelper
@@ -11,6 +14,8 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   art::Framework_Principal
   art::Framework_Services_Registry
   art_root_io::tfile_support
+  larsim::MCCheater_BackTrackerService_service
+  larsim::MCCheater_ParticleInventoryService_service
   ROOT::Core
   art_root_io::TFileService_service
   art::Persistency_Common

@@ -92,38 +92,33 @@ private:
 
   void ResetVariables();
   //function for matching TPs to sim::IDEs 
-  std::vector<const sim::IDE*> TPToSimIDEs_Ps(recob::Hit const& hit) const;
+  // std::vector<const sim::IDE*> TPToSimIDEs_Ps(recob::Hit const& hit) const;
 
   //fcl configurable sampling rate 
-  int fADC_SAMPLING_RATE_IN_DTS; // DTS time ticks between adc samples
+  // int fADC_SAMPLING_RATE_IN_DTS; // DTS time ticks between adc samples
 
   // Producer module, configurable from fhicl
   art::InputTag fRawDigitLabel;
-  art::InputTag fTPLabel;
   art::InputTag fGenLabel; //generator label for "signal" particles
   std::string fSimChanLabel; // sim channel label
 
   bool fSaveMC;
   bool fSaveNeutrino;
   bool fSaveRawDigit;
-  bool fSaveTPs; 
-
-  int foffsetU; //offset for valid TP window for IDE matching (needed for induction sigs).  
-  int foffsetV; 
 
   //ROOT tree for storing output information 
   TTree* fTree; 
-  // TTree* fRawDigisTree;
+  TTree* fRawDigisTree;
 
   int fEvent, fRun, fSubRun;
-  int fn_TPs; 
-  int fn_noise_TPs_X; 
-  int fn_noise_TPs_U; 
-  int fn_noise_TPs_V; 
+  // int fn_TPs; 
+  // int fn_noise_TPs_X; 
+  // int fn_noise_TPs_U; 
+  // int fn_noise_TPs_V; 
 
-  int fn_signal_TPs_X;
-  int fn_signal_TPs_U;
-  int fn_signal_TPs_V;
+  // int fn_signal_TPs_X;
+  // int fn_signal_TPs_U;
+  // int fn_signal_TPs_V;
 
   //total charge for the event based on  #electrons at the readout plane
   double total_charge_X;
@@ -131,24 +126,9 @@ private:
   double total_charge_V; 
 
   //charge of IDEs that were detected via hit finding  for the event 
-  double detected_charge_X;
-  double detected_charge_U;
-  double detected_charge_V;
-
-
-  // Vectors for storing Trigger Primitive (TP) data 
-  std::vector<uint32_t> fTP_channels;
-  std::vector<uint64_t> fTP_startT; 
-  std::vector<uint64_t> fTP_peakT; 
-  std::vector<uint64_t> fTP_TOT; 
-  std::vector<uint32_t> fTP_SADC;
-  std::vector<uint16_t> fTP_peakADC; 
-  std::vector<int>      fTP_plane;
-  std::vector<int>      fTP_TPC;
-  std::vector<int>      fTP_trueX;
-  std::vector<int>      fTP_trueY;
-  std::vector<int>      fTP_trueZ;
-  std::vector<int>      fTP_signal;
+  // double detected_charge_X;
+  // double detected_charge_U;
+  // double detected_charge_V;
 
 
   //Geant/truth info
@@ -194,6 +174,8 @@ private:
   TH1I* fADCsHistogramU;
   TH1I* fADCsHistogramV;
 
+  std::map<raw::ChannelID_t, raw::RawDigit::ADCvector_t> fWaveformsBuffer;
+
 
 
 
@@ -202,23 +184,16 @@ private:
 // -- Constructor --
 duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
-  fADC_SAMPLING_RATE_IN_DTS(p.get<int>("ADC_SAMPLING_RATE_IN_DTS",32)),
   fGenLabel(p.get<art::InputTag>("gen_tag")),
   fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
-  // fRawDigitLabel(p.get<std::string>("rawdigit_tag", "tpcrawdecoder:daq")),
   fSaveMC(p.get<bool>("SaveMCInfo",true)), 
   fSaveNeutrino(p.get<bool>("SaveNeutrino",false)),
-  fSaveRawDigit(p.get<bool>("SaveRawDigits",false)),
-  fSaveTPs(p.get<bool>("SaveTPInfo",true)),
-  foffsetU(p.get<int>("U_window_end_offset",11)),
-  foffsetV(p.get<int>("V_window_end_offset",10))
+  fSaveRawDigit(p.get<bool>("SaveRawDigits",false))
   {
 
-    if (fSaveTPs) {
-      fTPLabel = p.get<art::InputTag>("tp_tag"); // Get TP label from fcl file. 
-    }
     if (fSaveRawDigit) {
       fRawDigitLabel = p.get<art::InputTag>("rawdigit_tag"); // Get TP label from fcl file. 
+
     }
 
   }
@@ -233,42 +208,9 @@ void duneana::RawDigitAna::beginJob()
   fTree->Branch("run",&fRun,"run/i");
   fTree->Branch("subrun",&fSubRun,"subrun/i");
 
-  // TPG info
-  fTree->Branch("n_TPs", &fn_TPs, "n_TPs/i");
-  fTree->Branch("n_noise_TPs_X", &fn_noise_TPs_X, "n_noise_TPs_X/i");
-  fTree->Branch("n_noise_TPs_U", &fn_noise_TPs_U, "n_noise_TPs_U/i");
-  fTree->Branch("n_noise_TPs_V", &fn_noise_TPs_V, "n_noise_TPs_V/i");
-
-  fTree->Branch("n_signal_TPs_X", &fn_signal_TPs_X, "n_signal_TPs_X/i");
-  fTree->Branch("n_signal_TPs_U", &fn_signal_TPs_U, "n_signal_TPs_U/i");
-  fTree->Branch("n_signal_TPs_V", &fn_signal_TPs_V, "n_signal_TPs_V/i");  
-
-
   fTree->Branch("totQ_X", &total_charge_X, "totQ_X/d");
   fTree->Branch("totQ_U", &total_charge_U, "totQ_U/d");
   fTree->Branch("totQ_V", &total_charge_V, "totQ_V/d");
-
-  fTree->Branch("detQ_X", &detected_charge_X, "detQ_X/d");
-  fTree->Branch("detQ_U", &detected_charge_U, "detQ_U/d");
-  fTree->Branch("detQ_V", &detected_charge_V, "detQ_V/d");
-
-
-  //TP info
-  if (fSaveTPs){ 
-    fTree->Branch("TP_channel", &fTP_channels);
-    fTree->Branch("TP_startT", &fTP_startT);
-    fTree->Branch("TP_peakT", &fTP_peakT);
-    fTree->Branch("TP_TOT", &fTP_TOT);
-    fTree->Branch("TP_SADC", &fTP_SADC);
-    fTree->Branch("TP_peakADC", &fTP_peakADC);
-    fTree->Branch("TP_plane", &fTP_plane);
-    fTree->Branch("TP_TPC", &fTP_TPC);
-    fTree->Branch("TP_trueX", &fTP_trueX);
-    fTree->Branch("TP_trueY", &fTP_trueY);
-    fTree->Branch("TP_trueZ", &fTP_trueZ);
-    fTree->Branch("TP_signal", &fTP_signal);  
-  }
-
 
   //Nu info
   if (fSaveNeutrino){
@@ -311,10 +253,31 @@ void duneana::RawDigitAna::beginJob()
     fADCsHistogramX = tfs->make<TH1I>("ADCsPlaneX", "ADCs on plane X", 4096, 0., 16384.);
     fADCsHistogramU = tfs->make<TH1I>("ADCsPlaneU", "ADCs on plane U", 4096, 0., 16384.);
     fADCsHistogramV = tfs->make<TH1I>("ADCsPlaneV", "ADCs on plane X", 4096, 0., 16384.);
-    // fRawDigisTree = tfs->make<TTree>("raw_digis", "Analyser Output Tree");
-    // fADCsHistogramByPlane = new TH2I("ADCsByPlane", "ADCs by Plane", 4096, 0., 16384., 3, 0., 2.);
-    // fRawDigisTree->Branch("adcs_by_plane", &fADCsHistogramByPlane); 
-    // fRawDigisTree->Branch("a_number", &fANumber); 
+
+    fRawDigisTree = tfs->make<TTree>("rawdigis_tree", "test_ttree");
+  
+    art::ServiceHandle<geo::Geometry> pgeo;
+    auto const& wire_readout = art::ServiceHandle<geo::WireReadout>()->Get();
+
+    for (geo::TPCGeo const& tpc: pgeo->Iterate<geo::TPCGeo>(geo::CryostatID{0})) {
+
+      // Count the channels
+      std::vector<raw::ChannelID_t> channels;
+
+      for (auto const& wire : wire_readout.Iterate<geo::WireID>(tpc.ID())) {
+
+          fRawDigisTree->Branch("event",&fEvent,"event/i");
+          fRawDigisTree->Branch("run",&fRun,"run/i");
+          fRawDigisTree->Branch("subrun",&fSubRun,"subrun/i");
+
+          raw::ChannelID_t ch = wire_readout.PlaneWireToChannel(wire);
+          channels.push_back(ch);
+          
+          auto& buffer = fWaveformsBuffer[ch];
+          fRawDigisTree->Branch(std::to_string(ch).c_str(), &buffer);
+      }
+      std::cout << "N Channels: " << channels.size() << "(First channel " << channels[0] << ")" << std::endl;
+    }
   }
 
 
@@ -333,7 +296,6 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
 
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-  //auto const clockData = art::ServiceHandle<detinfo::DetectorClocksService const>()->DataFor(e); 
 
   // Load the IDEs for the event to calculate total charge
   auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(fSimChanLabel);
@@ -374,28 +336,25 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
       TH1I* plane_hist = 0x0;
       switch(plane) {
         case geo::kW:
-          plane_idx = 1;
+          plane_idx = 2;
           plane_hist = fADCsHistogramX;
           break;
         case geo::kU:
           plane_hist = fADCsHistogramU;
-          plane_idx = 2;
+          plane_idx = 1;
           break;
         case geo::kV:
           plane_hist = fADCsHistogramV;
-          plane_idx = 3;
+          plane_idx = 0;
           break;
       }
 
       for(auto& adc : digit.ADCs() ){
         plane_hist->Fill(adc);
         fADCsHistogramByPlane->Fill(adc,plane_idx);
+
+        fWaveformsBuffer[digit.Channel()]  = digit.ADCs();
       }
-      // fWaveforms.insert(fWaveforms.end(), digit.ADCs().begin(), digit.ADCs().end());
-      
-      
-      // std::cout << "Channel: " << digit.Channel() << " plane " << plane << " plane-idx " << plane_idx << "  first ADC: " <<  digit.ADCs()[0] << std::endl;
-      //  << std::endl;
     }
   }
   
@@ -456,108 +415,19 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
     }
   }
   fTree->Fill();
-  // if (fSaveRawDigit){
-    // fRawDigisTree->Fill();
-  // }
+  if (fSaveRawDigit){
+    fRawDigisTree->Fill();
+  }
 
 }
-
-
-//TP - ide matching based on hit start and end times rather than peak ADC time 
-std::vector<const sim::IDE*> duneana::RawDigitAna::TPToSimIDEs_Ps(recob::Hit const& hit) const
-{
-  std::vector<const sim::IDE*> retVec;
-  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-  
-  //IDEs are computed based on the time during which the ionization cloud hits the readout plane. For ind. signals this corresponds to the inflection point
-  //need to introduce an offset for this effect to be properly accounted for 
-  int offset = 0;
-
-  if (hit.View() == geo::kU) offset = foffsetU; //fcl configurable offset for induction TPs 
-  else if (hit.View() == geo::kV) offset = foffsetV;  
-
-  // Adjust the start and end time based on the hit, this may need to be expanded or modified
-  int start_tdc = hit.StartTick(); //clockData.TPCTick2TDC(hit.PeakTimeMinusRMS(fHitTimeRMS));
-  int end_tdc = hit.EndTick() + offset;//clockData.TPCTick2TDC(hit.PeakTimePlusRMS(fHitTimeRMS));
-
-  // Ensure no negative TDC values
-  if (start_tdc < 0) start_tdc = 0;
-  if (end_tdc < 0) end_tdc = 0;
-
-  if (start_tdc > end_tdc) { throw; }
-
-  // Get the map of TDC values to IDEs
-  const std::vector<std::pair<unsigned short, std::vector<sim::IDE>>>& tdcIDEMap = (bt_serv->FindSimChannel(hit.Channel()))->TDCIDEMap();
-
-  // Create a vector of pointers to the elements in the TDC-IDE map
-  std::vector<const std::pair<unsigned short, std::vector<sim::IDE>>*> tdcIDEMap_SortedPointers;
-  for (auto& pair : tdcIDEMap) {
-    tdcIDEMap_SortedPointers.push_back(&pair);
-  }
-
-  // Sort the map based on TDC values
-  auto pairSort = [](auto& a, auto& b) { return a->first < b->first; };
-  if (!std::is_sorted(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), pairSort)) {
-    std::sort(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), pairSort);
-  }
-
-  // Create dummy vectors for comparing pairs
-  std::vector<sim::IDE> dummyVec;
-  std::pair<double, std::vector<sim::IDE>> start_tdcPair = std::make_pair(start_tdc, dummyVec);
-  std::pair<double, std::vector<sim::IDE>> end_tdcPair = std::make_pair(end_tdc, dummyVec);
-
-  auto start_tdcPair_P = &start_tdcPair;
-  auto end_tdcPair_P = &end_tdcPair;
-
-  // Find the range of IDEs that fall between start_tdc and end_tdc using lower and upper bounds
-  auto mapFirst = std::lower_bound(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), start_tdcPair_P, pairSort);
-
-  // Upper bound is exclusive --> should give the first element after the end_tdc
-  auto mapLast = std::upper_bound(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), end_tdcPair_P, pairSort);
-
-  // Iterate through the range of IDEs that fall between start_tdc and end_tdc and save them to a vector
-  for (auto& mapitr = mapFirst; mapitr != mapLast; ++mapitr) {
-    for (auto& ide : (*mapitr)->second) {
-      // Save all IDEs within the specified time window
-      retVec.push_back(&ide);
-    }
-  }
-  // output the IDE vector 
-  return retVec;
-}
-
 
 
 void duneana::RawDigitAna::ResetVariables()
 {
   fEvent = fRun = fSubRun = -1; 
-  fn_TPs = -1; 
-
+  // fn_TPs = -1; 
 
   total_charge_X = total_charge_U = total_charge_V = 0; 
-
-
-  detected_charge_X = detected_charge_U = detected_charge_V = 0; 
-
-  //initialise number of noise and signal TPs for this event 
-  fn_noise_TPs_X = fn_noise_TPs_U = fn_noise_TPs_V =  0;
-  fn_signal_TPs_X = fn_signal_TPs_U = fn_signal_TPs_V =  0;
-
-  // fADCsHistogramByPlane->Clear();
-
-  fTP_channels.clear(); 
-  fTP_startT.clear();
-  fTP_peakT.clear();
-  fTP_TOT.clear();
-  fTP_SADC.clear();
-  fTP_peakADC.clear();
-  fTP_plane.clear();
-  fTP_TPC.clear();
-  fTP_trueX.clear();
-  fTP_trueY.clear();
-  fTP_trueZ.clear();
-  fTP_signal.clear();
-
 
   //Neutrino info 
   fNuPDG.clear();
@@ -591,6 +461,9 @@ void duneana::RawDigitAna::ResetVariables()
   fendX.clear();
   fendY.clear();
   fendZ.clear();
+
+  // Waveforms
+  fWaveformsBuffer.clear();
 
 }
 
