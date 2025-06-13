@@ -118,9 +118,9 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
 void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_mctruths) {
     mctruth_tree = tfs->make<TTree>("mctruths", "mctruths");
-    mctruth_tree->Branch("Event", &fEventID, "Event/I");
-    mctruth_tree->Branch("Run", &fRun, "Run/I");
-    mctruth_tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    mctruth_tree->Branch("Event", &fEventID, "Event/i");
+    mctruth_tree->Branch("Run", &fRun, "Run/i");
+    mctruth_tree->Branch("SubRun", &fSubRun, "SubRun/i");
     mctruth_tree->Branch("block_id", &mctruth_id);
     mctruth_tree->Branch("pdg", &mctruth_pdg);
     mctruth_tree->Branch("generator_name", &mctruth_gen_name);
@@ -136,9 +136,9 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
   if (dump_mcparticles) {
     mcparticle_tree = tfs->make<TTree>("mcparticles", "mcparticles");
-    mcparticle_tree->Branch("Event", &fEventID, "Event/I");
-    mcparticle_tree->Branch("Run", &fRun, "Run/I");
-    mcparticle_tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    mcparticle_tree->Branch("Event", &fEventID, "Event/i");
+    mcparticle_tree->Branch("Run", &fRun, "Run/i");
+    mcparticle_tree->Branch("SubRun", &fSubRun, "SubRun/i");
     mcparticle_tree->Branch("pdg", &mcparticle_pdg);
     mcparticle_tree->Branch("generator_name", &mcparticle_gen_name);
     mcparticle_tree->Branch("status_code", &mcparticle_status);
@@ -155,18 +155,18 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
   if (dump_simides) {
     simide_tree = tfs->make<TTree>("simides", "simides");
-    simide_tree->Branch("Event", &fEventID, "Event/I");
-    simide_tree->Branch("Run", &fRun, "Run/I");
-    simide_tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    simide_tree->Branch("Event", &fEventID, "Event/i");
+    simide_tree->Branch("Run", &fRun, "Run/i");
+    simide_tree->Branch("SubRun", &fSubRun, "SubRun/i");
     simide_tree->Branch("ChannelID", &sim_channel_id, "ChannelID/i");
     simide_tree->Branch("Timestamp", &tdc, "Timestamp/s");
-    simide_tree->Branch("numElectrons", &ide_numElectrons, "ide_numElectrons");
-    simide_tree->Branch("Energy", &ide_energy, "ide_energy");
-    simide_tree->Branch("x", &ide_x, "ide_x");
-    simide_tree->Branch("y", &ide_y, "ide_y");
-    simide_tree->Branch("z", &ide_z, "ide_z");
-    simide_tree->Branch("trackID", &ide_trkId, "ide_trkId");
-    simide_tree->Branch("origTrackID", &ide_origTrkId, "ide_origTrkId");
+    simide_tree->Branch("numElectrons", &ide_numElectrons, "ide_numElectrons/i");
+    simide_tree->Branch("Energy", &ide_energy, "ide_energy/F");
+    simide_tree->Branch("x", &ide_x, "ide_x/F");
+    simide_tree->Branch("y", &ide_y, "ide_y/F");
+    simide_tree->Branch("z", &ide_z, "ide_z/F");
+    simide_tree->Branch("trackID", &ide_trkId, "ide_trkId/I");
+    simide_tree->Branch("origTrackID", &ide_origTrkId, "ide_origTrkId/I");
   }
 }
 
@@ -239,6 +239,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     }
   }
   if (dump_simides) {
+
     auto simchannels =
         e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
     for (const sim::SimChannel &sc : *simchannels) {
@@ -356,9 +357,9 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool a
     TTree *tree = tp_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
     TriggerPrimitive &tp = tp_bufs[map_tag];
-    tree->Branch("Event", &fEventID, "Event/I");
-    tree->Branch("Run", &fRun, "Run/I");
-    tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    tree->Branch("Event", &fEventID, "Event/i");
+    tree->Branch("Run", &fRun, "Run/i");
+    tree->Branch("SubRun", &fSubRun, "SubRun/i");
     tree->Branch("version", &tp.version);
     tree->Branch("time_start", &tp.time_start);
     tree->Branch("time_peak", &tp.time_peak);
@@ -387,9 +388,9 @@ void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool a
     TTree *tree = ta_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
     TriggerActivityData &ta = ta_bufs[map_tag];
-    tree->Branch("Event", &fEventID, "Event/I");
-    tree->Branch("Run", &fRun, "Run/I");
-    tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    tree->Branch("Event", &fEventID, "Event/i");
+    tree->Branch("Run", &fRun, "Run/i");
+    tree->Branch("SubRun", &fSubRun, "SubRun/i");
     tree->Branch("version", &ta.version);
     tree->Branch("time_start", &ta.time_start);
     tree->Branch("time_end", &ta.time_end);
@@ -422,16 +423,16 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
     TTree *tree = tc_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
     TriggerCandidateData &tc = tc_bufs[map_tag];
-    tree->Branch("Event", &fEventID, "Event/I");
-    tree->Branch("Run", &fRun, "Run/I");
-    tree->Branch("SubRun", &fSubRun, "SubRun/I");
+    tree->Branch("Event", &fEventID, "Event/i");
+    tree->Branch("Run", &fRun, "Run/i");
+    tree->Branch("SubRun", &fSubRun, "SubRun/i");
     tree->Branch("version", &tc.version);
     tree->Branch("time_start", &tc.time_start);
     tree->Branch("time_end", &tc.time_end);
     tree->Branch("time_candidate", &tc.time_candidate);
     tree->Branch("detid", &tc.detid);
     tree->Branch("type", &tc.type, "type/I");
-    tree->Branch("algorithm", &tc.algorithm, "type/I");
+    tree->Branch("algorithm", &tc.algorithm, "algorithm/I");
   }
 }
 
