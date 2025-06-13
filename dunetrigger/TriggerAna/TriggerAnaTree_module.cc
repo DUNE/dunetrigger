@@ -24,6 +24,8 @@
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 
 #include "lardataobj/Simulation/SimChannel.h"
+#include "larcore/Geometry/WireReadout.h"
+#include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "nusimdata/SimulationBase/MCParticle.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 #include <TDirectory.h>
@@ -40,6 +42,12 @@ namespace dunetrigger{
 
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
 public:
+  typedef struct ChannelInfo {
+    unsigned int rop_id;
+    int view;
+    unsigned int tpcset_id;
+  } matching_info;
+
   explicit TriggerAnaTree(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
   // classes without bare pointers or other resource use.
@@ -66,6 +74,7 @@ private:
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::map<std::string, dunedaq::trgdataformats::TriggerPrimitive> tp_bufs;
+  std::map<std::string, ChannelInfo> tp_channel_info_bufs;
   std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
   std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
 
@@ -74,6 +83,8 @@ private:
   void make_tp_tree_if_needed(std::string tag, bool assn = false);
   void make_ta_tree_if_needed(std::string tag, bool assn = false);
   void make_tc_tree_if_needed(std::string tag);
+
+  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
   bool dump_mctruths;
   TTree *mctruth_tree;
@@ -174,6 +185,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   fRun = e.run();
   fSubRun = e.subRun();
   fEventID = e.id().event();
+  // get a service handle for geometry
+  geo::WireReadoutGeom const *geom =
+      &art::ServiceHandle<geo::WireReadout>()->Get();
   if (dump_mctruths) {
     std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruthHandles =
         e.getMany<std::vector<simb::MCTruth>>();
@@ -268,6 +282,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       make_tp_tree_if_needed(tag);
       for (const TriggerPrimitive &tp : *tpHandle) {
         tp_bufs[map_tag] = tp;
+        tp_channel_info_bufs[map_tag] = get_channel_info_for_channel(geom, tp.channel);
         tree_map[map_tag]->Fill();
       }
     }
@@ -298,6 +313,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
           for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
             tp_bufs[map_tpInTaTag] = *tp;
+            tp_channel_info_bufs[map_tag] = get_channel_info_for_channel(geom, tp->channel);
             tree_map[map_tpInTaTag]->Fill();
           }
         }
@@ -369,6 +385,10 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool a
     tree->Branch("detid", &tp.detid);
     tree->Branch("type", &tp.type, "type/I");
     tree->Branch("algorithm", &tp.algorithm, "algorithm/I");
+    ChannelInfo &chinfo = tp_channel_info_bufs[map_tag];
+    tree->Branch("ropid", &chinfo.rop_id, "ropid/i");
+    tree->Branch("view", &chinfo.view, "view/I");
+    tree->Branch("TPCSetID", &chinfo.tpcset_id, "TPCSetID/i");
     if (assn)
       tree->Branch("TAnumber", &fAssnIdx, "TAnumber/I");
   }
@@ -433,6 +453,15 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
     tree->Branch("type", &tc.type, "type/I");
     tree->Branch("algorithm", &tc.algorithm, "type/I");
   }
+}
+
+dunetrigger::TriggerAnaTree::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel) {
+  readout::ROPID rop = geom->ChannelToROP(channel);
+  ChannelInfo result;
+  result.rop_id = rop.ROP;
+  result.tpcset_id = rop.asTPCsetID().TPCset;
+  result.view = geom->View(rop);
+  return result;
 }
 
 DEFINE_ART_MODULE(dunetrigger::TriggerAnaTree)
