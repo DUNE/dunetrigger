@@ -12,11 +12,11 @@
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "larcorealg/Geometry/Exceptions.h"
 
-#include "TTree.h"
-#include "TFile.h"
+// #include "TTree.h"
+// #include "TFile.h"
 
 int main() {
-    std::cout << "Geometry dumper" << std::endl;
+    std::cout << "Geometry Inspector" << std::endl;
 
     std::stringstream config;
 
@@ -28,39 +28,37 @@ int main() {
 
     art::ServiceHandle<geo::Geometry> pgeo;
     auto const& wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
+    auto const& geo = art::ServiceHandle<geo::Geometry>();
 
 
-    TFile f("tree.root", "recreate");
-
-    TTree* tree = new TTree("a_ttree", "test_ttree");
-    std::map<raw::ChannelID_t, std::vector<short>>  channel_buffer;
-
+    auto const& cryogeo = geo->Cryostats().front();
+    std::cout << "Cryostat ID : " << cryogeo.ID() << std::endl;
+    std::cout << " - origin = " << cryogeo.GetCenter() << std::endl;
+    std::cout << " - x-range = [" << cryogeo.MinX() << ", " << cryogeo.MaxX() << "]" << std::endl;
+    std::cout << " - y-range = [" << cryogeo.MinY() << ", " << cryogeo.MaxY() << "]" << std::endl;
+    std::cout << " - z-range = [" << cryogeo.MinZ() << ", " << cryogeo.MaxZ() << "]" << std::endl;
 
     std::cout<<"Total number of TPCs "<<pgeo->NTPC()<<std::endl;
     for (geo::TPCGeo const& tpc: pgeo->Iterate<geo::TPCGeo>(geo::CryostatID{0})) {
         size_t const t = tpc.ID().TPC;
-        std::cout<<"TPC ID:" << t << " origin: " << tpc.GetCenter() << std::endl;
+        std::cout << "TPC ID : " << t << std::endl;
+        std::cout << " - origin = " << tpc.GetCenter() << std::endl;
+        std::cout << " - x-range = [" << tpc.MinX() << ", " << tpc.MaxX() << "]" << std::endl;
+        std::cout << " - y-range = [" << tpc.MinY() << ", " << tpc.MaxY() << "]" << std::endl;
+        std::cout << " - z-range = [" << tpc.MinZ() << ", " << tpc.MaxZ() << "]" << std::endl;
+
 
         std::vector<raw::ChannelID_t> channels;
         for (auto const& wire : wireReadout.Iterate<geo::WireID>(tpc.ID())) {
             raw::ChannelID_t ch = wireReadout.PlaneWireToChannel(wire);
             channels.push_back(ch);
            
-            auto& buffer = channel_buffer[ch];
-            tree->Branch(std::to_string(ch).c_str(), &buffer);
         }
 
-        std::cout << "N Channels: " << channels.size() << "(First channel " << channels[0] << ")" << std::endl;
+        std::cout << " - N Channels = " << channels.size() << " (First channel =" << channels[0] << ")" << std::endl;
         
-    }
-
-    std::vector<short> my_adcs = {1,2,3};
-    for( auto& [ch, adcs] : channel_buffer ) {
-        adcs = my_adcs;
     }
 
     std::cout << "MaxTPCSet " << wireReadout.MaxTPCsets() << std::endl;
 
-    tree->Fill();
-    f.Write();
 }
