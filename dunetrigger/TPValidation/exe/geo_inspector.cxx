@@ -30,6 +30,10 @@ int main() {
     auto const& wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
     auto const& geo = art::ServiceHandle<geo::Geometry>();
 
+    std::cout << geo->Info() << std::endl;
+    std::cout << "\n\n---------------------------------------------------------------------\n\n" << std::endl;
+
+    std::cout << "Detector Name : " << geo->DetectorName() << std::endl;
 
     auto const& cryogeo = geo->Cryostats().front();
     std::cout << "Cryostat ID : " << cryogeo.ID() << std::endl;
@@ -52,6 +56,9 @@ int main() {
         for (auto const& wire : wireReadout.Iterate<geo::WireID>(tpc.ID())) {
             raw::ChannelID_t ch = wireReadout.PlaneWireToChannel(wire);
             channels.push_back(ch);
+
+            // auto& wiregeo = wireReadout.Wire(wire);
+            // std::cout << " - " <<  ch << " " << wiregeo.Direction() << std::endl;
            
         }
 
