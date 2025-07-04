@@ -539,7 +539,7 @@ void TPValTreeWriter::beginJob()
   // fTree->Branch("endX",&fendX);
   // fTree->Branch("endY",&fendY);
   // fTree->Branch("endZ",&fendZ);
-  fMcTruthData.branch_on(fMcTree);
+  fMcTruthData.branch_on(fTree);
 
   //G4 info
 
