@@ -74,11 +74,233 @@ using json = nlohmann::json;
 
 
 namespace duneana {
-  class TPValTreeWriter;
-}
 
 
-class duneana::TPValTreeWriter : public art::EDAnalyzer {
+struct EventDataBuffer {
+  int event;
+  int run;
+  int subrun;
+
+  void branch_on( TTree* tree ) {
+    tree->Branch("event",&event,"event/i");
+    tree->Branch("run",&run,"run/i");
+    tree->Branch("subrun",&subrun,"subrun/i");
+  }
+
+  void clear() {
+    event = -1;
+    run = -1;
+    subrun = -1; 
+  }
+};
+
+struct MCTruthDataBuffer {
+  // Monte carlo truth information
+  unsigned int        num_particles; //total number of geant particles 
+  std::vector<int>    TrackId;
+  std::vector<float>  Mother; 
+  std::vector<float>  Eng;
+  std::vector<float>  Ekin;
+  std::vector<float>  Mass;
+  std::vector<int>    Pdg;
+  std::vector<float>  P;
+  std::vector<float>  Px;
+  std::vector<float>  Py;
+  std::vector<float>  Pz;
+  std::vector<double> startX;
+  std::vector<double> startY;
+  std::vector<double> startZ;
+  std::vector<double> endX;
+  std::vector<double> endY;
+  std::vector<double> endZ;
+
+  void branch_on( TTree* tree ) {
+    tree->Branch("nParticles",&num_particles,"nParticles/i"); 
+    tree->Branch("TrackId",&TrackId);
+    tree->Branch("Mother",&Mother);
+    tree->Branch("Pdg",&Pdg);
+    tree->Branch("Eng",&Eng);
+    tree->Branch("Ekin",&Ekin);
+    tree->Branch("Mass",&Mass);
+    tree->Branch("P",&P);
+    tree->Branch("Px",&Px);
+    tree->Branch("Py",&Py);
+    tree->Branch("Pz",&Pz);
+    tree->Branch("startX",&startX);
+    tree->Branch("startY",&startY);
+    tree->Branch("startZ",&startZ);
+    tree->Branch("endX",&endX);
+    tree->Branch("endY",&endY);
+    tree->Branch("endZ",&endZ); 
+  }
+
+  void clear() {
+   num_particles = 0;
+   TrackId.clear();
+   Mother.clear();
+   Eng.clear();
+   Ekin.clear();
+   Mass.clear();
+   Pdg.clear();
+   P.clear();
+   Px.clear();
+   Py.clear();
+   Pz.clear();
+   startX.clear();
+   startY.clear();
+   startZ.clear();
+   endX.clear();
+   endY.clear();
+   endZ.clear();
+  }
+
+};
+
+struct IDEsDataBuffer {
+
+  // Data buffers
+  unsigned int entries; //total number of geant particles 
+  std::vector<uint32_t> channel;
+  std::vector<float> time;
+  std::vector<int> track_id;
+  std::vector<float> numElectrons;
+  std::vector<float> energy;
+  std::vector<float> x;
+  std::vector<float> y;
+  std::vector<float> z;
+
+  void branch_on( TTree* tree ) {
+    tree->Branch("nIDEs",&entries,"nIDEs/i");
+    tree->Branch("channel",&channel);  
+    tree->Branch("time",&time);  
+    tree->Branch("TrackId",&track_id);  
+    tree->Branch("nElectrons",&numElectrons);  
+    tree->Branch("energy",&energy);  
+    tree->Branch("x",&x);  
+    tree->Branch("y",&y);  
+    tree->Branch("z",&z);  
+  }
+  
+  void clear() {
+    entries = 0;
+    channel.clear();
+    time.clear();
+    track_id.clear();
+    numElectrons.clear();
+    energy.clear();
+    x.clear();
+    y.clear();
+    z.clear();
+  }
+};
+
+struct TPSummaryDataBuffer {
+
+  int num_TPs; 
+  int num_noise_TPs_X; 
+  int num_noise_TPs_U; 
+  int num_noise_TPs_V; 
+
+  int num_signal_TPs_X;
+  int num_signal_TPs_U;
+  int num_signal_TPs_V;
+
+  //total charge for the event based on  #electrons at the readout plane
+  double total_charge_X;
+  double total_charge_U;
+  double total_charge_V; 
+
+  //charge of IDEs that were detected via hit finding  for the event 
+  double detected_charge_X;
+  double detected_charge_U;
+  double detected_charge_V;
+
+  void branch_on( TTree* tree ) {
+    // TPG info
+    tree->Branch("n_TPs", &num_TPs, "n_TPs/i");
+    tree->Branch("n_noise_TPs_U", &num_noise_TPs_U, "n_noise_TPs_U/i");
+    tree->Branch("n_noise_TPs_V", &num_noise_TPs_V, "n_noise_TPs_V/i");
+    tree->Branch("n_noise_TPs_X", &num_noise_TPs_X, "n_noise_TPs_X/i");
+
+    tree->Branch("n_signal_TPs_U", &num_signal_TPs_U, "n_signal_TPs_U/i");
+    tree->Branch("n_signal_TPs_V", &num_signal_TPs_V, "n_signal_TPs_V/i");  
+    tree->Branch("n_signal_TPs_X", &num_signal_TPs_X, "n_signal_TPs_X/i");
+
+
+    tree->Branch("totQ_U", &total_charge_U, "totQ_U/d");
+    tree->Branch("totQ_V", &total_charge_V, "totQ_V/d");
+    tree->Branch("totQ_X", &total_charge_X, "totQ_X/d");
+    
+    tree->Branch("detQ_U", &detected_charge_U, "detQ_U/d");
+    tree->Branch("detQ_V", &detected_charge_V, "detQ_V/d");
+    tree->Branch("detQ_X", &detected_charge_X, "detQ_X/d");
+  }
+
+  void clear() {
+    num_TPs = -1; 
+
+    total_charge_X = total_charge_U = total_charge_V = 0; 
+
+    detected_charge_X = detected_charge_U = detected_charge_V = 0; 
+
+    //initialise number of noise and signal TPs for this event 
+    num_noise_TPs_X = num_noise_TPs_U = num_noise_TPs_V =  0;
+    num_signal_TPs_X = num_signal_TPs_U = num_signal_TPs_V =  0;
+  }
+
+};
+
+struct TPsDataBuffer {
+
+  // Vectors for storing Trigger Primitive (TP) data 
+  std::vector<uint32_t> channels;
+  std::vector<uint64_t> startT; 
+  std::vector<uint64_t> peakT; 
+  std::vector<uint64_t> TOT; 
+  std::vector<uint32_t> SADC;
+  std::vector<uint16_t> peakADC; 
+  std::vector<int>      plane;
+  std::vector<int>      TPC;
+  std::vector<int>      trueX;
+  std::vector<int>      trueY;
+  std::vector<int>      trueZ;
+  std::vector<int>      signal;
+
+  void branch_on( TTree* tree ) {
+    tree->Branch("TP_channel", &channels);
+    tree->Branch("TP_startT", &startT);
+    tree->Branch("TP_peakT", &peakT);
+    tree->Branch("TP_TOT", &TOT);
+    tree->Branch("TP_SADC", &SADC);
+    tree->Branch("TP_peakADC", &peakADC);
+    tree->Branch("TP_plane", &plane);
+    tree->Branch("TP_TPC", &TPC);
+    tree->Branch("TP_trueX", &trueX);
+    tree->Branch("TP_trueY", &trueY);
+    tree->Branch("TP_trueZ", &trueZ);
+    tree->Branch("TP_signal", &signal);  
+  }
+  
+  void clear() {
+    channels.clear(); 
+    startT.clear();
+    peakT.clear();
+    TOT.clear();
+    SADC.clear();
+    peakADC.clear();
+    plane.clear();
+    TPC.clear();
+    trueX.clear();
+    trueY.clear();
+    trueZ.clear();
+    signal.clear();
+  }
+};
+
+
+
+
+class TPValTreeWriter : public art::EDAnalyzer {
 public:
   explicit TPValTreeWriter(fhicl::ParameterSet const& p);
 
@@ -101,7 +323,7 @@ private:
   int fADC_SAMPLING_RATE_IN_DTS; // DTS time ticks between adc samples
 
   // Producer module, configurable from fhicl
-  art::InputTag fRawDigitLabel;
+  // art::InputTag fRawDigitLabel;
   art::InputTag fTPLabel;
   art::InputTag fGenLabel; //generator label for "signal" particles
   std::string fSimChanLabel; // sim channel label
@@ -109,33 +331,36 @@ private:
   bool fSaveMC;
   bool fSaveNeutrino;
   bool fSaveTPs; 
+  bool fSaveQs; 
 
   int foffsetU; //offset for valid TP window for IDE matching (needed for induction sigs).  
   int foffsetV; 
+  int foffsetX; 
 
   //ROOT tree for storing output information 
   TTree* fTree; 
-  // TTree* fRawDigisTree;
+  TTree* fMcTree; 
+  TTree* fQTree; 
 
-  int fEvent, fRun, fSubRun;
-  int fn_TPs; 
-  int fn_noise_TPs_X; 
-  int fn_noise_TPs_U; 
-  int fn_noise_TPs_V; 
+  // int fEvent, fRun, fSubRun;
+  // int fn_TPs; 
+  // int fn_noise_TPs_X; 
+  // int fn_noise_TPs_U; 
+  // int fn_noise_TPs_V; 
 
-  int fn_signal_TPs_X;
-  int fn_signal_TPs_U;
-  int fn_signal_TPs_V;
+  // int fn_signal_TPs_X;
+  // int fn_signal_TPs_U;
+  // int fn_signal_TPs_V;
 
-  //total charge for the event based on  #electrons at the readout plane
-  double total_charge_X;
-  double total_charge_U;
-  double total_charge_V; 
+  // //total charge for the event based on  #electrons at the readout plane
+  // double total_charge_X;
+  // double total_charge_U;
+  // double total_charge_V; 
 
-  //charge of IDEs that were detected via hit finding  for the event 
-  double detected_charge_X;
-  double detected_charge_U;
-  double detected_charge_V;
+  // //charge of IDEs that were detected via hit finding  for the event 
+  // double detected_charge_X;
+  // double detected_charge_U;
+  // double detected_charge_V;
 
 
   // Vectors for storing Trigger Primitive (TP) data 
@@ -167,28 +392,46 @@ private:
   std::vector<float> fNuE;
 
 
-  unsigned int fnParticles; //total number of geant particles 
-  std::vector<int>     fTrackId;
-  std::vector<float>   fMother; 
-  std::vector<float>   fEng;
-  std::vector<float>   fEkin;
-  std::vector<float>   fMass;
-  std::vector<int>     fPdg;
-  std::vector<float>   fP;
-  std::vector<float>   fPx;
-  std::vector<float>   fPy;
-  std::vector<float>   fPz;
-  std::vector<double>  fstartX;
-  std::vector<double>  fstartY;
-  std::vector<double>  fstartZ;
-  std::vector<double>  fendX;
-  std::vector<double>  fendY;
-  std::vector<double>  fendZ;
+  // Monte carlo truth information
+  // unsigned int fnParticles; //total number of geant particles 
+  // std::vector<int>     fTrackId;
+  // std::vector<float>   fMother; 
+  // std::vector<float>   fEng;
+  // std::vector<float>   fEkin;
+  // std::vector<float>   fMass;
+  // std::vector<int>     fPdg;
+  // std::vector<float>   fP;
+  // std::vector<float>   fPx;
+  // std::vector<float>   fPy;
+  // std::vector<float>   fPz;
+  // std::vector<double>  fstartX;
+  // std::vector<double>  fstartY;
+  // std::vector<double>  fstartZ;
+  // std::vector<double>  fendX;
+  // std::vector<double>  fendY;
+  // std::vector<double>  fendZ;
+
+  // unsigned int fnIDEs; //total number of geant particles 
+  // std::vector<uint32_t> fIDE_channel;
+  // std::vector<float> fIDE_time;
+  // std::vector<int> fIDE_track_id;
+  // std::vector<float> fIDE_numElectrons;
+  // std::vector<float> fIDE_energy;
+  // std::vector<float> fIDE_x;
+  // std::vector<float> fIDE_y;
+  // std::vector<float> fIDE_z;
+
+
+  EventDataBuffer fEventData;
+  MCTruthDataBuffer fMcTruthData;
+  IDEsDataBuffer fIDEsData;
+  TPSummaryDataBuffer fTPSummaryData;
+  TPsDataBuffer fTPsData;
 
 };
 
 // -- Constructor --
-duneana::TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
+TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
   fADC_SAMPLING_RATE_IN_DTS(p.get<int>("ADC_SAMPLING_RATE_IN_DTS",32)),
   fGenLabel(p.get<art::InputTag>("gen_tag")),
@@ -197,8 +440,10 @@ duneana::TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
   fSaveMC(p.get<bool>("SaveMCInfo",true)), 
   fSaveNeutrino(p.get<bool>("SaveNeutrino",false)),
   fSaveTPs(p.get<bool>("SaveTPInfo",true)),
-  foffsetU(p.get<int>("U_window_end_offset",11)),
-  foffsetV(p.get<int>("V_window_end_offset",10))
+  fSaveQs(p.get<bool>("SaveQInfo",false)),
+  foffsetU(p.get<int>("U_window_end_offset",0)),
+  foffsetV(p.get<int>("V_window_end_offset",0)),
+  foffsetX(p.get<int>("X_window_end_offset",0))
   {
 
     if (fSaveTPs) {
@@ -208,50 +453,55 @@ duneana::TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
   }
 
 
-void duneana::TPValTreeWriter::beginJob()
+void TPValTreeWriter::beginJob()
 {
   art::ServiceHandle<art::TFileService> tfs; 
   fTree = tfs->make<TTree>("tree", "Trigger Primitives Tree");
+  fMcTree = tfs->make<TTree>("mctree", "MC Tree");
+  fQTree = tfs->make<TTree>("qtree", "Charge Tree");
   
 
-  fTree->Branch("event",&fEvent,"event/i");
-  fTree->Branch("run",&fRun,"run/i");
-  fTree->Branch("subrun",&fSubRun,"subrun/i");
+  fEventData.branch_on(fTree);
+  // fTree->Branch("event",&fEvent,"event/i");
+  // fTree->Branch("run",&fRun,"run/i");
+  // fTree->Branch("subrun",&fSubRun,"subrun/i");
 
+  fTPSummaryData.branch_on(fTree);
   // TPG info
-  fTree->Branch("n_TPs", &fn_TPs, "n_TPs/i");
-  fTree->Branch("n_noise_TPs_X", &fn_noise_TPs_X, "n_noise_TPs_X/i");
-  fTree->Branch("n_noise_TPs_U", &fn_noise_TPs_U, "n_noise_TPs_U/i");
-  fTree->Branch("n_noise_TPs_V", &fn_noise_TPs_V, "n_noise_TPs_V/i");
+  // fTree->Branch("n_TPs", &fn_TPs, "n_TPs/i");
+  // fTree->Branch("n_noise_TPs_X", &fn_noise_TPs_X, "n_noise_TPs_X/i");
+  // fTree->Branch("n_noise_TPs_U", &fn_noise_TPs_U, "n_noise_TPs_U/i");
+  // fTree->Branch("n_noise_TPs_V", &fn_noise_TPs_V, "n_noise_TPs_V/i");
 
-  fTree->Branch("n_signal_TPs_X", &fn_signal_TPs_X, "n_signal_TPs_X/i");
-  fTree->Branch("n_signal_TPs_U", &fn_signal_TPs_U, "n_signal_TPs_U/i");
-  fTree->Branch("n_signal_TPs_V", &fn_signal_TPs_V, "n_signal_TPs_V/i");  
+  // fTree->Branch("n_signal_TPs_X", &fn_signal_TPs_X, "n_signal_TPs_X/i");
+  // fTree->Branch("n_signal_TPs_U", &fn_signal_TPs_U, "n_signal_TPs_U/i");
+  // fTree->Branch("n_signal_TPs_V", &fn_signal_TPs_V, "n_signal_TPs_V/i");  
 
 
-  fTree->Branch("totQ_X", &total_charge_X, "totQ_X/d");
-  fTree->Branch("totQ_U", &total_charge_U, "totQ_U/d");
-  fTree->Branch("totQ_V", &total_charge_V, "totQ_V/d");
+  // fTree->Branch("totQ_X", &total_charge_X, "totQ_X/d");
+  // fTree->Branch("totQ_U", &total_charge_U, "totQ_U/d");
+  // fTree->Branch("totQ_V", &total_charge_V, "totQ_V/d");
 
-  fTree->Branch("detQ_X", &detected_charge_X, "detQ_X/d");
-  fTree->Branch("detQ_U", &detected_charge_U, "detQ_U/d");
-  fTree->Branch("detQ_V", &detected_charge_V, "detQ_V/d");
+  // fTree->Branch("detQ_X", &detected_charge_X, "detQ_X/d");
+  // fTree->Branch("detQ_U", &detected_charge_U, "detQ_U/d");
+  // fTree->Branch("detQ_V", &detected_charge_V, "detQ_V/d");
 
 
   //TP info
   if (fSaveTPs){ 
-    fTree->Branch("TP_channel", &fTP_channels);
-    fTree->Branch("TP_startT", &fTP_startT);
-    fTree->Branch("TP_peakT", &fTP_peakT);
-    fTree->Branch("TP_TOT", &fTP_TOT);
-    fTree->Branch("TP_SADC", &fTP_SADC);
-    fTree->Branch("TP_peakADC", &fTP_peakADC);
-    fTree->Branch("TP_plane", &fTP_plane);
-    fTree->Branch("TP_TPC", &fTP_TPC);
-    fTree->Branch("TP_trueX", &fTP_trueX);
-    fTree->Branch("TP_trueY", &fTP_trueY);
-    fTree->Branch("TP_trueZ", &fTP_trueZ);
-    fTree->Branch("TP_signal", &fTP_signal);  
+    fTPsData.branch_on(fTree);
+    // fTree->Branch("TP_channel", &fTP_channels);
+    // fTree->Branch("TP_startT", &fTP_startT);
+    // fTree->Branch("TP_peakT", &fTP_peakT);
+    // fTree->Branch("TP_TOT", &fTP_TOT);
+    // fTree->Branch("TP_SADC", &fTP_SADC);
+    // fTree->Branch("TP_peakADC", &fTP_peakADC);
+    // fTree->Branch("TP_plane", &fTP_plane);
+    // fTree->Branch("TP_TPC", &fTP_TPC);
+    // fTree->Branch("TP_trueX", &fTP_trueX);
+    // fTree->Branch("TP_trueY", &fTP_trueY);
+    // fTree->Branch("TP_trueZ", &fTP_trueZ);
+    // fTree->Branch("TP_signal", &fTP_signal);  
   }
 
 
@@ -272,24 +522,69 @@ void duneana::TPValTreeWriter::beginJob()
 
 
   //G4 info
-  fTree->Branch("nParticles",&fnParticles,"nParticles/i"); 
-  fTree->Branch("TrackId",&fTrackId);
-  fTree->Branch("Mother",&fMother);
-  fTree->Branch("Pdg",&fPdg);
-  fTree->Branch("Eng",&fEng);
-  fTree->Branch("Ekin",&fEkin);
-  fTree->Branch("Mass",&fMass);
-  fTree->Branch("P",&fP);
-  fTree->Branch("Px",&fPx);
-  fTree->Branch("Py",&fPy);
-  fTree->Branch("Pz",&fPz);
-  fTree->Branch("startX",&fstartX);
-  fTree->Branch("startY",&fstartY);
-  fTree->Branch("startZ",&fstartZ);
-  fTree->Branch("endX",&fendX);
-  fTree->Branch("endY",&fendY);
-  fTree->Branch("endZ",&fendZ);
+  // fTree->Branch("nParticles",&fnParticles,"nParticles/i"); 
+  // fTree->Branch("TrackId",&fTrackId);
+  // fTree->Branch("Mother",&fMother);
+  // fTree->Branch("Pdg",&fPdg);
+  // fTree->Branch("Eng",&fEng);
+  // fTree->Branch("Ekin",&fEkin);
+  // fTree->Branch("Mass",&fMass);
+  // fTree->Branch("P",&fP);
+  // fTree->Branch("Px",&fPx);
+  // fTree->Branch("Py",&fPy);
+  // fTree->Branch("Pz",&fPz);
+  // fTree->Branch("startX",&fstartX);
+  // fTree->Branch("startY",&fstartY);
+  // fTree->Branch("startZ",&fstartZ);
+  // fTree->Branch("endX",&fendX);
+  // fTree->Branch("endY",&fendY);
+  // fTree->Branch("endZ",&fendZ);
+  fMcTruthData.branch_on(fMcTree);
 
+  //G4 info
+
+  fEventData.branch_on(fMcTree);
+  fMcTruthData.branch_on(fMcTree);
+
+  // TODO: add if statement?
+  // fMcTree->Branch("event",&fEvent,"event/i");
+  // fMcTree->Branch("run",&fRun,"run/i");
+  // fMcTree->Branch("subrun",&fSubRun,"subrun/i");
+
+  // fMcTree->Branch("nParticles",&fnParticles,"nParticles/i"); 
+  // fMcTree->Branch("TrackId",&fTrackId);
+  // fMcTree->Branch("Mother",&fMother);
+  // fMcTree->Branch("Pdg",&fPdg);
+  // fMcTree->Branch("Eng",&fEng);
+  // fMcTree->Branch("Ekin",&fEkin);
+  // fMcTree->Branch("Mass",&fMass);
+  // fMcTree->Branch("P",&fP);
+  // fMcTree->Branch("Px",&fPx);
+  // fMcTree->Branch("Py",&fPy);
+  // fMcTree->Branch("Pz",&fPz);
+  // fMcTree->Branch("startX",&fstartX);
+  // fMcTree->Branch("startY",&fstartY);
+  // fMcTree->Branch("startZ",&fstartZ);
+  // fMcTree->Branch("endX",&fendX);
+  // fMcTree->Branch("endY",&fendY);
+  // fMcTree->Branch("endZ",&fendZ);  
+
+  fEventData.branch_on(fQTree);
+  fIDEsData.branch_on(fQTree);
+
+  // fQTree->Branch("event",&fEvent,"event/i");
+  // fQTree->Branch("run",&fRun,"run/i");
+  // fQTree->Branch("subrun",&fSubRun,"subrun/i");
+
+  // fQTree->Branch("nIDEs",&fnIDEs,"nIDEs/i");
+  // fQTree->Branch("channel",&fIDE_channel);  
+  // fQTree->Branch("time",&fIDE_time);  
+  // fQTree->Branch("TrackId",&fIDE_track_id);  
+  // fQTree->Branch("nElectrons",&fIDE_numElectrons);  
+  // fQTree->Branch("energy",&fIDE_energy);  
+  // fQTree->Branch("x",&fIDE_x);  
+  // fQTree->Branch("y",&fIDE_y);  
+  // fQTree->Branch("z",&fIDE_z);  
 
   std::cout << ">>>>>>>>>>>>>>>>> Saving detector settings" << std::endl;
   auto const& geo = art::ServiceHandle<geo::Geometry>();
@@ -301,13 +596,18 @@ void duneana::TPValTreeWriter::beginJob()
   n->Write();
 
 }
-void duneana::TPValTreeWriter::analyze(art::Event const& e)
-{
+
+void TPValTreeWriter::analyze(art::Event const& e) {
   ResetVariables();  // initialise/reset all variables
 
-  fRun = e.run();
-  fSubRun = e.subRun();
-  fEvent = e.id().event();
+  // fRun = e.run();
+  // fSubRun = e.subRun();
+  // fEvent = e.id().event();
+
+  fEventData.event = e.id().event();
+  fEventData.run = e.run();
+  fEventData.subrun = e.subRun();
+
 
   // services 
   art::ServiceHandle<geo::Geometry> geo;
@@ -329,18 +629,20 @@ void duneana::TPValTreeWriter::analyze(art::Event const& e)
     for (const auto& tdcide : tdcidemap) {
       for (const auto& ide : tdcide.second) {
         if (plane == geo::kW) {
-          total_charge_X += ide.numElectrons;
+          // total_charge_X += ide.numElectrons;
+          fTPSummaryData.total_charge_X += ide.numElectrons;
         }
         else if (plane == geo::kU) {
-          total_charge_U += ide.numElectrons;
+          // total_charge_U += ide.numElectrons;
+          fTPSummaryData.total_charge_U += ide.numElectrons;
         }
         else if (plane == geo::kV) {
-          total_charge_V += ide.numElectrons;
+          // total_charge_V += ide.numElectrons;
+          fTPSummaryData.total_charge_V += ide.numElectrons;
         }
       }
     }
   }
-
 
   if (fSaveTPs){
 
@@ -348,7 +650,8 @@ void duneana::TPValTreeWriter::analyze(art::Event const& e)
     auto tpHandle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
     // auto prov = tpHandle.provenance();
     auto const& tps = *tpHandle;
-    fn_TPs = tps.size();
+    // fn_TPs = tps.size();
+    fTPSummaryData.num_TPs = tps.size();
 
     for (const auto& tp : tps) {
       auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(tp.channel)).at(0).Plane;
@@ -392,9 +695,23 @@ void duneana::TPValTreeWriter::analyze(art::Event const& e)
       // If there are associated IDEs, save the true coordinates
       if (!ides.empty()) {
 
-        if (plane == geo::kW) fn_signal_TPs_X++;
-        else if (plane == geo::kU) fn_signal_TPs_U++;
-        else if (plane == geo::kV) fn_signal_TPs_V++;
+        switch (plane){
+          case geo::kW:
+            fTPSummaryData.num_signal_TPs_X++;
+            break;
+          case geo::kU:
+            fTPSummaryData.num_signal_TPs_U++;
+            break;
+          case geo::kV:
+            fTPSummaryData.num_signal_TPs_V++;
+            break;
+          default:
+            break;
+        }
+
+        // if (plane == geo::kW) fn_signal_TPs_X++;
+        // else if (plane == geo::kU) fn_signal_TPs_U++;
+        // else if (plane == geo::kV) fn_signal_TPs_V++;
 
         // Loop over detected IDEs and avoid double-counting using a set
         for (const sim::IDE* ide_ptr : ides) {
@@ -403,40 +720,57 @@ void duneana::TPValTreeWriter::analyze(art::Event const& e)
             float ide_numElectrons = ide_ptr->numElectrons;
 
             if (plane == geo::kW) {
-              detected_charge_X += ide_numElectrons;
+              // detected_charge_X += ide_numElectrons;
+              fTPSummaryData.detected_charge_X += ide_numElectrons;
             } else if (plane == geo::kU) {
-              detected_charge_U += ide_numElectrons;
+              // detected_charge_U += ide_numElectrons;
+              fTPSummaryData.detected_charge_U += ide_numElectrons;
             } else if (plane == geo::kV) {
-              detected_charge_V += ide_numElectrons;
+              // detected_charge_V += ide_numElectrons;
+              fTPSummaryData.detected_charge_V += ide_numElectrons;
             }
           }
         }
         std::vector<double> xyz = bt_serv->SimIDEsToXYZ(ides);
-        fTP_trueX.push_back(xyz[0]);
-        fTP_trueY.push_back(xyz[1]);
-        fTP_trueZ.push_back(xyz[2]);
-        fTP_signal.push_back(1);
+        fTPsData.trueX.push_back(xyz[0]);
+        fTPsData.trueY.push_back(xyz[1]);
+        fTPsData.trueZ.push_back(xyz[2]);
+        fTPsData.signal.push_back(1);
       } else {
+
         // If no IDEs, count as noise TP
-        if (plane == geo::kW) fn_noise_TPs_X++;
-        else if (plane == geo::kU) fn_noise_TPs_U++;
-        else if (plane == geo::kV) fn_noise_TPs_V++;
+        switch (plane){
+          case geo::kW:
+            fTPSummaryData.num_noise_TPs_X++;
+            break;
+          case geo::kU:
+            fTPSummaryData.num_noise_TPs_U++;
+            break;
+          case geo::kV:
+            fTPSummaryData.num_noise_TPs_V++;
+            break;
+          default:
+            break;
+        }
+        // if (plane == geo::kW) fTPSummaryData.n_noise_TPs_X++;
+        // else if (plane == geo::kU) fTPSummaryData.n_noise_TPs_U++;
+        // else if (plane == geo::kV) fTPSummaryData.n_noise_TPs_V++;
         
-        fTP_signal.push_back(0);
-        fTP_trueX.push_back(-1);
-        fTP_trueY.push_back(-1);
-        fTP_trueZ.push_back(-1);
+        fTPsData.signal.push_back(0);
+        fTPsData.trueX.push_back(-1);
+        fTPsData.trueY.push_back(-1);
+        fTPsData.trueZ.push_back(-1);
         
       }
       // Store TP info 
-      fTP_channels.push_back(tp.channel);
-      fTP_startT.push_back(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS);
-      fTP_peakT.push_back((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS));
-      fTP_TOT.push_back(tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS);
-      fTP_SADC.push_back(tp.adc_integral);
-      fTP_peakADC.push_back(tp.adc_peak);
-      fTP_plane.push_back(plane);
-      fTP_TPC.push_back(wireReadout.ROPtoTPCs(wireReadout.ChannelToROP(tp.channel)).at(0).TPC);
+      fTPsData.channels.push_back(tp.channel);
+      fTPsData.startT.push_back(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS);
+      fTPsData.peakT.push_back((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS));
+      fTPsData.TOT.push_back(tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS);
+      fTPsData.SADC.push_back(tp.adc_integral);
+      fTPsData.peakADC.push_back(tp.adc_peak);
+      fTPsData.plane.push_back(plane);
+      fTPsData.TPC.push_back(wireReadout.ROPtoTPCs(wireReadout.ChannelToROP(tp.channel)).at(0).TPC);
     }
   }
 
@@ -450,7 +784,8 @@ void duneana::TPValTreeWriter::analyze(art::Event const& e)
     if (mc_truth.isValid()){
       for (const auto& truth : *mc_truth) {
 
-        fnParticles = truth.NParticles();    
+        // fnParticles = truth.NParticles();    
+        fMcTruthData.num_particles = truth.NParticles();    
 
         if ( (fSaveNeutrino) && (truth.NeutrinoSet()) ){
           const simb::MCNeutrino& nu = truth.GetNeutrino();
@@ -477,36 +812,59 @@ void duneana::TPValTreeWriter::analyze(art::Event const& e)
           const simb::MCParticle& trueParticle = truth.GetParticle(iPartc);
 
           float Ekin = (trueParticle.E() - trueParticle.Mass())*1000;//in MeV
-          fTrackId.push_back( trueParticle.TrackId());
-          fMother.push_back( trueParticle.Mother());
-          fEng.push_back( trueParticle.E() );
-          fPdg.push_back( trueParticle.PdgCode());
-          fEkin.push_back( Ekin ); 
-          fMass.push_back( trueParticle.Mass() );
-          fP.push_back( trueParticle.P()) ;
-          fPx.push_back( trueParticle.Px());
-          fPy.push_back( trueParticle.Py());
-          fPz.push_back( trueParticle.Pz());
-          fstartX.push_back( trueParticle.Vx());
-          fstartY.push_back( trueParticle.Vy());
-          fstartZ.push_back( trueParticle.Vz());
-          fendX.push_back( trueParticle.EndPosition()[0]);
-          fendY.push_back( trueParticle.EndPosition()[1]);
-          fendZ.push_back( trueParticle.EndPosition()[2]);
+          fMcTruthData.TrackId.push_back( trueParticle.TrackId());
+          fMcTruthData.Mother.push_back( trueParticle.Mother());
+          fMcTruthData.Eng.push_back( trueParticle.E() );
+          fMcTruthData.Pdg.push_back( trueParticle.PdgCode());
+          fMcTruthData.Ekin.push_back( Ekin ); 
+          fMcTruthData.Mass.push_back( trueParticle.Mass() );
+          fMcTruthData.P.push_back( trueParticle.P()) ;
+          fMcTruthData.Px.push_back( trueParticle.Px());
+          fMcTruthData.Py.push_back( trueParticle.Py());
+          fMcTruthData.Pz.push_back( trueParticle.Pz());
+          fMcTruthData.startX.push_back( trueParticle.Vx());
+          fMcTruthData.startY.push_back( trueParticle.Vy());
+          fMcTruthData.startZ.push_back( trueParticle.Vz());
+          fMcTruthData.endX.push_back( trueParticle.EndPosition()[0]);
+          fMcTruthData.endY.push_back( trueParticle.EndPosition()[1]);
+          fMcTruthData.endZ.push_back( trueParticle.EndPosition()[2]);
         }
       }
     }
   }
+
+  // Process the SimChannels just once
+  for (const sim::SimChannel &sc : *simchannels) {
+    auto tdcidemap = sc.TDCIDEMap();
+
+    // Sum charge for each plane
+    for (const auto& [t, tdcide] : tdcidemap) {
+      for (const auto& ide : tdcide) {
+          fIDEsData.channel.push_back(sc.Channel());
+          fIDEsData.time.push_back(t);
+          fIDEsData.track_id.push_back(ide.trackID);
+          fIDEsData.numElectrons.push_back(ide.numElectrons);
+          fIDEsData.energy.push_back(ide.energy);
+          fIDEsData.x.push_back(ide.x);
+          fIDEsData.y.push_back(ide.y);
+          fIDEsData.z.push_back(ide.z);
+      }
+      fIDEsData.entries += tdcide.size();
+    }
+
+
+  }
+
+
   fTree->Fill();
-  // if (fSaveRawDigit){
-    // fRawDigisTree->Fill();
-  // }
+  fMcTree->Fill();
+  fQTree->Fill();
 
 }
 
 
 //TP - ide matching based on hit start and end times rather than peak ADC time 
-std::vector<const sim::IDE*> duneana::TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& hit) const
+std::vector<const sim::IDE*> TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& hit) const
 {
   std::vector<const sim::IDE*> retVec;
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
@@ -515,11 +873,26 @@ std::vector<const sim::IDE*> duneana::TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit
   //need to introduce an offset for this effect to be properly accounted for 
   int offset = 0;
 
-  if (hit.View() == geo::kU) offset = foffsetU; //fcl configurable offset for induction TPs 
-  else if (hit.View() == geo::kV) offset = foffsetV;  
+  // if (hit.View() == geo::kU) offset = foffsetU; //fcl configurable offset for induction TPs 
+  // else if (hit.View() == geo::kV) offset = foffsetV;  
+
+  switch (hit.View()) {
+    case geo::kU:
+      offset = foffsetU;
+      break;
+    case geo::kV:
+      offset = foffsetV;
+      break;
+    case geo::kW:
+      offset = foffsetX;
+      break;
+    default:
+      break;
+  }
+
 
   // Adjust the start and end time based on the hit, this may need to be expanded or modified
-  int start_tdc = hit.StartTick(); //clockData.TPCTick2TDC(hit.PeakTimeMinusRMS(fHitTimeRMS));
+  int start_tdc = hit.StartTick() + offset; //clockData.TPCTick2TDC(hit.PeakTimeMinusRMS(fHitTimeRMS));
   int end_tdc = hit.EndTick() + offset;//clockData.TPCTick2TDC(hit.PeakTimePlusRMS(fHitTimeRMS));
 
   // Ensure no negative TDC values
@@ -570,22 +943,20 @@ std::vector<const sim::IDE*> duneana::TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit
 
 
 
-void duneana::TPValTreeWriter::ResetVariables()
+void TPValTreeWriter::ResetVariables()
 {
-  fEvent = fRun = fSubRun = -1; 
-  fn_TPs = -1; 
+  // fEvent = fRun = fSubRun = -1; 
+  // fn_TPs = -1; 
 
 
-  total_charge_X = total_charge_U = total_charge_V = 0; 
+  // total_charge_X = total_charge_U = total_charge_V = 0; 
 
 
-  detected_charge_X = detected_charge_U = detected_charge_V = 0; 
+  // detected_charge_X = detected_charge_U = detected_charge_V = 0; 
 
-  //initialise number of noise and signal TPs for this event 
-  fn_noise_TPs_X = fn_noise_TPs_U = fn_noise_TPs_V =  0;
-  fn_signal_TPs_X = fn_signal_TPs_U = fn_signal_TPs_V =  0;
-
-  // fADCsHistogramByPlane->Clear();
+  // //initialise number of noise and signal TPs for this event 
+  // fn_noise_TPs_X = fn_noise_TPs_U = fn_noise_TPs_V =  0;
+  // fn_signal_TPs_X = fn_signal_TPs_U = fn_signal_TPs_V =  0;
 
   fTP_channels.clear(); 
   fTP_startT.clear();
@@ -615,24 +986,43 @@ void duneana::TPValTreeWriter::ResetVariables()
   fNuE.clear();
 
 
-  // GEANT4 info
-  fnParticles = 0;
-  fTrackId.clear();
-  fMother.clear();
-  fEng.clear();
-  fEkin.clear();
-  fMass.clear();
-  fPdg.clear();
-  fP.clear();
-  fPx.clear();
-  fPy.clear();
-  fPz.clear();
-  fstartX.clear();
-  fstartY.clear();
-  fstartZ.clear();
-  fendX.clear();
-  fendY.clear();
-  fendZ.clear();
+  // // GEANT4 info
+  // fnParticles = 0;
+  // fTrackId.clear();
+  // fMother.clear();
+  // fEng.clear();
+  // fEkin.clear();
+  // fMass.clear();
+  // fPdg.clear();
+  // fP.clear();
+  // fPx.clear();
+  // fPy.clear();
+  // fPz.clear();
+  // fstartX.clear();
+  // fstartY.clear();
+  // fstartZ.clear();
+  // fendX.clear();
+  // fendY.clear();
+  // fendZ.clear();
+
+
+  // fnIDEs = 0;
+  // fIDE_channel.clear();
+  // fIDE_time.clear();
+  // fIDE_track_id.clear();
+  // fIDE_numElectrons.clear();
+  // fIDE_energy.clear();
+  // fIDE_x.clear();
+  // fIDE_y.clear();
+  // fIDE_z.clear();
+
+
+  fEventData.clear();
+  fMcTruthData.clear();
+  fIDEsData.clear();
+  fTPSummaryData.clear();
+  fTPsData.clear();
+}
 
 }
 
