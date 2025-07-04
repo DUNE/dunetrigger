@@ -323,7 +323,6 @@ private:
   int fADC_SAMPLING_RATE_IN_DTS; // DTS time ticks between adc samples
 
   // Producer module, configurable from fhicl
-  // art::InputTag fRawDigitLabel;
   art::InputTag fTPLabel;
   art::InputTag fGenLabel; //generator label for "signal" particles
   std::string fSimChanLabel; // sim channel label
@@ -342,42 +341,6 @@ private:
   TTree* fMcTree; 
   TTree* fQTree; 
 
-  // int fEvent, fRun, fSubRun;
-  // int fn_TPs; 
-  // int fn_noise_TPs_X; 
-  // int fn_noise_TPs_U; 
-  // int fn_noise_TPs_V; 
-
-  // int fn_signal_TPs_X;
-  // int fn_signal_TPs_U;
-  // int fn_signal_TPs_V;
-
-  // //total charge for the event based on  #electrons at the readout plane
-  // double total_charge_X;
-  // double total_charge_U;
-  // double total_charge_V; 
-
-  // //charge of IDEs that were detected via hit finding  for the event 
-  // double detected_charge_X;
-  // double detected_charge_U;
-  // double detected_charge_V;
-
-
-  // Vectors for storing Trigger Primitive (TP) data 
-  std::vector<uint32_t> fTP_channels;
-  std::vector<uint64_t> fTP_startT; 
-  std::vector<uint64_t> fTP_peakT; 
-  std::vector<uint64_t> fTP_TOT; 
-  std::vector<uint32_t> fTP_SADC;
-  std::vector<uint16_t> fTP_peakADC; 
-  std::vector<int>      fTP_plane;
-  std::vector<int>      fTP_TPC;
-  std::vector<int>      fTP_trueX;
-  std::vector<int>      fTP_trueY;
-  std::vector<int>      fTP_trueZ;
-  std::vector<int>      fTP_signal;
-
-
   //Geant/truth info
   std::vector<int> fNuPDG;
   std::vector<int> fNuCCNC;
@@ -390,36 +353,6 @@ private:
   std::vector<float> fNuPz;
   std::vector<float> fNuP;
   std::vector<float> fNuE;
-
-
-  // Monte carlo truth information
-  // unsigned int fnParticles; //total number of geant particles 
-  // std::vector<int>     fTrackId;
-  // std::vector<float>   fMother; 
-  // std::vector<float>   fEng;
-  // std::vector<float>   fEkin;
-  // std::vector<float>   fMass;
-  // std::vector<int>     fPdg;
-  // std::vector<float>   fP;
-  // std::vector<float>   fPx;
-  // std::vector<float>   fPy;
-  // std::vector<float>   fPz;
-  // std::vector<double>  fstartX;
-  // std::vector<double>  fstartY;
-  // std::vector<double>  fstartZ;
-  // std::vector<double>  fendX;
-  // std::vector<double>  fendY;
-  // std::vector<double>  fendZ;
-
-  // unsigned int fnIDEs; //total number of geant particles 
-  // std::vector<uint32_t> fIDE_channel;
-  // std::vector<float> fIDE_time;
-  // std::vector<int> fIDE_track_id;
-  // std::vector<float> fIDE_numElectrons;
-  // std::vector<float> fIDE_energy;
-  // std::vector<float> fIDE_x;
-  // std::vector<float> fIDE_y;
-  // std::vector<float> fIDE_z;
 
 
   EventDataBuffer fEventData;
@@ -462,46 +395,12 @@ void TPValTreeWriter::beginJob()
   
 
   fEventData.branch_on(fTree);
-  // fTree->Branch("event",&fEvent,"event/i");
-  // fTree->Branch("run",&fRun,"run/i");
-  // fTree->Branch("subrun",&fSubRun,"subrun/i");
 
   fTPSummaryData.branch_on(fTree);
-  // TPG info
-  // fTree->Branch("n_TPs", &fn_TPs, "n_TPs/i");
-  // fTree->Branch("n_noise_TPs_X", &fn_noise_TPs_X, "n_noise_TPs_X/i");
-  // fTree->Branch("n_noise_TPs_U", &fn_noise_TPs_U, "n_noise_TPs_U/i");
-  // fTree->Branch("n_noise_TPs_V", &fn_noise_TPs_V, "n_noise_TPs_V/i");
-
-  // fTree->Branch("n_signal_TPs_X", &fn_signal_TPs_X, "n_signal_TPs_X/i");
-  // fTree->Branch("n_signal_TPs_U", &fn_signal_TPs_U, "n_signal_TPs_U/i");
-  // fTree->Branch("n_signal_TPs_V", &fn_signal_TPs_V, "n_signal_TPs_V/i");  
-
-
-  // fTree->Branch("totQ_X", &total_charge_X, "totQ_X/d");
-  // fTree->Branch("totQ_U", &total_charge_U, "totQ_U/d");
-  // fTree->Branch("totQ_V", &total_charge_V, "totQ_V/d");
-
-  // fTree->Branch("detQ_X", &detected_charge_X, "detQ_X/d");
-  // fTree->Branch("detQ_U", &detected_charge_U, "detQ_U/d");
-  // fTree->Branch("detQ_V", &detected_charge_V, "detQ_V/d");
-
 
   //TP info
   if (fSaveTPs){ 
     fTPsData.branch_on(fTree);
-    // fTree->Branch("TP_channel", &fTP_channels);
-    // fTree->Branch("TP_startT", &fTP_startT);
-    // fTree->Branch("TP_peakT", &fTP_peakT);
-    // fTree->Branch("TP_TOT", &fTP_TOT);
-    // fTree->Branch("TP_SADC", &fTP_SADC);
-    // fTree->Branch("TP_peakADC", &fTP_peakADC);
-    // fTree->Branch("TP_plane", &fTP_plane);
-    // fTree->Branch("TP_TPC", &fTP_TPC);
-    // fTree->Branch("TP_trueX", &fTP_trueX);
-    // fTree->Branch("TP_trueY", &fTP_trueY);
-    // fTree->Branch("TP_trueZ", &fTP_trueZ);
-    // fTree->Branch("TP_signal", &fTP_signal);  
   }
 
 
@@ -521,24 +420,6 @@ void TPValTreeWriter::beginJob()
   }
 
 
-  //G4 info
-  // fTree->Branch("nParticles",&fnParticles,"nParticles/i"); 
-  // fTree->Branch("TrackId",&fTrackId);
-  // fTree->Branch("Mother",&fMother);
-  // fTree->Branch("Pdg",&fPdg);
-  // fTree->Branch("Eng",&fEng);
-  // fTree->Branch("Ekin",&fEkin);
-  // fTree->Branch("Mass",&fMass);
-  // fTree->Branch("P",&fP);
-  // fTree->Branch("Px",&fPx);
-  // fTree->Branch("Py",&fPy);
-  // fTree->Branch("Pz",&fPz);
-  // fTree->Branch("startX",&fstartX);
-  // fTree->Branch("startY",&fstartY);
-  // fTree->Branch("startZ",&fstartZ);
-  // fTree->Branch("endX",&fendX);
-  // fTree->Branch("endY",&fendY);
-  // fTree->Branch("endZ",&fendZ);
   fMcTruthData.branch_on(fTree);
 
   //G4 info
@@ -546,46 +427,11 @@ void TPValTreeWriter::beginJob()
   fEventData.branch_on(fMcTree);
   fMcTruthData.branch_on(fMcTree);
 
-  // TODO: add if statement?
-  // fMcTree->Branch("event",&fEvent,"event/i");
-  // fMcTree->Branch("run",&fRun,"run/i");
-  // fMcTree->Branch("subrun",&fSubRun,"subrun/i");
-
-  // fMcTree->Branch("nParticles",&fnParticles,"nParticles/i"); 
-  // fMcTree->Branch("TrackId",&fTrackId);
-  // fMcTree->Branch("Mother",&fMother);
-  // fMcTree->Branch("Pdg",&fPdg);
-  // fMcTree->Branch("Eng",&fEng);
-  // fMcTree->Branch("Ekin",&fEkin);
-  // fMcTree->Branch("Mass",&fMass);
-  // fMcTree->Branch("P",&fP);
-  // fMcTree->Branch("Px",&fPx);
-  // fMcTree->Branch("Py",&fPy);
-  // fMcTree->Branch("Pz",&fPz);
-  // fMcTree->Branch("startX",&fstartX);
-  // fMcTree->Branch("startY",&fstartY);
-  // fMcTree->Branch("startZ",&fstartZ);
-  // fMcTree->Branch("endX",&fendX);
-  // fMcTree->Branch("endY",&fendY);
-  // fMcTree->Branch("endZ",&fendZ);  
 
   fEventData.branch_on(fQTree);
   fIDEsData.branch_on(fQTree);
 
-  // fQTree->Branch("event",&fEvent,"event/i");
-  // fQTree->Branch("run",&fRun,"run/i");
-  // fQTree->Branch("subrun",&fSubRun,"subrun/i");
-
-  // fQTree->Branch("nIDEs",&fnIDEs,"nIDEs/i");
-  // fQTree->Branch("channel",&fIDE_channel);  
-  // fQTree->Branch("time",&fIDE_time);  
-  // fQTree->Branch("TrackId",&fIDE_track_id);  
-  // fQTree->Branch("nElectrons",&fIDE_numElectrons);  
-  // fQTree->Branch("energy",&fIDE_energy);  
-  // fQTree->Branch("x",&fIDE_x);  
-  // fQTree->Branch("y",&fIDE_y);  
-  // fQTree->Branch("z",&fIDE_z);  
-
+  // Save detector settings
   std::cout << ">>>>>>>>>>>>>>>>> Saving detector settings" << std::endl;
   auto const& geo = art::ServiceHandle<geo::Geometry>();
 
@@ -600,9 +446,6 @@ void TPValTreeWriter::beginJob()
 void TPValTreeWriter::analyze(art::Event const& e) {
   ResetVariables();  // initialise/reset all variables
 
-  // fRun = e.run();
-  // fSubRun = e.subRun();
-  // fEvent = e.id().event();
 
   fEventData.event = e.id().event();
   fEventData.run = e.run();
@@ -615,7 +458,6 @@ void TPValTreeWriter::analyze(art::Event const& e) {
 
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-  //auto const clockData = art::ServiceHandle<detinfo::DetectorClocksService const>()->DataFor(e); 
 
   // Load the IDEs for the event to calculate total charge
   auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(fSimChanLabel);
@@ -629,15 +471,12 @@ void TPValTreeWriter::analyze(art::Event const& e) {
     for (const auto& tdcide : tdcidemap) {
       for (const auto& ide : tdcide.second) {
         if (plane == geo::kW) {
-          // total_charge_X += ide.numElectrons;
           fTPSummaryData.total_charge_X += ide.numElectrons;
         }
         else if (plane == geo::kU) {
-          // total_charge_U += ide.numElectrons;
           fTPSummaryData.total_charge_U += ide.numElectrons;
         }
         else if (plane == geo::kV) {
-          // total_charge_V += ide.numElectrons;
           fTPSummaryData.total_charge_V += ide.numElectrons;
         }
       }
@@ -650,7 +489,6 @@ void TPValTreeWriter::analyze(art::Event const& e) {
     auto tpHandle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
     // auto prov = tpHandle.provenance();
     auto const& tps = *tpHandle;
-    // fn_TPs = tps.size();
     fTPSummaryData.num_TPs = tps.size();
 
     for (const auto& tp : tps) {
@@ -709,10 +547,6 @@ void TPValTreeWriter::analyze(art::Event const& e) {
             break;
         }
 
-        // if (plane == geo::kW) fn_signal_TPs_X++;
-        // else if (plane == geo::kU) fn_signal_TPs_U++;
-        // else if (plane == geo::kV) fn_signal_TPs_V++;
-
         // Loop over detected IDEs and avoid double-counting using a set
         for (const sim::IDE* ide_ptr : ides) {
           if (processedIDEs.find(ide_ptr) == processedIDEs.end()) {
@@ -720,13 +554,10 @@ void TPValTreeWriter::analyze(art::Event const& e) {
             float ide_numElectrons = ide_ptr->numElectrons;
 
             if (plane == geo::kW) {
-              // detected_charge_X += ide_numElectrons;
               fTPSummaryData.detected_charge_X += ide_numElectrons;
             } else if (plane == geo::kU) {
-              // detected_charge_U += ide_numElectrons;
               fTPSummaryData.detected_charge_U += ide_numElectrons;
             } else if (plane == geo::kV) {
-              // detected_charge_V += ide_numElectrons;
               fTPSummaryData.detected_charge_V += ide_numElectrons;
             }
           }
@@ -752,9 +583,6 @@ void TPValTreeWriter::analyze(art::Event const& e) {
           default:
             break;
         }
-        // if (plane == geo::kW) fTPSummaryData.n_noise_TPs_X++;
-        // else if (plane == geo::kU) fTPSummaryData.n_noise_TPs_U++;
-        // else if (plane == geo::kV) fTPSummaryData.n_noise_TPs_V++;
         
         fTPsData.signal.push_back(0);
         fTPsData.trueX.push_back(-1);
@@ -873,9 +701,6 @@ std::vector<const sim::IDE*> TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& h
   //need to introduce an offset for this effect to be properly accounted for 
   int offset = 0;
 
-  // if (hit.View() == geo::kU) offset = foffsetU; //fcl configurable offset for induction TPs 
-  // else if (hit.View() == geo::kV) offset = foffsetV;  
-
   switch (hit.View()) {
     case geo::kU:
       offset = foffsetU;
@@ -945,33 +770,6 @@ std::vector<const sim::IDE*> TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& h
 
 void TPValTreeWriter::ResetVariables()
 {
-  // fEvent = fRun = fSubRun = -1; 
-  // fn_TPs = -1; 
-
-
-  // total_charge_X = total_charge_U = total_charge_V = 0; 
-
-
-  // detected_charge_X = detected_charge_U = detected_charge_V = 0; 
-
-  // //initialise number of noise and signal TPs for this event 
-  // fn_noise_TPs_X = fn_noise_TPs_U = fn_noise_TPs_V =  0;
-  // fn_signal_TPs_X = fn_signal_TPs_U = fn_signal_TPs_V =  0;
-
-  fTP_channels.clear(); 
-  fTP_startT.clear();
-  fTP_peakT.clear();
-  fTP_TOT.clear();
-  fTP_SADC.clear();
-  fTP_peakADC.clear();
-  fTP_plane.clear();
-  fTP_TPC.clear();
-  fTP_trueX.clear();
-  fTP_trueY.clear();
-  fTP_trueZ.clear();
-  fTP_signal.clear();
-
-
   //Neutrino info 
   fNuPDG.clear();
   fNuCCNC.clear();
@@ -984,38 +782,6 @@ void TPValTreeWriter::ResetVariables()
   fNuPz.clear();
   fNuP.clear();
   fNuE.clear();
-
-
-  // // GEANT4 info
-  // fnParticles = 0;
-  // fTrackId.clear();
-  // fMother.clear();
-  // fEng.clear();
-  // fEkin.clear();
-  // fMass.clear();
-  // fPdg.clear();
-  // fP.clear();
-  // fPx.clear();
-  // fPy.clear();
-  // fPz.clear();
-  // fstartX.clear();
-  // fstartY.clear();
-  // fstartZ.clear();
-  // fendX.clear();
-  // fendY.clear();
-  // fendZ.clear();
-
-
-  // fnIDEs = 0;
-  // fIDE_channel.clear();
-  // fIDE_time.clear();
-  // fIDE_track_id.clear();
-  // fIDE_numElectrons.clear();
-  // fIDE_energy.clear();
-  // fIDE_x.clear();
-  // fIDE_y.clear();
-  // fIDE_z.clear();
-
 
   fEventData.clear();
   fMcTruthData.clear();
