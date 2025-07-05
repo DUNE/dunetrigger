@@ -93,38 +93,15 @@ private:
   void ResetVariables();
 
   // Producer module, configurable from fhicl
-  art::InputTag fRawDigitLabel;
+  art::InputTag fRawDigitLabel; // raw digi label
+  std::string fSimChanLabel; // sim channel label
+
+  bool fSaveSignalWaveformsOnly;
 
   //ROOT tree for storing output information 
   TTree* fRawDigisTree;
 
   int fEvent, fRun, fSubRun;
-
-
-
-  unsigned int fnParticles; //total number of geant particles 
-  std::vector<int>     fTrackId;
-  std::vector<float>   fMother; 
-  std::vector<float>   fEng;
-  std::vector<float>   fEkin;
-  std::vector<float>   fMass;
-  std::vector<int>     fPdg;
-  std::vector<float>   fP;
-  std::vector<float>   fPx;
-  std::vector<float>   fPy;
-  std::vector<float>   fPz;
-  std::vector<double>  fstartX;
-  std::vector<double>  fstartY;
-  std::vector<double>  fstartZ;
-  std::vector<double>  fendX;
-  std::vector<double>  fendY;
-  std::vector<double>  fendZ;
-
-
-  // raw::RawDigit::ADCvector_t fWaveforms;
-  // std::map<raw::ChannelID_t, raw::RawDigit::ADCvector_t> fWaveforms;
-  // int fANumber; 
-
 
   TH2I* fADCsHistogramByPlane;
   TH1I* fADCsHistogramX;
@@ -132,16 +109,17 @@ private:
   TH1I* fADCsHistogramV;
 
   std::map<raw::ChannelID_t, raw::RawDigit::ADCvector_t> fWaveformsBuffer;
+  std::vector<unsigned int> fChannelsWithelectrons;
 
 };
 
 // -- Constructor --
 duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
-  : EDAnalyzer{p}
+  : EDAnalyzer{p},
+  fRawDigitLabel(p.get<art::InputTag>("rawdigit_tag", "tpcrawdecoder:daq")),
+  fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
+  fSaveSignalWaveformsOnly(p.get<bool>("SaveSignalOnly",false))
   {
-
-    fRawDigitLabel = p.get<art::InputTag>("rawdigit_tag"); // Get TP label from fcl file. 
-
   }
 
 
@@ -157,6 +135,14 @@ void duneana::RawDigitAna::beginJob()
 
   fRawDigisTree = tfs->make<TTree>("rawdigis_tree", "test_ttree");
 
+  fRawDigisTree->Branch("event",&fEvent,"event/i");
+  fRawDigisTree->Branch("run",&fRun,"run/i");
+  fRawDigisTree->Branch("subrun",&fSubRun,"subrun/i");
+
+  if (fSaveSignalWaveformsOnly) {
+    fRawDigisTree->Branch("chans_with_electrons", &fChannelsWithelectrons);
+  }
+
   art::ServiceHandle<geo::Geometry> pgeo;
   auto const& wire_readout = art::ServiceHandle<geo::WireReadout>()->Get();
 
@@ -166,10 +152,6 @@ void duneana::RawDigitAna::beginJob()
     std::vector<raw::ChannelID_t> channels;
 
     for (auto const& wire : wire_readout.Iterate<geo::WireID>(tpc.ID())) {
-
-        fRawDigisTree->Branch("event",&fEvent,"event/i");
-        fRawDigisTree->Branch("run",&fRun,"run/i");
-        fRawDigisTree->Branch("subrun",&fSubRun,"subrun/i");
 
         raw::ChannelID_t ch = wire_readout.PlaneWireToChannel(wire);
         channels.push_back(ch);
@@ -197,27 +179,51 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
 
+  auto simchans_handle = e.getValidHandle<std::vector<sim::SimChannel>>(fSimChanLabel);
+  
+  std::set<unsigned int> signal_chans;
+  for (const sim::SimChannel &sc : *simchans_handle) {
+
+    if (!sc.TDCIDEMap().empty())
+      signal_chans.insert(sc.Channel());
+  }
+  std::cout << signal_chans.size() << " channels with ides found in this event" << std::endl;
+
+  fChannelsWithelectrons.reserve(signal_chans.size());  // optional but avoids reallocations
+  std::copy(signal_chans.begin(), signal_chans.end(), std::back_inserter(fChannelsWithelectrons));
 
   auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(fRawDigitLabel);
   auto& digits_in =*digits_handle;
 
+  size_t counts(0);
+
+  std::cout << digits_in.size() << " Digits found in this event" << std::endl;
+
   for(auto&& digit: digits_in){
+
+    if ( counts % 1000 == 0) 
+      std::cout << " >>> " << counts << std::endl;
+    ++counts;
+
+    if ( fSaveSignalWaveformsOnly and !(signal_chans.find(digit.Channel()) != signal_chans.end()))
+      continue;
 
     auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(digit.Channel())).at(0).Plane;
     int plane_idx = -1;
     TH1I* plane_hist = 0x0;
     switch(plane) {
-      case geo::kW:
-        plane_idx = 2;
-        plane_hist = fADCsHistogramX;
-        break;
+
       case geo::kU:
         plane_hist = fADCsHistogramU;
-        plane_idx = 1;
+        plane_idx = 0;
         break;
       case geo::kV:
         plane_hist = fADCsHistogramV;
-        plane_idx = 0;
+        plane_idx = 1;
+        break;
+      case geo::kW:
+        plane_idx = 2;
+        plane_hist = fADCsHistogramX;
         break;
     }
 
@@ -238,9 +244,11 @@ void duneana::RawDigitAna::ResetVariables()
 {
   // Run information
   fEvent = fRun = fSubRun = -1; 
-
+  fChannelsWithelectrons.clear();
   // Waveforms
-  fWaveformsBuffer.clear();
+  for( auto& [ch, buffer] : fWaveformsBuffer  ) {
+    buffer.clear();
+  }
 
 }
 

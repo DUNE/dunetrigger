@@ -13,7 +13,7 @@ source:
 services:
 {
  @table::dunefd_services
-  TFileService: {fileName : "trigger_digits_waveforms.root"}
+  TFileService: {fileName : "trigger_digits_waves_%ifb.root"}
   Geometry:             @local::dunevd10kt_1x8x6_3view_30deg_geo
   AuxDetGeometry:       @local::dunevd10kt_1x8x6_3view_30deg_auxdet_geo
 }
@@ -25,6 +25,7 @@ physics:
   triggerana: {
    module_type: RawDigitAna
    rawdigit_tag: "tpcrawdecoder:daq" #input to TPG-> Raw Digits
+   SaveSignalOnly : true
    }
 }
   path0:     [triggerana]
