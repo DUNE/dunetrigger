@@ -312,6 +312,7 @@ public:
   
   void analyze(art::Event const& e) override;
   void beginJob() override;
+  void endJob() override;
  
 private:
 
@@ -327,14 +328,16 @@ private:
   art::InputTag fGenLabel; //generator label for "signal" particles
   std::string fSimChanLabel; // sim channel label
 
+  bool fFirstEvent;
+
   bool fSaveMC;
   bool fSaveNeutrino;
   bool fSaveTPs; 
   bool fSaveQs; 
 
-  int foffsetU; //offset for valid TP window for IDE matching (needed for induction sigs).  
-  int foffsetV; 
-  int foffsetX; 
+  int fOffsetU; //offset for valid TP window for IDE matching (needed for induction sigs).  
+  int fOffsetV; 
+  int fOffsetX; 
 
   //ROOT tree for storing output information 
   TTree* fTree; 
@@ -355,6 +358,8 @@ private:
   std::vector<float> fNuE;
 
 
+  json fInfo;
+
   EventDataBuffer fEventData;
   MCTruthDataBuffer fMcTruthData;
   IDEsDataBuffer fIDEsData;
@@ -369,14 +374,14 @@ TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
   fADC_SAMPLING_RATE_IN_DTS(p.get<int>("ADC_SAMPLING_RATE_IN_DTS",32)),
   fGenLabel(p.get<art::InputTag>("gen_tag")),
   fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
-  // fRawDigitLabel(p.get<std::string>("rawdigit_tag", "tpcrawdecoder:daq")),
+  fFirstEvent(true),
   fSaveMC(p.get<bool>("SaveMCInfo",true)), 
   fSaveNeutrino(p.get<bool>("SaveNeutrino",false)),
   fSaveTPs(p.get<bool>("SaveTPInfo",true)),
   fSaveQs(p.get<bool>("SaveQInfo",false)),
-  foffsetU(p.get<int>("U_window_end_offset",0)),
-  foffsetV(p.get<int>("V_window_end_offset",0)),
-  foffsetX(p.get<int>("X_window_end_offset",0))
+  fOffsetU(p.get<int>("U_window_offset",0)),
+  fOffsetV(p.get<int>("V_window_offset",0)),
+  fOffsetX(p.get<int>("X_window_offset",0))
   {
 
     if (fSaveTPs) {
@@ -435,18 +440,52 @@ void TPValTreeWriter::beginJob()
   std::cout << ">>>>>>>>>>>>>>>>> Saving detector settings" << std::endl;
   auto const& geo = art::ServiceHandle<geo::Geometry>();
 
-  json j;
-  j["detector_name"] = geo->DetectorName();
 
-  auto n = tfs->make<TNamed>("settings", j.dump().c_str());
+  // Geometry
+  fInfo["geo"] = {};
+  fInfo["geo"]["detector"] = geo->DetectorName();
+
+  // TPTree
+  fInfo["tptree"] = {};
+  fInfo["tptree"]["U_window_offset"] = fOffsetU;
+  fInfo["tptree"]["V_window_offset"] = fOffsetV;
+  fInfo["tptree"]["X_window_offset"] = fOffsetX;
+
+}
+
+
+void TPValTreeWriter::endJob() {
+
+  art::ServiceHandle<art::TFileService> tfs; 
+  auto n = tfs->make<TNamed>("info", fInfo.dump().c_str());
   n->Write();
 
 }
 
 void TPValTreeWriter::analyze(art::Event const& e) {
-  ResetVariables();  // initialise/reset all variables
 
+  // Save settings used to create the TPs into the output file from the provenance of the first event.
+  if (fSaveTPs & fFirstEvent) {
+    fFirstEvent = false;
 
+    auto tp_handle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
+
+    const auto& tpg_ps = tp_handle.provenance()->parameterSet();
+    std::cout << tpg_ps.to_indented_string() << std::endl;
+
+    const auto& tpg_cfg = tpg_ps.get<fhicl::ParameterSet>("tpalg");
+
+    fInfo["tpg"] = {};
+    fInfo["tpg"]["tool"] = tpg_cfg.get<std::string>("tool_type");
+    fInfo["tpg"]["threshold_tpg_plane0"] = tpg_cfg.get<int>("threshold_tpg_plane0");
+    fInfo["tpg"]["threshold_tpg_plane1"] = tpg_cfg.get<int>("threshold_tpg_plane1");
+    fInfo["tpg"]["threshold_tpg_plane2"] = tpg_cfg.get<int>("threshold_tpg_plane2");
+  }
+
+  // initialise/reset all variables
+  ResetVariables();  
+
+  // Save event variables
   fEventData.event = e.id().event();
   fEventData.run = e.run();
   fEventData.subrun = e.subRun();
@@ -486,9 +525,9 @@ void TPValTreeWriter::analyze(art::Event const& e) {
   if (fSaveTPs){
 
     // Process the Trigger Primitives
-    auto tpHandle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
-    // auto prov = tpHandle.provenance();
-    auto const& tps = *tpHandle;
+    auto tp_handle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
+
+    auto const& tps = *tp_handle;
     fTPSummaryData.num_TPs = tps.size();
 
     for (const auto& tp : tps) {
@@ -703,13 +742,13 @@ std::vector<const sim::IDE*> TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& h
 
   switch (hit.View()) {
     case geo::kU:
-      offset = foffsetU;
+      offset = fOffsetU;
       break;
     case geo::kV:
-      offset = foffsetV;
+      offset = fOffsetV;
       break;
     case geo::kW:
-      offset = foffsetX;
+      offset = fOffsetX;
       break;
     default:
       break;
