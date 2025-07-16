@@ -16,11 +16,20 @@ public:
     uint16_t channel;
   };
 
+  // use feault constructor
+  //
+
   // use default destructor
   virtual ~TPCChannelMap() noexcept = default;
 
   // this is the only function PlaneCoincidence uses
-  virtual uint get_plane_from_offline_channel(uint offchannel);
+  virtual uint get_plane_from_offline_channel(uint offchannel) = 0;
+
+  virtual uint get_element_id_from_offline_channel(uint offchannel) = 0;
+
+  virtual uint get_first_channel_on_plane(uint offchannel) = 0;
+
+  virtual uint get_nchannels_on_plane(uint offchannel) = 0;
 
   // going to define the rest of the interface (we can handle the
   // implementation later since it isn't strictly necessary for
@@ -41,7 +50,7 @@ public:
   // this is the exact default implementation used in detchannelmaps
   virtual std::string get_tpc_element_from_offline_channel(uint) { return ""; }
 
-  virtual std::optional<TPCCoords> get_crate_slot_fiber_chan_from_offline_channel(uint offchannel) = 0;
+  //virtual std::optional<TPCCoords> get_crate_slot_fiber_chan_from_offline_channel(uint offchannel) = 0;
 };
 
 // Makes a channel map given a mapname. Note that in this case the name is
