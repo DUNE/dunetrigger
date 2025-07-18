@@ -1,5 +1,6 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 
+add_subdirectory(triggeralgs)
 add_subdirectory(TPAlgTools)
 add_subdirectory(fcl)
 
