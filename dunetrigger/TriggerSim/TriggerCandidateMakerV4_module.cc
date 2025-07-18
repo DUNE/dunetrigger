@@ -34,26 +34,6 @@
 #include <string>
 #include <utility>
 
-namespace triggeralgs {
-struct ExtTriggerActivity : public TriggerActivity {
-  ExtTriggerActivity(const dunedaq::trgdataformats::TriggerActivityData &data) {
-    this->time_start = data.time_start;
-    this->time_end = data.time_end;
-    this->time_peak = data.time_peak;
-    this->time_activity = data.time_activity;
-    this->channel_start = data.channel_start;
-    this->channel_end = data.channel_end;
-    this->channel_peak = data.channel_peak;
-    this->adc_integral = data.adc_integral;
-    this->adc_peak = data.adc_peak;
-    this->detid = data.detid;
-    this->type = data.type;
-    this->algorithm = data.algorithm;
-    this->version = data.version;
-  }
-};
-} // namespace triggeralgs
-
 namespace dunetrigger {
 class TriggerCandidateMakerV4;
 }
@@ -187,10 +167,12 @@ void dunetrigger::TriggerCandidateMakerV4::produce(art::Event &e) {
   std::vector<triggeralgs::TriggerCandidate> produced_tcs = {};
 
   // process the input TAs
-  for (const auto &ta : input_tas) {
-    dunedaq::trgdataformats::TriggerActivityData ta_data = ta.second;
-    triggeralgs::ExtTriggerActivity ta_ext(ta_data);
-    (*alg)(ta_ext, produced_tcs);
+  for (const auto &ta_indexed : input_tas) {
+    dunedaq::trgdataformats::TriggerActivityData ta_data = ta_indexed.second;
+    triggeralgs::TriggerActivity curr_ta;
+    static_cast<dunedaq::trgdataformats::TriggerActivityData &>(curr_ta) =
+        ta_data;
+    (*alg)(curr_ta, produced_tcs);
   }
 
   // now we need to handle the associations
