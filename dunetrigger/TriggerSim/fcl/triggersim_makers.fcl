@@ -47,7 +47,7 @@ nmodules_dune10kt_1x2x2: 4  # 4 APAs in the middle
 
 tamakerTPC_ADCSimpleWindow:
   {
-    module_type: TriggerActivityMakerTPC
+    module_type: TriggerActivityMakerV4
     tp_tag: "tpmakerTPC"
     # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
     algorithm: "TriggerActivityMakerADCSimpleWindowPlugin" # another basic option is TriggerActivityMakerChannelAdjacencyPlugin
@@ -89,7 +89,7 @@ tcconfig_simplewindow:
 
 tcmakerTPC_ADCSimpleWindow:
   {
-    module_type: TriggerCandidateMakerTPC
+    module_type: TriggerCandidateMakerV4
     ta_tag: "tamakerTPC"
     algorithm: "TriggerCandidateMakerADCSimpleWindowPlugin"
     algconfig: @local::tcconfig_simplewindow

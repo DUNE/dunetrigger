@@ -1,10 +1,7 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       TriggerActivityMakerTPC
+// Class:       TriggerActivityMakerV4
 // Plugin Type: producer (Unknown Unknown)
-// File:        TriggerActivityMakerTPC_module.cc
-//
-// Generated at Tue Aug 13 11:03:40 2024 by ddrobner using cetskelgen
-// from cetlib version 3.18.02.
+// File:        TriggerActivityMakerV4_module.cc
 ////////////////////////////////////////////////////////////////////////
 
 #include "art/Framework/Core/EDProducer.h"
@@ -25,8 +22,8 @@
 
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
-#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivity.hpp"
-#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityFactory.hpp"
+#include "dunetrigger/TriggerSim/triggeralgs/v4/include/triggeralgs/TriggerActivity.hpp"
+#include "dunetrigger/TriggerSim/triggeralgs/v4/include/triggeralgs/TriggerActivityFactory.hpp"
 
 #include <larcoreobj/SimpleTypesAndConstants/RawTypes.h>
 #include <nlohmann/json.hpp>
@@ -37,7 +34,7 @@
 #include <utility>
 
 namespace dunetrigger {
-class TriggerActivityMakerTPC;
+class TriggerActivityMakerV4;
 typedef std::pair<readout::TPCsetID, geo::View_t> TAMakerScopeID_t;
 
 std::ostream &operator<<(std::ostream &os,
@@ -53,19 +50,19 @@ static TAMakerScopeID_t getTAScopeID(readout::ROPID &ropid,
 }
 } // namespace dunetrigger
 
-class dunetrigger::TriggerActivityMakerTPC : public art::EDProducer {
+class dunetrigger::TriggerActivityMakerV4 : public art::EDProducer {
 public:
-  explicit TriggerActivityMakerTPC(fhicl::ParameterSet const &p);
+  explicit TriggerActivityMakerV4(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
   // classes without bare pointers or other resource use.
 
   // Plugins should not be copied or assigned.
-  TriggerActivityMakerTPC(TriggerActivityMakerTPC const &) = delete;
-  TriggerActivityMakerTPC(TriggerActivityMakerTPC &&) = delete;
-  TriggerActivityMakerTPC &
-  operator=(TriggerActivityMakerTPC const &) = delete;
-  TriggerActivityMakerTPC &
-  operator=(TriggerActivityMakerTPC &&) = delete;
+  TriggerActivityMakerV4(TriggerActivityMakerV4 const &) = delete;
+  TriggerActivityMakerV4(TriggerActivityMakerV4 &&) = delete;
+  TriggerActivityMakerV4 &
+  operator=(TriggerActivityMakerV4 const &) = delete;
+  TriggerActivityMakerV4 &
+  operator=(TriggerActivityMakerV4 &&) = delete;
 
   void beginJob() override;
   void produce(art::Event &e) override;
@@ -139,7 +136,7 @@ private:
   }
 };
 
-dunetrigger::TriggerActivityMakerTPC::TriggerActivityMakerTPC(
+dunetrigger::TriggerActivityMakerV4::TriggerActivityMakerV4(
     fhicl::ParameterSet const &p)
     : EDProducer{p}, algname(p.get<std::string>("algorithm")),
       algconfig_plane0(p.get<fhicl::ParameterSet>("algconfig_plane0")),
@@ -160,7 +157,7 @@ dunetrigger::TriggerActivityMakerTPC::TriggerActivityMakerTPC(
   consumes<std::vector<TriggerPrimitive>>(tp_tag);
 }
 
-void dunetrigger::TriggerActivityMakerTPC::beginJob() {
+void dunetrigger::TriggerActivityMakerV4::beginJob() {
   // nice printout of channel mask
   if (verbosity >= Verbosity::kInfo) {
     std::cout << "Masked Channels:";
@@ -174,7 +171,7 @@ void dunetrigger::TriggerActivityMakerTPC::beginJob() {
   }
 }
 
-void dunetrigger::TriggerActivityMakerTPC::produce(art::Event &e) {
+void dunetrigger::TriggerActivityMakerV4::produce(art::Event &e) {
   // these things end up getting written about 5000 times, so let's do this here
   using dunedaq::trgdataformats::TriggerActivityData;
   using dunedaq::trgdataformats::TriggerPrimitive;
@@ -329,4 +326,4 @@ void dunetrigger::TriggerActivityMakerTPC::produce(art::Event &e) {
   e.put(std::move(tp_in_tas_assn_ptr));
 }
 
-DEFINE_ART_MODULE(dunetrigger::TriggerActivityMakerTPC)
+DEFINE_ART_MODULE(dunetrigger::TriggerActivityMakerV4)

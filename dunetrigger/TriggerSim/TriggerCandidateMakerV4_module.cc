@@ -1,10 +1,7 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       TriggerCandidateMakerTPC
+// Class:       TriggerCandidateMakerV4
 // Plugin Type: producer (Unknown Unknown)
-// File:        TriggerCandidateMakerTPC_module.cc
-//
-// Generated at Tue Aug 13 16:43:32 2024 by ddrobner using cetskelgen
-// from cetlib version 3.18.02.
+// File:        TriggerCandidateMakerV4_module.cc
 ////////////////////////////////////////////////////////////////////////
 
 #include "art/Framework/Core/EDProducer.h"
@@ -22,8 +19,8 @@
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
-#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidate.hpp"
-#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidateFactory.hpp"
+#include "dunetrigger/TriggerSim/triggeralgs/v4/include/triggeralgs/TriggerCandidate.hpp"
+#include "dunetrigger/TriggerSim/triggeralgs/v4/include/triggeralgs/TriggerCandidateFactory.hpp"
 
 #include "detdataformats/trigger/TriggerActivityData.hpp"
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
@@ -58,23 +55,23 @@ struct ExtTriggerActivity : public TriggerActivity {
 } // namespace triggeralgs
 
 namespace dunetrigger {
-class TriggerCandidateMakerTPC;
+class TriggerCandidateMakerV4;
 }
 
-class dunetrigger::TriggerCandidateMakerTPC : public art::EDProducer {
+class dunetrigger::TriggerCandidateMakerV4 : public art::EDProducer {
 public:
-  explicit TriggerCandidateMakerTPC(fhicl::ParameterSet const &p);
+  explicit TriggerCandidateMakerV4(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
   // classes without bare pointers or other resource use.
 
   // Plugins should not be copied or assigned.
-  TriggerCandidateMakerTPC(TriggerCandidateMakerTPC const &) =
+  TriggerCandidateMakerV4(TriggerCandidateMakerV4 const &) =
       delete;
-  TriggerCandidateMakerTPC(TriggerCandidateMakerTPC &&) = delete;
-  TriggerCandidateMakerTPC &
-  operator=(TriggerCandidateMakerTPC const &) = delete;
-  TriggerCandidateMakerTPC &
-  operator=(TriggerCandidateMakerTPC &&) = delete;
+  TriggerCandidateMakerV4(TriggerCandidateMakerV4 &&) = delete;
+  TriggerCandidateMakerV4 &
+  operator=(TriggerCandidateMakerV4 const &) = delete;
+  TriggerCandidateMakerV4 &
+  operator=(TriggerCandidateMakerV4 &&) = delete;
 
   void beginJob() override;
   void produce(art::Event &e) override;
@@ -109,7 +106,7 @@ private:
   }
 };
 
-dunetrigger::TriggerCandidateMakerTPC::TriggerCandidateMakerTPC(
+dunetrigger::TriggerCandidateMakerV4::TriggerCandidateMakerV4(
     fhicl::ParameterSet const &p)
     : EDProducer{p}, ta_tag(p.get<art::InputTag>("ta_tag")),
       algname(p.get<std::string>("algorithm")),
@@ -123,7 +120,7 @@ dunetrigger::TriggerCandidateMakerTPC::TriggerCandidateMakerTPC(
   produces<art::Assns<TriggerCandidateData, TriggerActivityData>>();
 }
 
-void dunetrigger::TriggerCandidateMakerTPC::beginJob() {
+void dunetrigger::TriggerCandidateMakerV4::beginJob() {
   // build alg using the factory
   alg = alg_factory->build_maker(algname);
 
@@ -147,7 +144,7 @@ void dunetrigger::TriggerCandidateMakerTPC::beginJob() {
   alg->configure(alg_json);
 }
 
-void dunetrigger::TriggerCandidateMakerTPC::produce(art::Event &e) {
+void dunetrigger::TriggerCandidateMakerV4::produce(art::Event &e) {
   using dunedaq::trgdataformats::TriggerActivityData;
   using dunedaq::trgdataformats::TriggerCandidateData;
 
@@ -246,4 +243,4 @@ void dunetrigger::TriggerCandidateMakerTPC::produce(art::Event &e) {
   e.put(std::move(ta_in_tc_assn_ptr));
 }
 
-DEFINE_ART_MODULE(dunetrigger::TriggerCandidateMakerTPC)
+DEFINE_ART_MODULE(dunetrigger::TriggerCandidateMakerV4)
