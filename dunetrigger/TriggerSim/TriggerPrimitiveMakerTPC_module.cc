@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 // Class:       TriggerPrimitiveMakerTPC
 // Plugin Type: producer (Unknown Unknown)
 // File:        TriggerPrimitiveMakerTPC_module.cc
@@ -11,6 +11,7 @@
 
 #include "detdataformats/DetID.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
+#include "detdataformats/trigger/TriggerPrimitive2.hpp"
 #include "lardataobj/RawData/RDTimeStamp.h"
 #include "lardataobj/RawData/RawDigit.h"
 
@@ -57,6 +58,7 @@ private:
   std::unique_ptr<TPAlgTPCTool> tpalg_;
   uint64_t default_timestamp_;
   int verbosity_;
+  int tp_version_;
 };
 
 dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
@@ -66,11 +68,17 @@ dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
       rawdigit_tag_(p.get<art::InputTag>("rawdigit_tag")),
       tpalg_{art::make_tool<TPAlgTPCTool>(p.get<fhicl::ParameterSet>("tpalg"))},
       default_timestamp_(p.get<uint64_t>("default_timestamp", 0)),
-      verbosity_(p.get<int>("verbosity", 0)) {
+      verbosity_(p.get<int>("verbosity", 0)),
+      tp_version_(p.get<int>("tp_version", 1)) {
   // Call appropriate produces<>() functions here.
   // Call appropriate consumes<>() for any products to be retrieved by this
   // module.
-  produces<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>();
+  if (tp_version_ == 1)
+    produces<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>();
+  else if (tp_version_ == 2)
+    produces<std::vector<dunedaq::trgdataformats2::TriggerPrimitive>>();
+  else
+    std::cout << "BAD TP VERSION!" << std::endl;
   consumes<std::vector<raw::RawDigit>>(rawdigit_tag_);
   consumes<art::Assns<raw::RDTimeStamp, raw::RawDigit>>(rawdigit_tag_);
 }
@@ -115,8 +123,27 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
         (uint16_t)(dunedaq::detdataformats::DetID::Subdetector::kHD_TPC),
         this_timestamp, *tp_col_ptr);
   }
-
-  e.put(std::move(tp_col_ptr));
+  if (tp_version_ == 1) {
+    e.put(std::move(tp_col_ptr));
+  } else if (tp_version_ == 2) {
+    auto tpv2_col_ptr = std::make_unique<std::vector<dunedaq::trgdataformats2::TriggerPrimitive>>();
+    for (const auto& curr_tp : *tp_col_ptr) {
+      dunedaq::trgdataformats2::TriggerPrimitive curr_tpv2;
+      curr_tpv2.version = curr_tp.version;
+      // TODO: curr_tpv2.flag = ???; 
+      curr_tpv2.detid = curr_tp.detid;
+      curr_tpv2.channel = curr_tp.channel;
+      curr_tpv2.samples_over_threshold = curr_tp.time_over_threshold / TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+      curr_tpv2.time_start = curr_tp.time_start;
+      curr_tpv2.samples_to_peak = (curr_tp.time_peak - curr_tp.time_start) / TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+      curr_tpv2.adc_integral = curr_tp.adc_integral;
+      curr_tpv2.adc_peak = curr_tp.adc_peak;
+      tpv2_col_ptr->push_back(std::move(curr_tpv2));
+    }
+    e.put(std::move(tpv2_col_ptr));
+  } else {
+    std::cout << "BAD TP VERSION!" << std::endl;
+  }
 }
 
 DEFINE_ART_MODULE(dunetrigger::TriggerPrimitiveMakerTPC)
