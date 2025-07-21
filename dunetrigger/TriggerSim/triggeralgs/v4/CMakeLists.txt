@@ -3,7 +3,7 @@ add_compile_options(-O2 -flto -Wno-error=sign-compare -Wno-error=unused-variable
 include(BasicPlugin)
 include_directories("${dunedetdataformats_DIR}/../../../include")
 
-basic_plugin(triggeralgs module
+basic_plugin(triggeralgs_v4 module
   BASENAME_ONLY
   LIBRARIES
   OfflineTPCChannelMap_module
