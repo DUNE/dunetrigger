@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       TriggerAnaTree
+// Class:       TriggerAnaTreeV5
 // Plugin Type: analyzer (Unknown Unknown)
-// File:        TriggerAnaTree_module.cc
+// File:        TriggerAnaTreeV5_module.cc
 //
 // Generated at Fri Aug 30 14:50:19 2024 by jierans using cetskelgen
 // from cetlib version 3.18.02.
@@ -19,44 +19,75 @@
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
-#include "detdataformats/trigger/TriggerActivityData.hpp"
-#include "detdataformats/trigger/TriggerCandidateData.hpp"
-#include "detdataformats/trigger/TriggerPrimitive.hpp"
+#include "detdataformats/trigger/TriggerActivityData2.hpp"
+#include "detdataformats/trigger/TriggerCandidateData2.hpp"
+#include "detdataformats/trigger/TriggerPrimitive2.hpp"
 
-#include "lardataobj/Simulation/SimChannel.h"
 #include "larcore/Geometry/WireReadout.h"
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
+#include "lardataobj/Simulation/SimChannel.h"
 #include "nusimdata/SimulationBase/MCParticle.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 #include <TDirectory.h>
 #include <TFile.h>
 #include <TTree.h>
 
-using dunedaq::trgdataformats::TriggerActivityData;
-using dunedaq::trgdataformats::TriggerCandidateData;
-using dunedaq::trgdataformats::TriggerPrimitive;
+using dunedaq::trgdataformats2::TriggerActivityData;
+using dunedaq::trgdataformats2::TriggerCandidateData;
+using dunedaq::trgdataformats2::TriggerPrimitive;
 
-namespace dunetrigger{
-  class TriggerAnaTree;
+namespace dunetrigger {
+class TriggerAnaTreeV5;
 }
 
-class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
+class dunetrigger::TriggerAnaTreeV5 : public art::EDAnalyzer {
 public:
-  typedef struct ChannelInfo {
+  struct ChannelInfo {
     unsigned int rop_id;
     int view;
     unsigned int tpcset_id;
-  } matching_info;
+  };
 
-  explicit TriggerAnaTree(fhicl::ParameterSet const &p);
+  // Expand all the bitfields in TriggerPrimitive to full width, so that ROOT
+  // can safely use the address of the fields.
+  struct TriggerPrimitiveFullWidth {
+    // Metadata.
+    uint64_t version;
+    uint64_t flag;
+    uint64_t detid;
+
+    // Physics data.
+    uint64_t channel;
+
+    uint64_t samples_over_threshold;
+    uint64_t time_start;
+    uint64_t samples_to_peak;
+
+    uint64_t adc_integral;
+    uint64_t adc_peak;
+    TriggerPrimitiveFullWidth& operator=(const TriggerPrimitive &tp) {
+      version = tp.version;
+      flag = tp.flag;
+      detid = tp.detid;
+      channel = tp.channel;
+      samples_over_threshold = tp.samples_over_threshold;
+      time_start = tp.time_start;
+      samples_to_peak = tp.samples_to_peak;
+      adc_integral = tp.adc_integral;
+      adc_peak = tp.adc_peak;
+      return *this;
+    }
+  };
+
+  explicit TriggerAnaTreeV5(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
   // classes without bare pointers or other resource use.
 
   // Plugins should not be copied or assigned.
-  TriggerAnaTree(TriggerAnaTree const &) = delete;
-  TriggerAnaTree(TriggerAnaTree &&) = delete;
-  TriggerAnaTree &operator=(TriggerAnaTree const &) = delete;
-  TriggerAnaTree &operator=(TriggerAnaTree &&) = delete;
+  TriggerAnaTreeV5(TriggerAnaTreeV5 const &) = delete;
+  TriggerAnaTreeV5(TriggerAnaTreeV5 &&) = delete;
+  TriggerAnaTreeV5 &operator=(TriggerAnaTreeV5 const &) = delete;
+  TriggerAnaTreeV5 &operator=(TriggerAnaTreeV5 &&) = delete;
 
   // Required functions.
   void beginJob() override;
@@ -73,10 +104,10 @@ private:
   int fAssnIdx;
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
-  std::map<std::string, dunedaq::trgdataformats::TriggerPrimitive> tp_bufs;
+  std::map<std::string, TriggerPrimitiveFullWidth> tp_bufs;
   std::map<std::string, ChannelInfo> tp_channel_info_bufs;
-  std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
-  std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
+  std::map<std::string, TriggerActivityData> ta_bufs;
+  std::map<std::string, TriggerCandidateData> tc_bufs;
 
   bool dump_tp, dump_ta, dump_tc;
 
@@ -84,7 +115,8 @@ private:
   void make_ta_tree_if_needed(std::string tag, bool assn = false);
   void make_tc_tree_if_needed(std::string tag);
 
-  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
+  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom,
+                                           int channel);
 
   bool dump_mctruths;
   TTree *mctruth_tree;
@@ -115,7 +147,7 @@ private:
   int ide_trkId, ide_origTrkId;
 };
 
-dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
+dunetrigger::TriggerAnaTreeV5::TriggerAnaTreeV5(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")),
       dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
       dump_mctruths(p.get<bool>("dump_mctruths", true)),
@@ -126,7 +158,7 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
 // More initializers here.
 {}
 
-void dunetrigger::TriggerAnaTree::beginJob() {
+void dunetrigger::TriggerAnaTreeV5::beginJob() {
   if (dump_mctruths) {
     mctruth_tree = tfs->make<TTree>("mctruths", "mctruths");
     mctruth_tree->Branch("Event", &fEventID, "Event/i");
@@ -171,7 +203,8 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree->Branch("SubRun", &fSubRun, "SubRun/i");
     simide_tree->Branch("ChannelID", &sim_channel_id, "ChannelID/i");
     simide_tree->Branch("Timestamp", &tdc, "Timestamp/s");
-    simide_tree->Branch("numElectrons", &ide_numElectrons, "ide_numElectrons/i");
+    simide_tree->Branch("numElectrons", &ide_numElectrons,
+                        "ide_numElectrons/i");
     simide_tree->Branch("Energy", &ide_energy, "ide_energy/F");
     simide_tree->Branch("x", &ide_x, "ide_x/F");
     simide_tree->Branch("y", &ide_y, "ide_y/F");
@@ -181,7 +214,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
 }
 
-void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
+void dunetrigger::TriggerAnaTreeV5::analyze(art::Event const &e) {
   fRun = e.run();
   fSubRun = e.subRun();
   fEventID = e.id().event();
@@ -196,15 +229,16 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     for (auto const &mctruthHandle : mctruthHandles) {
       std::string generator_name =
           mctruthHandle.provenance()->inputTag().label();
-      // NOTE: here we are making an assumption that the geant4 stage's process name is largeant.
-      // This should be safe mostly.
+      // NOTE: here we are making an assumption that the geant4 stage's process
+      // name is largeant. This should be safe mostly.
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
-      for (size_t i = 0; i < mctruthHandle->size(); i++){
-        const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
+      for (size_t i = 0; i < mctruthHandle->size(); i++) {
+        const simb::MCTruth &truthblock =
+            *art::Ptr<simb::MCTruth>(mctruthHandle, i);
         int nparticles = truthblock.NParticles();
-        if (dump_mcparticles){
+        if (dump_mcparticles) {
           std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
-          for (art::Ptr<simb::MCParticle> mcpart: matched_mcparts) {
+          for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
             trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
           }
         }
@@ -239,7 +273,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         mcparticle_gen_name = generator_name;
         mcparticle_status = part.StatusCode();
         mcparticle_trackid = part.TrackId();
-        mcparticle_truthid = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
+        mcparticle_truthid =
+            dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
         mcparticle_process = part.Process();
         mcparticle_x = part.Vx();
         mcparticle_y = part.Vy();
@@ -283,7 +318,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       make_tp_tree_if_needed(tag);
       for (const TriggerPrimitive &tp : *tpHandle) {
         tp_bufs[map_tag] = tp;
-        tp_channel_info_bufs[map_tag] = get_channel_info_for_channel(geom, tp.channel);
+        tp_channel_info_bufs[map_tag] =
+            get_channel_info_for_channel(geom, tp.channel);
         tree_map[map_tag]->Fill();
       }
     }
@@ -314,7 +350,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
           for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
             tp_bufs[map_tpInTaTag] = *tp;
-            tp_channel_info_bufs[map_tag] = get_channel_info_for_channel(geom, tp->channel);
+            tp_channel_info_bufs[map_tag] =
+                get_channel_info_for_channel(geom, tp->channel);
             tree_map[map_tpInTaTag]->Fill();
           }
         }
@@ -359,7 +396,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   }
 }
 
-void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool assn) {
+void dunetrigger::TriggerAnaTreeV5::make_tp_tree_if_needed(std::string tag,
+                                                           bool assn) {
   std::string map_tag = "tp/" + tag;
   if (!tree_map.count(map_tag)) {
     art::TFileDirectory tp_dir =
@@ -372,20 +410,19 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool a
     std::replace(tree_name.begin(), tree_name.end(), ':', '_');
     TTree *tree = tp_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
-    TriggerPrimitive &tp = tp_bufs[map_tag];
+    TriggerPrimitiveFullWidth &tp = tp_bufs[map_tag];
     tree->Branch("Event", &fEventID, "Event/i");
     tree->Branch("Run", &fRun, "Run/i");
     tree->Branch("SubRun", &fSubRun, "SubRun/i");
     tree->Branch("version", &tp.version);
+    tree->Branch("flag", &tp.flag);
     tree->Branch("time_start", &tp.time_start);
-    tree->Branch("time_peak", &tp.time_peak);
-    tree->Branch("time_over_threshold", &tp.time_over_threshold);
+    tree->Branch("sample_to_peak", &tp.samples_to_peak);
+    tree->Branch("samples_over_threshold", &tp.samples_over_threshold);
     tree->Branch("channel", &tp.channel);
     tree->Branch("adc_integral", &tp.adc_integral);
     tree->Branch("adc_peak", &tp.adc_peak);
     tree->Branch("detid", &tp.detid);
-    tree->Branch("type", &tp.type, "type/I");
-    tree->Branch("algorithm", &tp.algorithm, "algorithm/I");
     ChannelInfo &chinfo = tp_channel_info_bufs[map_tag];
     tree->Branch("ropid", &chinfo.rop_id, "ropid/i");
     tree->Branch("view", &chinfo.view, "view/I");
@@ -395,7 +432,8 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool a
   }
 }
 
-void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool assn) {
+void dunetrigger::TriggerAnaTreeV5::make_ta_tree_if_needed(std::string tag,
+                                                           bool assn) {
   std::string map_tag = "ta/" + tag;
   if (!tree_map.count(map_tag)) {
     art::TFileDirectory ta_dir =
@@ -430,7 +468,7 @@ void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool a
   }
 }
 
-void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
+void dunetrigger::TriggerAnaTreeV5::make_tc_tree_if_needed(std::string tag) {
   std::string map_tag = "tc/" + tag;
   if (!tree_map.count(map_tag)) {
     art::TFileDirectory tc_dir =
@@ -456,7 +494,9 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
   }
 }
 
-dunetrigger::TriggerAnaTree::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel) {
+dunetrigger::TriggerAnaTreeV5::ChannelInfo
+dunetrigger::TriggerAnaTreeV5::get_channel_info_for_channel(
+    geo::WireReadoutGeom const *geom, int channel) {
   readout::ROPID rop = geom->ChannelToROP(channel);
   ChannelInfo result;
   result.rop_id = rop.ROP;
@@ -465,4 +505,4 @@ dunetrigger::TriggerAnaTree::ChannelInfo dunetrigger::TriggerAnaTree::get_channe
   return result;
 }
 
-DEFINE_ART_MODULE(dunetrigger::TriggerAnaTree)
+DEFINE_ART_MODULE(dunetrigger::TriggerAnaTreeV5)
