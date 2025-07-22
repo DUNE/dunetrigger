@@ -22,6 +22,20 @@ tpmakerTPC_ADCSimpleThreshold:
     }
   }
 
+tpmakerTPC_ADCSimpleThreshold_v5:
+  {
+    module_type: TriggerPrimitiveMakerTPC
+    rawdigit_tag: "tpcrawdecoder:daq"
+    tp_version: 2
+    tpalg: {
+      tool_type: TPAlgTPCSimpleThreshold
+      threshold_tpg_plane0: -1
+      threshold_tpg_plane1: -1
+      threshold_tpg_plane2: 60
+      verbosity: 0
+    }
+  }
+
 #======================================================================
 # TA makers
 
@@ -47,7 +61,7 @@ nmodules_dune10kt_1x2x2: 4  # 4 APAs in the middle
 
 tamakerTPC_ADCSimpleWindow:
   {
-    module_type: TriggerActivityMakerTPC
+    module_type: TriggerActivityMakerV4
     tp_tag: "tpmakerTPC"
     # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
     algorithm: "TriggerActivityMakerADCSimpleWindowPlugin" # another basic option is TriggerActivityMakerChannelAdjacencyPlugin
@@ -63,6 +77,23 @@ tamakerTPC_ADCSimpleWindow:
     verbosity: 1
   }
 
+tamakerTPC_ADCSimpleWindow_v5:
+  {
+    module_type: TriggerActivityMakerV5
+    tp_tag: "tpmakerTPC"
+    # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
+    algorithm: "TAMakerADCSimpleWindowAlgorithm"
+    algconfig_plane0: @local::ta_algconfig_simplewindow # induction 1
+    algconfig_plane1: @local::ta_algconfig_simplewindow # induction 2
+    algconfig_plane2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
+    algconfig_plane3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
+    nmodules: @local::nmodules_protodunehd # just a default
+    mergecollwires: true
+    flush: true
+	  prescale: 1
+    print_tp_info: false
+    verbosity: 1
+  }
 #======================================================================
 # TC makers
 
@@ -89,9 +120,19 @@ tcconfig_simplewindow:
 
 tcmakerTPC_ADCSimpleWindow:
   {
-    module_type: TriggerCandidateMakerTPC
+    module_type: TriggerCandidateMakerV4
     ta_tag: "tamakerTPC"
     algorithm: "TriggerCandidateMakerADCSimpleWindowPlugin"
+    algconfig: @local::tcconfig_simplewindow
+    multiplicity: 1 # keep?
+    verbosity: 1
+  }
+
+tcmakerTPC_ADCSimpleWindow_v5:
+  {
+    module_type: TriggerCandidateMakerV5
+    ta_tag: "tamakerTPC"
+    algorithm: "TCMakerADCSimpleWindowAlgorithm"
     algconfig: @local::tcconfig_simplewindow
     multiplicity: 1 # keep?
     verbosity: 1

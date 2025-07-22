@@ -39,6 +39,13 @@ producers_triggersim_simpleThr_simpleWin_simpleWin: {
     tcmakerTPC: @local::tcmakerTPC_ADCSimpleWindow
 }
 
+# the simplest configurations are here as default
+producers_triggersim_simpleThr_simpleWin_simpleWin_v5: {
+    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold_v5
+    tamakerTPC: @local::tamakerTPC_ADCSimpleWindow_v5
+    tcmakerTPC: @local::tcmakerTPC_ADCSimpleWindow_v5
+}
+
 # this does not have analyzers! Add them
 physics_triggersim_simpleThr_simpleWin_simpleWin: {
     producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
@@ -46,6 +53,11 @@ physics_triggersim_simpleThr_simpleWin_simpleWin: {
     makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
     trigger_paths: [ makers ]
     end_paths: [ stream1 ]
+}
+
+physics_triggersim_simpleThr_simpleWin_simpleWin_v5: {
+  @table::physics_triggersim_simpleThr_simpleWin_simpleWin
+  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin_v5
 }
 
 END_PROLOG

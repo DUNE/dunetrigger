@@ -48,6 +48,7 @@ public:
 // ignored in favour of the map LArsoft loads, and the argument is kept for
 // interface compatibility reasons.
 std::shared_ptr<TPCChannelMap> make_map(std::string const &plugin_name);
+auto make_tpc_map = make_map;
 } // namespace dunedaq::detchannelmaps
 
 #endif
