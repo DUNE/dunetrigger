@@ -16,7 +16,7 @@ outputs_triggerana_tree.out1.fileName: "triggerAnaTree.root"
 
 triggerAnaTree_dumpAll:
 {
-  module_type: TriggerAnaTree
+  module_type: TriggerAnaTreeV4
   dump_tp: true
   dump_ta: true
   dump_tc: true
@@ -28,6 +28,10 @@ triggerAnaTree_dumpAll:
   dump_simides: true
 
   simchannel_tag: "tpcrawdecoder:simpleSC"
+}
+triggerAnaTree_dumpAll_v5: {
+  @table::triggerAnaTree_dumpAll
+  module_type: TriggerAnaTreeV5
 }
 
 ## Basic example of a physics configuration, better to create your own
@@ -48,6 +52,14 @@ physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
   ana:            [ triggerAnaDumpAll ]
   stream1:        [ out1 ]
   end_paths:      [ stream1, ana ]
+}
+
+physics_triggerana_tree_simpleThr_simpleWin_simpleWin_v5: {
+  @table::physics_triggerana_tree_simpleThr_simpleWin_simpleWin
+  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin_v5
+  analyzers: {
+    triggerAnaDumpAll: @local::triggerAnaTree_dumpAll_v5
+  }
 }
 
 END_PROLOG
