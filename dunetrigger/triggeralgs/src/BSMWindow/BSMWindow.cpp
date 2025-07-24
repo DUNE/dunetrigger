@@ -3,6 +3,7 @@
 #include <ostream>
 #include <vector>
 #include <numeric>
+#include <algorithm>
 
 namespace triggeralgs {
       
@@ -149,7 +150,6 @@ void BSMWindow::bin_window(std::vector<float> &input, timestamp_t bin_width, int
 
 void BSMWindow::bin_window(std::vector<float> &input, timestamp_t time_bin_width, channel_t chan_bin_width, 
                            int num_time_bins, int num_chan_bins, channel_t first_channel) {
-  //std::cout << "TP List Size = " << tp_list.size() << std::endl;
   std::fill(input.begin(), input.end(), 0.0f);
 
   const float inv_time_bin_width = 1.0f / time_bin_width;
@@ -164,6 +164,7 @@ void BSMWindow::bin_window(std::vector<float> &input, timestamp_t time_bin_width
       input[index] += tp.adc_integral;
     }
   }
+  input[num_time_bins * num_chan_bins] = adc_integral;
 };
 
 void BSMWindow::fill_entry_window(std::vector<Entry> &entry_input, std::vector<float> &input) {

@@ -119,12 +119,6 @@ TriggerActivityMakerBSMWindow::configure(const nlohmann::json &config)
   std::cout << "Batch size = " << nbatch << std::endl;
 
   flat_batched_inputs.resize(nbatch * nbins);
- 
-  //channelMap = dunedaq::detchannelmaps::make_map(m_channel_map_name);
-  //if (!channelMap) {
- //   std::cout << "[ERROR] no channel map at config.\n";
-  //  exit(1);
-  //}
 
   if (m_algtype == 0) {
     std::cout << "Using ADCSimpleWindow equivelent algorithm." << std::endl;
