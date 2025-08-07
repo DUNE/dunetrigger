@@ -15,8 +15,8 @@ tpmakerTPC_ADCSimpleThreshold:
     rawdigit_tag: "tpcrawdecoder:daq"
     tpalg: {
       tool_type: TPAlgTPCSimpleThreshold
-      threshold_tpg_plane0: -1
-      threshold_tpg_plane1: -1
+      threshold_tpg_plane0: 70 
+      threshold_tpg_plane1: 70
       threshold_tpg_plane2: 60
       verbosity: 0
     }
