@@ -1,8 +1,0 @@
-# triggerana_tree_1x2x2_tpg_absrc_st.fcl 
-
-#include "triggerana_tree_1x2x6_tpg_absrc_st.fcl"
-
-services: {
-	@table::services_triggersim
-	@table::dunefd_1x2x2_reco_services
-}
