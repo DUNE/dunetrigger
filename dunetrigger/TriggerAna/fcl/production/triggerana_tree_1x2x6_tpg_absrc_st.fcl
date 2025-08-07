@@ -1,0 +1,29 @@
+# triggerana_tree_1x2x6_tpg_absrc_st.fcl
+
+#include "triggerana_tree.fcl"
+#include "tools_dune.fcl"
+
+process_name: TriggerAnaTree1x2x6
+
+services: {
+	@table::services_triggersim
+	@table::dunefd_1x2x6_reco_services
+}
+
+source:	@local::source_triggerana_tree
+outputs: @local::outputs_triggerana_tree
+
+producers_triggersim_simpleThr_absSum: {
+	tpmakerTPCsimpleThr: @local::tpmakerTPC_ADCSimpleThreshold
+	tpmakerTPCabsSum: @local::tpmakerTPC_ABSRunningSum
+}
+
+physics_triggersim_simpleThr_absSum: {
+	producers: @local::producers_triggersim_simpleThr_absSum
+	stream1: [ out1 ]
+	makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsSum ]
+	trigger_paths: [ makers ]
+	end_paths: [ stream1 ]
+}
+
+physics: @local::physics_triggersim_simpleThr_absSum
