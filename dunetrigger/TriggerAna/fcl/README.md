@@ -6,4 +6,6 @@ You can always create a fcl with multiple analyzers from different modules runni
 There are no producers run here, therefore these will work on a file produced from a TriggerSim fcl. 
 But again, one can always create a config by adding them (examples will be in `TriggerSim/fcl`).
 
-There are only very basic fcls, check the wholw configuration by dumping before running blindly.
+In the `production` directory, there is an fcl file for each geometry that runs the production configuration for TP generation, using both the `ADCSimpleWindow` and `AbsRunningSum` algorithms.
+
+There are only very basic fcls, check the whole configuration by dumping before running blindly.
