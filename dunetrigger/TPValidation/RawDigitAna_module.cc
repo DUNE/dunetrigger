@@ -96,7 +96,7 @@ private:
   art::InputTag fRawDigitLabel; // raw digi label
   std::string fSimChanLabel; // sim channel label
 
-  bool fSaveSignalWaveformsOnly;
+  bool fOnlySaveSignalWaveformsWithIDEs;
 
   //ROOT tree for storing output information 
   TTree* fRawDigisTree;
@@ -108,8 +108,13 @@ private:
   TH1I* fADCsHistogramU;
   TH1I* fADCsHistogramV;
 
+  TH2I* fNoiseADCsHistogramByPlane;
+  TH1I* fNoiseADCsHistogramX;
+  TH1I* fNoiseADCsHistogramU;
+  TH1I* fNoiseADCsHistogramV;
+
   std::map<raw::ChannelID_t, raw::RawDigit::ADCvector_t> fWaveformsBuffer;
-  std::vector<unsigned int> fChannelsWithelectrons;
+  std::vector<unsigned int> fActiveChannels;
 
 };
 
@@ -118,7 +123,7 @@ duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
   fRawDigitLabel(p.get<art::InputTag>("rawdigit_tag", "tpcrawdecoder:daq")),
   fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
-  fSaveSignalWaveformsOnly(p.get<bool>("SaveSignalOnly",false))
+  fOnlySaveSignalWaveformsWithIDEs(p.get<bool>("SaveSignalOnly",false))
   {
   }
 
@@ -133,14 +138,19 @@ void duneana::RawDigitAna::beginJob()
   fADCsHistogramU = tfs->make<TH1I>("ADCsPlaneU", "ADCs on plane U", 4096, 0., 16384.);
   fADCsHistogramV = tfs->make<TH1I>("ADCsPlaneV", "ADCs on plane X", 4096, 0., 16384.);
 
+  fNoiseADCsHistogramByPlane = tfs->make<TH2I>("ADCsNoIsEsByPlane", "ADCs by Plane", 4096, 0., 16384., 3, 0., 3.);
+  fNoiseADCsHistogramX = tfs->make<TH1I>("ADCsNoIsEsPlaneX", "ADCs on plane X", 4096, 0., 16384.);
+  fNoiseADCsHistogramU = tfs->make<TH1I>("ADCsNoIsEsPlaneU", "ADCs on plane U", 4096, 0., 16384.);
+  fNoiseADCsHistogramV = tfs->make<TH1I>("ADCsNoIsEsPlaneV", "ADCs on plane X", 4096, 0., 16384.);
+
   fRawDigisTree = tfs->make<TTree>("rawdigis_tree", "test_ttree");
 
   fRawDigisTree->Branch("event",&fEvent,"event/i");
   fRawDigisTree->Branch("run",&fRun,"run/i");
   fRawDigisTree->Branch("subrun",&fSubRun,"subrun/i");
 
-  if (fSaveSignalWaveformsOnly) {
-    fRawDigisTree->Branch("chans_with_electrons", &fChannelsWithelectrons);
+  if (fOnlySaveSignalWaveformsWithIDEs) {
+    fRawDigisTree->Branch("active_channels", &fActiveChannels);
   }
 
   art::ServiceHandle<geo::Geometry> pgeo;
@@ -189,8 +199,8 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
   }
   std::cout << signal_chans.size() << " channels with ides found in this event" << std::endl;
 
-  fChannelsWithelectrons.reserve(signal_chans.size());  // optional but avoids reallocations
-  std::copy(signal_chans.begin(), signal_chans.end(), std::back_inserter(fChannelsWithelectrons));
+  fActiveChannels.reserve(signal_chans.size());  // optional but avoids reallocations
+  std::copy(signal_chans.begin(), signal_chans.end(), std::back_inserter(fActiveChannels));
 
   auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(fRawDigitLabel);
   auto& digits_in =*digits_handle;
@@ -205,33 +215,46 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
       std::cout << " >>> " << counts << std::endl;
     ++counts;
 
-    if ( fSaveSignalWaveformsOnly and !(signal_chans.find(digit.Channel()) != signal_chans.end()))
-      continue;
-
     auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(digit.Channel())).at(0).Plane;
     int plane_idx = -1;
-    TH1I* plane_hist = 0x0;
+    TH1I* plane_adc_hist(0x0);
+    TH1I* plane_noise_hist(0x0);
     switch(plane) {
 
       case geo::kU:
-        plane_hist = fADCsHistogramU;
+        plane_adc_hist = fADCsHistogramU;
+        plane_noise_hist = fNoiseADCsHistogramU;
         plane_idx = 0;
         break;
       case geo::kV:
-        plane_hist = fADCsHistogramV;
+        plane_adc_hist = fADCsHistogramV;
+        plane_noise_hist = fNoiseADCsHistogramV;
         plane_idx = 1;
         break;
       case geo::kW:
         plane_idx = 2;
-        plane_hist = fADCsHistogramX;
+        plane_adc_hist = fADCsHistogramX;
+        plane_noise_hist = fNoiseADCsHistogramX;
         break;
     }
 
     for(auto& adc : digit.ADCs() ){
-      plane_hist->Fill(adc);
+      bool has_signal = (signal_chans.find(digit.Channel()) != signal_chans.end());
+
+      plane_adc_hist->Fill(adc);
       fADCsHistogramByPlane->Fill(adc,plane_idx);
 
-      fWaveformsBuffer[digit.Channel()]  = digit.ADCs();
+      // Fill noise histogram with adcs where there are no IDEs
+      if (!has_signal) {
+        plane_noise_hist->Fill(adc);
+        fADCsHistogramByPlane->Fill(adc,plane_idx);
+      }
+
+      // Save ADCs if they have signals, or only save signals wf is disabled
+      if ( has_signal or !fOnlySaveSignalWaveformsWithIDEs ) {
+        fWaveformsBuffer[digit.Channel()]  = digit.ADCs();
+      }
+      
     }
   }
 
@@ -244,7 +267,7 @@ void duneana::RawDigitAna::ResetVariables()
 {
   // Run information
   fEvent = fRun = fSubRun = -1; 
-  fChannelsWithelectrons.clear();
+  fActiveChannels.clear();
   // Waveforms
   for( auto& [ch, buffer] : fWaveformsBuffer  ) {
     buffer.clear();

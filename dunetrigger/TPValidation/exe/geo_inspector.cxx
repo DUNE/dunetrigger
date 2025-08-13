@@ -12,16 +12,32 @@
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "larcorealg/Geometry/Exceptions.h"
 
-// #include "TTree.h"
-// #include "TFile.h"
 
-int main() {
+int main(int argc, char** argv) {
+
+    if (argc != 2) {
+        std::cout << "Error: invalid number of arguments. Expected 2, found " << argc << std::endl;
+        return -1;
+    }
+
     std::cout << "Geometry Inspector" << std::endl;
+
+    std::map<std::string, std::string> geo_shortcuts = {
+        {"1x8x6", "dunevd10kt_1x8x6_3view_30deg_geo"},
+        {"1x8x14", "dunevd10kt_1x8x14_3view_30deg_geo"}
+    };
+
+    std::string geo_id(
+        argv[1]);
+
+    if ( geo_shortcuts.count(geo_id) == 1) {
+        geo_id = geo_shortcuts[geo_id];
+    }
 
     std::stringstream config;
 
     config << "#include \"geometry_dune.fcl\"" << std::endl;
-    config << "services.Geometry:     @local::dunevd10kt_1x8x6_3view_30deg_geo" << std::endl;
+    config << "services.Geometry:     @local::" << geo_id << std::endl;
     config << "services.WireReadout:      @local::dune_wire_readout" << std::endl;
 
     ArtServiceHelper::load_services(config);
