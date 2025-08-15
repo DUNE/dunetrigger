@@ -333,7 +333,7 @@ private:
   bool fSaveMC;
   bool fSaveNeutrino;
   bool fSaveTPs; 
-  bool fSaveQs; 
+  bool fSaveIDEs; 
 
   int fOffsetU; //offset for valid TP window for IDE matching (needed for induction sigs).  
   int fOffsetV; 
@@ -375,10 +375,10 @@ TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
   fGenLabel(p.get<art::InputTag>("gen_tag")),
   fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
   fFirstEvent(true),
-  fSaveMC(p.get<bool>("SaveMCInfo",true)), 
-  fSaveNeutrino(p.get<bool>("SaveNeutrino",false)),
-  fSaveTPs(p.get<bool>("SaveTPInfo",true)),
-  fSaveQs(p.get<bool>("SaveQInfo",false)),
+  fSaveMC(p.get<bool>("save_mc_info",true)), 
+  fSaveNeutrino(p.get<bool>("save_neutrinos",false)),
+  fSaveTPs(p.get<bool>("save_tps",true)),
+  fSaveIDEs(p.get<bool>("save_ides",false)),
   fOffsetU(p.get<int>("U_window_offset",0)),
   fOffsetV(p.get<int>("V_window_offset",0)),
   fOffsetX(p.get<int>("X_window_offset",0))
@@ -408,7 +408,6 @@ void TPValTreeWriter::beginJob()
     fTPsData.branch_on(fTree);
   }
 
-
   //Nu info
   if (fSaveNeutrino){
     fTree->Branch("NuPDG", &fNuPDG);
@@ -425,16 +424,20 @@ void TPValTreeWriter::beginJob()
   }
 
 
-  fMcTruthData.branch_on(fTree);
+  if (fSaveMC)
+    fMcTruthData.branch_on(fTree);
 
   //G4 info
 
-  fEventData.branch_on(fMcTree);
-  fMcTruthData.branch_on(fMcTree);
+  if (fSaveMC) {
+    fEventData.branch_on(fMcTree);
+    fMcTruthData.branch_on(fMcTree);
+  }
 
-
-  fEventData.branch_on(fQTree);
-  fIDEsData.branch_on(fQTree);
+  if (fSaveIDEs) {
+    fEventData.branch_on(fQTree);
+    fIDEsData.branch_on(fQTree);
+  }
 
   // Save detector settings
   std::cout << ">>>>>>>>>>>>>>>>> Saving detector settings" << std::endl;
@@ -725,7 +728,9 @@ void TPValTreeWriter::analyze(art::Event const& e) {
 
   fTree->Fill();
   fMcTree->Fill();
-  fQTree->Fill();
+
+  if (fSaveIDEs)
+    fQTree->Fill();
 
 }
 
