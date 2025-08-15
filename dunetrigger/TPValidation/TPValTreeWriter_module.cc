@@ -440,9 +440,8 @@ void TPValTreeWriter::beginJob()
   }
 
   // Save detector settings
-  std::cout << ">>>>>>>>>>>>>>>>> Saving detector settings" << std::endl;
+  std::cout << ">>>>>>>>>>>>>>>>> Saving detector info" << std::endl;
   auto const& geo = art::ServiceHandle<geo::Geometry>();
-
 
   // Geometry
   fInfo["geo"] = {};
@@ -469,6 +468,8 @@ void TPValTreeWriter::analyze(art::Event const& e) {
 
   // Save settings used to create the TPs into the output file from the provenance of the first event.
   if (fSaveTPs & fFirstEvent) {
+    std::cout << ">>>>>>>>>>>>>>>>> Saving TPGs info from first event" << std::endl;
+
     fFirstEvent = false;
 
     auto tp_handle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
