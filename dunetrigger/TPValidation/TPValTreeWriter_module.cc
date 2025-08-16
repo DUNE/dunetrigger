@@ -46,7 +46,6 @@
 #include "lardataobj/MCBase/MCStep.h"
 #include "lardataobj/Simulation/SimChannel.h"
 #include "larsim/MCCheater/BackTrackerService.h"
-// #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "larcore/Geometry/WireReadout.h"
 #include "lardataobj/RecoBase/Hit.h"
 
@@ -407,12 +406,6 @@ private:
   TPSummaryDataBuffer fTPSummaryData;
   TPsDataBuffer fTPsData;
 
-  // // Services and maps
-
-  // // MC Sample to index map
-  // std::map<std::string, uint16_t> mc_label_to_index;
-  // // MC index to sample map
-  // std::map<uint16_t,std::string> mc_index_to_label;
   // List of known montecarlo samples
   std::vector<std::string> fMcSampleList;
 
@@ -456,32 +449,6 @@ TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
   }
 
 }
-
-/*
-uint16_t 
-duneana::TPValTreeWriter::get_sample_index(const art::InputTag& mc_tag) {
-
-    // Update the mc samples maps
-    // 1. Check if label exists in the index
-    auto it = mc_label_to_index.find(mc_tag.label());
-    uint16_t mc_index;
-    if ( it != mc_label_to_index.end() ) {
-      // 1.1 This samp
-      mc_index = it->second;
-    } else {
-      // 1.2 or create a new one 
-      mc_index = mc_label_to_index.size();
-
-      // Populate the maps
-      mc_label_to_index.emplace( mc_tag.label(), mc_index);
-      mc_index_to_label.emplace( mc_index, mc_tag.label());
-      fMcSampleList.push_back(mc_tag.label());
-    }
-
-    return mc_index;
-
-}
-*/
 
 uint16_t 
 duneana::TPValTreeWriter::get_sample_index(const art::InputTag& mc_tag) {
@@ -902,34 +869,14 @@ TPValTreeWriter::analyze(art::Event const& e) {
 
   // Save settings used to create the TPs into the output file from the provenance of the first event.
   if (fSaveTPs & fFirstEvent) {
-    // std::cout << ">>>>>>>>>>>>>>>>> Saving TPGs info from first event" << std::endl;
 
     fFirstEvent = false;
 
-    // auto tp_handle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
-
-    // const auto& tpg_ps = tp_handle.provenance()->parameterSet();
-    // std::cout << tpg_ps.to_indented_string() << std::endl;
-
-    // const auto& tpg_cfg = tpg_ps.get<fhicl::ParameterSet>("tpalg");
-
-    // fInfo["tpg"] = {};
-    // fInfo["tpg"]["tool"] = tpg_cfg.get<std::string>("tool_type");
-    // fInfo["tpg"]["threshold_tpg_plane0"] = tpg_cfg.get<int>("threshold_tpg_plane0");
-    // fInfo["tpg"]["threshold_tpg_plane1"] = tpg_cfg.get<int>("threshold_tpg_plane1");
-    // fInfo["tpg"]["threshold_tpg_plane2"] = tpg_cfg.get<int>("threshold_tpg_plane2");
     this->store_tpg_config_infos(e);
   }
 
   // initialise/reset all variables
   this->resetVariables();  
-
-  // // services 
-  // art::ServiceHandle<geo::Geometry> geo;
-  // geo::WireReadoutGeom const &wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
-
-  // // art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
-  // art::ServiceHandle<cheat::BackTrackerService> bt_serv;
 
   // Save event variables
   fEventData.event = e.id().event();
@@ -939,259 +886,16 @@ TPValTreeWriter::analyze(art::Event const& e) {
 
   this->store_tps(e);
 
-  // // Load the IDEs for the event to calculate total charge
-  // auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(fSimChanLabel);
-
-  // // Process the SimChannels just once
-  // for (const sim::SimChannel &sc : *simchannels) {
-  //   auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(sc.Channel())).at(0).Plane;
-  //   auto tdcidemap = sc.TDCIDEMap();
-
-  //   // Sum charge for each plane
-  //   for (const auto& tdcide : tdcidemap) {
-  //     for (const auto& ide : tdcide.second) {
-  //       if (plane == geo::kW) {
-  //         fTPSummaryData.total_charge_X += ide.numElectrons;
-  //       }
-  //       else if (plane == geo::kU) {
-  //         fTPSummaryData.total_charge_U += ide.numElectrons;
-  //       }
-  //       else if (plane == geo::kV) {
-  //         fTPSummaryData.total_charge_V += ide.numElectrons;
-  //       }
-  //     }
-  //   }
-  // }
-
-  // if (fSaveTPs){
-
-  //   // Process the Trigger Primitives
-  //   auto tp_handle = e.getValidHandle<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>(fTPLabel);
-
-  //   auto const& tps = *tp_handle;
-  //   fTPSummaryData.num_TPs = tps.size();
-
-  //   for (const auto& tp : tps) {
-  //     auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(tp.channel)).at(0).Plane;
-
-  //     // Create recob::Hit for TP (with a larger time window for induction planes)
-  //     float tp_rms = (plane == 2) ? (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 2 : (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 4;
-  //     recob::Hit ThisHit(
-  //                       static_cast<raw::ChannelID_t>(tp.channel),        //channel
-  //                       static_cast<raw::TDCtick_t>(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS), //start tick
-  //                       static_cast<raw::TDCtick_t>((tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS) + (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS)), //end tick
-  //                       static_cast<float>((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS)), // peak time 
-  //                       static_cast<float>((tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 0.5), // sigma peak time 
-  //                       static_cast<float>(tp_rms), // rms 
-  //                       static_cast<float>(tp.adc_peak), //peak amplitude 
-  //                       static_cast<float>(0), // sigma peak amplitude 
-  //                       static_cast<float>(tp.adc_integral), //ROI SADC 
-  //                       static_cast<float>(tp.adc_integral), //hit SADC 
-  //                       static_cast<float>(0), //hit integral 
-  //                       static_cast<float>(0), //hit sigma integral 
-  //                       static_cast<short int>(0), //multiplicity 
-  //                       static_cast<short int>(0), //local index 
-  //                       static_cast<float>(0), //goodness of fit 
-  //                       static_cast<int>(0), //degrees of freedom 
-  //                       geo::View_t(plane), //view 
-  //                       wireReadout.SignalType(plane), //sig type 
-  //                       wireReadout.ChannelToWire(tp.channel).front() //wire ID 
-  //                       );
-
-  //     // Avoid reprocessing the same IDEs for different windows
-  //     std::unordered_set<const sim::IDE*> processedIDEs;
-
-  //     std::vector<const sim::IDE*> ides;
-  //     try { 
-  //       //use standard backtracker based on peak time for RS/ST & custom one based on end/start times for AbsRS since the peak time is offset 
-  //       //it actually gives worse performance for RS & ST so just use the same approach for everything 
-  //       //ides = fAbsRS ? TPToSimIDEs_Ps(ThisHit) : bt_serv->HitToSimIDEs_Ps(clockData,ThisHit);
-  //       ides = TPToSimIDEs_Ps(ThisHit); 
-  //     } catch(...) {}
-
-      
-  //     // If there are associated IDEs, save the true coordinates
-  //     if (!ides.empty()) {
-
-  //       switch (plane){
-  //         case geo::kW:
-  //           fTPSummaryData.num_signal_TPs_X++;
-  //           break;
-  //         case geo::kU:
-  //           fTPSummaryData.num_signal_TPs_U++;
-  //           break;
-  //         case geo::kV:
-  //           fTPSummaryData.num_signal_TPs_V++;
-  //           break;
-  //         default:
-  //           break;
-  //       }
-
-  //       // Loop over detected IDEs and avoid double-counting using a set
-  //       std::map<uint16_t, float> nel_by_sample;
-
-  //       for (const sim::IDE* ide_ptr : ides) {
-  //         if (processedIDEs.find(ide_ptr) == processedIDEs.end()) {
-  //           processedIDEs.insert(ide_ptr);
-  //           float ide_num_el = ide_ptr->numElectrons;
-
-  //           if (plane == geo::kW) {
-  //             fTPSummaryData.detected_charge_X += ide_num_el;
-  //           } else if (plane == geo::kU) {
-  //             fTPSummaryData.detected_charge_U += ide_num_el;
-  //           } else if (plane == geo::kV) {
-  //             fTPSummaryData.detected_charge_V += ide_num_el;
-  //           }
-
-  //           nel_by_sample[fTrackToSampleMap[ide_ptr->trackID]] += ide_num_el;
-  //         }
-  //       }
-        
-  //       bool multi_sample = (nel_by_sample.size() > 1);
-
-  //       int max_nel = -1;
-  //       int max_sample = -1;
-
-  //       for( auto& [sample_idx, nel] : nel_by_sample ){
-  //         if (nel > max_nel) {
-  //           max_nel = nel;
-  //           max_sample = sample_idx;
-  //         }
-  //       }
-
-  //       // Get the origin of this lump of ides
-  //       std::vector<double> xyz = bt_serv->SimIDEsToXYZ(ides);
-  //       fTPsData.trueX.push_back(xyz[0]);
-  //       fTPsData.trueY.push_back(xyz[1]);
-  //       fTPsData.trueZ.push_back(xyz[2]);
-  //       fTPsData.signal.push_back(1);
-  //       fTPsData.sample_idx.push_back(max_sample);
-  //       fTPsData.n_samples.push_back(multi_sample);
-  //     } else {
-
-  //       // If no IDEs, count as noise TP
-  //       switch (plane){
-  //         case geo::kW:
-  //           fTPSummaryData.num_noise_TPs_X++;
-  //           break;
-  //         case geo::kU:
-  //           fTPSummaryData.num_noise_TPs_U++;
-  //           break;
-  //         case geo::kV:
-  //           fTPSummaryData.num_noise_TPs_V++;
-  //           break;
-  //         default:
-  //           break;
-  //       }
-        
-  //       fTPsData.signal.push_back(0);
-  //       fTPsData.trueX.push_back(-1);
-  //       fTPsData.trueY.push_back(-1);
-  //       fTPsData.trueZ.push_back(-1);
-  //       fTPsData.sample_idx.push_back(-1);
-  //       fTPsData.n_samples.push_back(-1);
-        
-  //     }
-  //     // Store TP info 
-  //     fTPsData.channels.push_back(tp.channel);
-  //     fTPsData.startT.push_back(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS);
-  //     fTPsData.peakT.push_back((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS));
-  //     fTPsData.TOT.push_back(tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS);
-  //     fTPsData.SADC.push_back(tp.adc_integral);
-  //     fTPsData.peakADC.push_back(tp.adc_peak);
-  //     fTPsData.plane.push_back(plane);
-  //     fTPsData.TPC.push_back(wireReadout.ROPtoTPCs(wireReadout.ChannelToROP(tp.channel)).at(0).TPC);
-  //   }
-  // }
-
-  //access MC particles through truth label instead of G4 handle, 
-  //only interested in "signal" particles &  don't want to iterate over & store info for the avalanche of radiologicals
     
   if (fSaveMC){
     this->store_truth(e);
-    // auto mc_truth = e.getValidHandle< std::vector<simb::MCTruth> >(fGenLabel);
- 
-    // if (mc_truth.isValid()){
-    //   for (const auto& truth : *mc_truth) {
-
-    //     // fnParticles = truth.NParticles();    
-    //     fMcTruthData.num_particles = truth.NParticles();    
-
-    //     //loop over particles with the signal generator label
-    //     for (int iPartc = 0; iPartc < truth.NParticles(); ++iPartc) {
-          
-    //       //grab the current particle
-    //       const simb::MCParticle& trueParticle = truth.GetParticle(iPartc);
-
-    //       float Ekin = (trueParticle.E() - trueParticle.Mass())*1000;//in MeV
-    //       fMcTruthData.TrackId.push_back( trueParticle.TrackId());
-    //       fMcTruthData.Mother.push_back( trueParticle.Mother());
-    //       fMcTruthData.Eng.push_back( trueParticle.E() );
-    //       fMcTruthData.Pdg.push_back( trueParticle.PdgCode());
-    //       fMcTruthData.Ekin.push_back( Ekin ); 
-    //       fMcTruthData.Mass.push_back( trueParticle.Mass() );
-    //       fMcTruthData.P.push_back( trueParticle.P()) ;
-    //       fMcTruthData.Px.push_back( trueParticle.Px());
-    //       fMcTruthData.Py.push_back( trueParticle.Py());
-    //       fMcTruthData.Pz.push_back( trueParticle.Pz());
-    //       fMcTruthData.startX.push_back( trueParticle.Vx());
-    //       fMcTruthData.startY.push_back( trueParticle.Vy());
-    //       fMcTruthData.startZ.push_back( trueParticle.Vz());
-    //       fMcTruthData.endX.push_back( trueParticle.EndPosition()[0]);
-    //       fMcTruthData.endY.push_back( trueParticle.EndPosition()[1]);
-    //       fMcTruthData.endZ.push_back( trueParticle.EndPosition()[2]);
-    //     }
-
-    //     // FIXME: A Truth object can have many particles AND one neutrino???
-
-    //     if ( (fSaveNeutrino) && (truth.NeutrinoSet()) ){
-    //       const simb::MCNeutrino& nu = truth.GetNeutrino();
-    //       const simb::MCParticle& neutrino = nu.Nu();
-
-    //       fNuTruthData.push_back(neutrino.PdgCode() ); 
-    //       fNuTruthData.push_back( nu.CCNC() );
-    //       fNuTruthData.push_back( nu.Mode() );  
-    //       fNuTruthData.push_back( neutrino.Vx() );
-    //       fNuTruthData.push_back( neutrino.Vy() );
-    //       fNuTruthData.push_back( neutrino.Vz() );
-    //       fNuTruthData.push_back( neutrino.Px() );
-    //       fNuTruthData.push_back( neutrino.Py() );
-    //       fNuTruthData.push_back( neutrino.Pz() );
-    //       fNuTruthData.push_back( neutrino.P() );
-    //       fNuTruthData.push_back( neutrino.E() );
-
-    //     }
-    //   }
-    // }
   }
 
   if (fSaveIDEs) {
     this->store_ides(e);
-
-  //   // Process the SimChannels just once
-  //   for (const sim::SimChannel &sc : *simchannels) {
-  //     auto tdcidemap = sc.TDCIDEMap();
-
-  //     // Sum charge for each plane
-  //     for (const auto& [t, tdcide] : tdcidemap) {
-  //       for (const auto& ide : tdcide) {
-  //           fIDEsData.channel.push_back(sc.Channel());
-  //           fIDEsData.time.push_back(t);
-  //           fIDEsData.track_id.push_back(ide.trackID);
-  //           fIDEsData.sample_idx.push_back(fTrackToSampleMap[ide.trackID]);
-  //           fIDEsData.numElectrons.push_back(ide.numElectrons);
-  //           fIDEsData.energy.push_back(ide.energy);
-  //           fIDEsData.x.push_back(ide.x);
-  //           fIDEsData.y.push_back(ide.y);
-  //           fIDEsData.z.push_back(ide.z);
-  //       }
-  //       fIDEsData.entries += tdcide.size();
-  //     }
-  // }
-
   }
 
-
+  // Fill trees
   fTree->Fill();
 
   if (fSaveMC)
@@ -1281,6 +985,11 @@ std::vector<const sim::IDE*> TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& h
 
 void TPValTreeWriter::resetVariables()
 {
+
+  // Clear track id map
+  fTrackToSampleMap.clear()
+
+  // Clear data buffers
   fEventData.clear();
   fMcTruthData.clear();
   fIDEsData.clear();
