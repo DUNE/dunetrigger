@@ -10,13 +10,13 @@ source:
   maxEvents:   -1
 }
 
-# services:
-# {
-#  @table::dunefd_services
+services:
+{
+ @table::dunefd_services
 #   TFileService: {fileName : "trigger_digits_waves_%ifb.root"}
-#   Geometry:             @local::dunevd10kt_1x8x6_3view_30deg_geo
-#   AuxDetGeometry:       @local::dunevd10kt_1x8x6_3view_30deg_auxdet_geo
-# }
+  Geometry:             @local::dunevd10kt_1x8x6_3view_30deg_geo
+  AuxDetGeometry:       @local::dunevd10kt_1x8x6_3view_30deg_auxdet_geo
+}
 
 physics:
 {
