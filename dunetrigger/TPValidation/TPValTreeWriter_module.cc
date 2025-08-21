@@ -45,6 +45,7 @@
 #include "lardataobj/MCBase/MCTrack.h"
 #include "lardataobj/MCBase/MCStep.h"
 #include "lardataobj/Simulation/SimChannel.h"
+#include "larsim/MCCheater/ParticleInventoryService.h"
 #include "larsim/MCCheater/BackTrackerService.h"
 #include "larcore/Geometry/WireReadout.h"
 #include "lardataobj/RecoBase/Hit.h"
@@ -203,9 +204,9 @@ struct IDEsDataBuffer {
   // Data buffers
   unsigned int entries; //total number of geant particles 
   std::vector<uint32_t> channel;
-  std::vector<float> time;
+  std::vector<int> time;
   std::vector<int> track_id;
-  std::vector<uint16_t> sample_idx;
+  std::vector<uint16_t> mcgen_key;
   std::vector<float> numElectrons;
   std::vector<float> energy;
   std::vector<float> x;
@@ -213,12 +214,12 @@ struct IDEsDataBuffer {
   std::vector<float> z;
 
   void branch_on( TTree* tree ) {
-    tree->Branch("nIDEs",&entries,"nIDEs/i");
+    tree->Branch("n_ides",&entries,"nIDEs/i");
     tree->Branch("channel",&channel);  
     tree->Branch("time",&time);  
-    tree->Branch("TrackId",&track_id);  
-    tree->Branch("sample_idx",&sample_idx);  
-    tree->Branch("nElectrons",&numElectrons);  
+    tree->Branch("track_id",&track_id);  
+    tree->Branch("mcgen_key",&mcgen_key);  
+    tree->Branch("n_electrons",&numElectrons);  
     tree->Branch("energy",&energy);  
     tree->Branch("x",&x);  
     tree->Branch("y",&y);  
@@ -230,7 +231,7 @@ struct IDEsDataBuffer {
     channel.clear();
     time.clear();
     track_id.clear();
-    sample_idx.clear();
+    mcgen_key.clear();
     numElectrons.clear();
     energy.clear();
     x.clear();
@@ -310,8 +311,8 @@ struct TPsDataBuffer {
   std::vector<int>      trueY;
   std::vector<int>      trueZ;
   std::vector<int>      signal;
-  std::vector<int>      sample_idx;
-  std::vector<int>      n_samples;
+  std::vector<int>      mcgen_key;
+  std::vector<int>      n_mcgen;
 
   void branch_on( TTree* tree ) {
     tree->Branch("TP_channel", &channels);
@@ -326,8 +327,8 @@ struct TPsDataBuffer {
     tree->Branch("TP_trueY", &trueY);
     tree->Branch("TP_trueZ", &trueZ);
     tree->Branch("TP_signal", &signal);  
-    tree->Branch("TP_mcsample_idx", &sample_idx);  
-    tree->Branch("TP_n_mcsamples", &n_samples);  
+    tree->Branch("TP_mcgen_key", &mcgen_key);  
+    tree->Branch("TP_n_mcgen", &n_mcgen);  
   }
   
   void clear() {
@@ -343,8 +344,8 @@ struct TPsDataBuffer {
     trueY.clear();
     trueZ.clear();
     signal.clear();
-    sample_idx.clear();
-    n_samples.clear();
+    mcgen_key.clear();
+    n_mcgen.clear();
   }
 };
 
@@ -407,19 +408,20 @@ private:
   TPsDataBuffer fTPsData;
 
   // List of known montecarlo samples
-  std::vector<std::string> fMcSampleList;
+  std::vector<std::string> fMcGeneratorList;
 
   // 
-  std::map<int, uint16_t> fTrackToSampleMap;
+  std::map<art::Ptr<simb::MCTruth>, uint16_t> fMcTruthPtrToSampleMap;
 
   // Helper methods
   // Update the sample maps with new tag, if needed and return the sample index
-  uint16_t get_sample_index(const art::InputTag& mctag);
+  uint16_t get_generator_index(const art::InputTag& mctag);
   
   // Build the track to sample map 
   // std::map<int, uint16_t> 
-  void build_tk_sample_map(art::Event const& e);
-
+  void build_mctruth_to_sample_map(art::Event const& e);
+  
+  std::vector<const sim::IDE*> find_ides_in_chan( int chan, int plane, int sample_start, int sample_end) const;
 
   void store_tpg_config_infos(art::Event const& e);
   void store_truth(art::Event const& e);
@@ -441,7 +443,10 @@ TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
   fSaveIDEs(p.get<bool>("save_ides",false)),
   fOffsetU(p.get<int>("U_window_offset",0)),
   fOffsetV(p.get<int>("V_window_offset",0)),
-  fOffsetX(p.get<int>("X_window_offset",0))
+  fOffsetX(p.get<int>("X_window_offset",0)),
+  fTree(0x0), 
+  fMcTree(0x0), 
+  fIDEsTree(0x0)
 {
 
   if (fSaveTPs) {
@@ -451,55 +456,55 @@ TPValTreeWriter::TPValTreeWriter(fhicl::ParameterSet const& p)
 }
 
 uint16_t 
-duneana::TPValTreeWriter::get_sample_index(const art::InputTag& mc_tag) {
+duneana::TPValTreeWriter::get_generator_index(const art::InputTag& mc_tag) {
   
   uint16_t mc_index;
 
   // Search for the mctruth sample name in the know list
-  auto it = std::find(fMcSampleList.begin(), fMcSampleList.end(), mc_tag.label());
-  if ( it != fMcSampleList.end() ) {
+  auto it = std::find(fMcGeneratorList.begin(), fMcGeneratorList.end(), mc_tag.label());
+  if ( it != fMcGeneratorList.end() ) {
     // Sample found in the list of known ones.
     // Calculate the distance from the start and return.
-    mc_index = std::distance(fMcSampleList.begin(), it);
+    mc_index = std::distance(fMcGeneratorList.begin(), it);
   } else {
     // Not found, add and take the position of the new entry as index
-    mc_index = fMcSampleList.size();
-    fMcSampleList.push_back(mc_tag.label());
+    mc_index = fMcGeneratorList.size();
+    fMcGeneratorList.push_back(mc_tag.label());
   }
 
   return mc_index;
 
 }
 
-// std::map<int, uint16_t>
+
 void
-duneana::TPValTreeWriter::build_tk_sample_map(art::Event const& e) {
+TPValTreeWriter::build_mctruth_to_sample_map(art::Event const& e) {
 
-  auto mctags = e.getInputTags<std::vector<simb::MCTruth>>();
+  auto mcgen_tags = e.getInputTags<std::vector<simb::MCTruth>>();
 
-  std::map<int, uint16_t> tk_to_sample;
+  std::map<art::Ptr<simb::MCTruth>, uint16_t> mcgen_to_sample_map;
 
-  for ( auto mct : mctags ) {
+  for ( auto mcg : mcgen_tags ) {
 
     // Add this tag to the list of samples and get its index
-    uint16_t mc_index = this->get_sample_index(mct);
+    uint16_t mcg_index = this->get_generator_index(mcg);
 
     // Retrieve the truth vector for this tag
-    auto mc_vec = e.getValidHandle<std::vector<simb::MCTruth>>(mct);
+    auto mc_vec = e.getValidHandle<std::vector<simb::MCTruth>>(mcg);
+    // std::cout << "--- Truth ---" << mcg << std::endl;
+    // std::cout << "    ProdId : " << mc_vec.id() << std::endl;
 
-    // Loop over truths
-    for( auto& mc : *mc_vec ) {
-      // loop over mcparticles
-      for( int k=0; k<mc.NParticles(); ++k) {
-        // Map track ids to samples
-        tk_to_sample.emplace(mc.GetParticle(k).TrackId(), mc_index);
-      }
+    for(size_t i(0); i<mc_vec->size(); ++i) {
+      art::Ptr<simb::MCTruth> ptr(mc_vec, i);
+      mcgen_to_sample_map[ptr] = mcg_index;
+      // std::cout << ptr << " ---- " << mcg_index << std::endl;
     }
-  }
 
-  // Save the map
-  fTrackToSampleMap.swap( tk_to_sample );
+  }
+  fMcTruthPtrToSampleMap.swap( mcgen_to_sample_map );
+
 }
+
 
 void 
 TPValTreeWriter::store_tpg_config_infos(art::Event const& e) {
@@ -588,7 +593,7 @@ TPValTreeWriter::store_tps(art::Event const& e) {
   art::ServiceHandle<geo::Geometry> geo;
   geo::WireReadoutGeom const &wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
 
-  // art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
+  art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
 
 
@@ -627,39 +632,48 @@ TPValTreeWriter::store_tps(art::Event const& e) {
     for (const auto& tp : tps) {
       auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(tp.channel)).at(0).Plane;
 
-      // Create recob::Hit for TP (with a larger time window for induction planes)
-      float tp_rms = (plane == 2) ? (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 2 : (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 4;
-      recob::Hit ThisHit(
-                        static_cast<raw::ChannelID_t>(tp.channel),        //channel
-                        static_cast<raw::TDCtick_t>(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS), //start tick
-                        static_cast<raw::TDCtick_t>((tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS) + (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS)), //end tick
-                        static_cast<float>((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS)), // peak time 
-                        static_cast<float>((tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 0.5), // sigma peak time 
-                        static_cast<float>(tp_rms), // rms 
-                        static_cast<float>(tp.adc_peak), //peak amplitude 
-                        static_cast<float>(0), // sigma peak amplitude 
-                        static_cast<float>(tp.adc_integral), //ROI SADC 
-                        static_cast<float>(tp.adc_integral), //hit SADC 
-                        static_cast<float>(0), //hit integral 
-                        static_cast<float>(0), //hit sigma integral 
-                        static_cast<short int>(0), //multiplicity 
-                        static_cast<short int>(0), //local index 
-                        static_cast<float>(0), //goodness of fit 
-                        static_cast<int>(0), //degrees of freedom 
-                        geo::View_t(plane), //view 
-                        wireReadout.SignalType(plane), //sig type 
-                        wireReadout.ChannelToWire(tp.channel).front() //wire ID 
-                        );
+      // // Create recob::Hit for TP (with a larger time window for induction planes)
+      // float tp_rms = (plane == 2) ? (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 2 : (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 4;
+      // recob::Hit ThisHit(
+      //                   static_cast<raw::ChannelID_t>(tp.channel),        //channel
+      //                   static_cast<raw::TDCtick_t>(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS), //start tick
+      //                   static_cast<raw::TDCtick_t>((tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS) + (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS)), //end tick
+      //                   static_cast<float>((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS)), // peak time 
+      //                   static_cast<float>((tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 0.5), // sigma peak time 
+      //                   static_cast<float>(tp_rms), // rms 
+      //                   static_cast<float>(tp.adc_peak), //peak amplitude 
+      //                   static_cast<float>(0), // sigma peak amplitude 
+      //                   static_cast<float>(tp.adc_integral), //ROI SADC 
+      //                   static_cast<float>(tp.adc_integral), //hit SADC 
+      //                   static_cast<float>(0), //hit integral 
+      //                   static_cast<float>(0), //hit sigma integral 
+      //                   static_cast<short int>(0), //multiplicity 
+      //                   static_cast<short int>(0), //local index 
+      //                   static_cast<float>(0), //goodness of fit 
+      //                   static_cast<int>(0), //degrees of freedom 
+      //                   geo::View_t(plane), //view 
+      //                   wireReadout.SignalType(plane), //sig type 
+      //                   wireReadout.ChannelToWire(tp.channel).front() //wire ID 
+      //                   );
 
       // Avoid reprocessing the same IDEs for different windows
 
       std::vector<const sim::IDE*> ides;
-      try { 
-        //use standard backtracker based on peak time for RS/ST & custom one based on end/start times for AbsRS since the peak time is offset 
-        //it actually gives worse performance for RS & ST so just use the same approach for everything 
-        //ides = fAbsRS ? TPToSimIDEs_Ps(ThisHit) : bt_serv->HitToSimIDEs_Ps(clockData,ThisHit);
-        ides = TPToSimIDEs_Ps(ThisHit); 
-      } catch(...) {}
+      // try { 
+      //   //use standard backtracker based on peak time for RS/ST & custom one based on end/start times for AbsRS since the peak time is offset 
+      //   //it actually gives worse performance for RS & ST so just use the same approach for everything 
+      //   //ides = fAbsRS ? TPToSimIDEs_Ps(ThisHit) : bt_serv->HitToSimIDEs_Ps(clockData,ThisHit);
+      //   ides = TPToSimIDEs_Ps(ThisHit); 
+      // } catch(...) {}
+
+      int sample_start = tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS;
+      int sample_end = (tp.time_start+tp.time_over_threshold) / this->fADC_SAMPLING_RATE_IN_DTS;
+      ides = this->find_ides_in_chan(
+        tp.channel, 
+        plane, 
+        sample_start, // time start
+        sample_end // time end
+      );
 
       
       // If there are associated IDEs, save the true coordinates
@@ -680,7 +694,7 @@ TPValTreeWriter::store_tps(art::Event const& e) {
         }
 
         // Loop over detected IDEs and avoid double-counting using a set
-        std::map<uint16_t, float> nel_by_sample;
+        std::map<uint16_t, float> nelec_by_mcgen;
         std::unordered_set<const sim::IDE*> processedIDEs;
 
         for (const sim::IDE* ide_ptr : ides) {
@@ -696,17 +710,18 @@ TPValTreeWriter::store_tps(art::Event const& e) {
               fTPSummaryData.detected_charge_V += ide_num_el;
             }
 
-            nel_by_sample[fTrackToSampleMap[ide_ptr->trackID]] += ide_num_el;
+            auto mct_ptr = pi_serv->TrackIdToMCTruth_P (ide_ptr->trackID);
+            nelec_by_mcgen[fMcTruthPtrToSampleMap.at(mct_ptr)] += ide_num_el;
           }
         }
         
         int max_nel = -1;
-        int max_sample_idx = -1;
+        int max_gen_idx = -1;
 
-        for( auto& [sample_idx, nel] : nel_by_sample ){
+        for( auto& [mcgen_key, nel] : nelec_by_mcgen ){
           if (nel > max_nel) {
             max_nel = nel;
-            max_sample_idx = sample_idx;
+            max_gen_idx = mcgen_key;
           }
         }
 
@@ -716,8 +731,8 @@ TPValTreeWriter::store_tps(art::Event const& e) {
         fTPsData.trueY.push_back(xyz[1]);
         fTPsData.trueZ.push_back(xyz[2]);
         fTPsData.signal.push_back(1);
-        fTPsData.sample_idx.push_back(max_sample_idx);
-        fTPsData.n_samples.push_back(nel_by_sample.size());
+        fTPsData.mcgen_key.push_back(max_gen_idx);
+        fTPsData.n_mcgen.push_back(nelec_by_mcgen.size());
       } else {
 
         // If no IDEs, count as noise TP
@@ -739,8 +754,8 @@ TPValTreeWriter::store_tps(art::Event const& e) {
         fTPsData.trueX.push_back(-1);
         fTPsData.trueY.push_back(-1);
         fTPsData.trueZ.push_back(-1);
-        fTPsData.sample_idx.push_back(-1);
-        fTPsData.n_samples.push_back(-1);
+        fTPsData.mcgen_key.push_back(-1);
+        fTPsData.n_mcgen.push_back(-1);
         
       }
       // Store TP info 
@@ -762,6 +777,9 @@ TPValTreeWriter::store_ides(art::Event const& e) {
   /* 
   Store ides data in the internal data buffer
   */
+  
+  art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
+
   auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(fSimChanLabel);
 
   // Process the SimChannels just once
@@ -770,11 +788,21 @@ TPValTreeWriter::store_ides(art::Event const& e) {
 
     // Sum charge for each plane
     for (const auto& [t, tdcide] : tdcidemap) {
+
       for (const auto& ide : tdcide) {
+
+          int mct_sample_idx = -1;
+          if (ide.trackID != 0) {
+            auto mct_ptr = pi_serv->TrackIdToMCTruth_P (ide.trackID);
+            mct_sample_idx = fMcTruthPtrToSampleMap.at(mct_ptr);
+          } else {
+            
+          }
+
           fIDEsData.channel.push_back(sc.Channel());
           fIDEsData.time.push_back(t);
           fIDEsData.track_id.push_back(ide.trackID);
-          fIDEsData.sample_idx.push_back(fTrackToSampleMap[ide.trackID]);
+          fIDEsData.mcgen_key.push_back(mct_sample_idx);
           fIDEsData.numElectrons.push_back(ide.numElectrons);
           fIDEsData.energy.push_back(ide.energy);
           fIDEsData.x.push_back(ide.x);
@@ -791,9 +819,9 @@ TPValTreeWriter::beginJob()
 {
 
   art::ServiceHandle<art::TFileService> tfs; 
-  fTree = tfs->make<TTree>("tree", "Trigger Primitives Tree");
-  fMcTree = tfs->make<TTree>("mctree", "MC Tree");
-  fIDEsTree = tfs->make<TTree>("qtree", "Charge Tree");
+  fTree = tfs->make<TTree>("tps_tree", "Trigger Primitives Tree");
+  fMcTree = tfs->make<TTree>("mctruths_tree", "MCTruth Tree");
+  fIDEsTree = tfs->make<TTree>("ides_tree", "IDEs Tree");
   
   // Main TREE
   {
@@ -851,7 +879,7 @@ void
 TPValTreeWriter::endJob() {
 
   // Store the final list of known samples in the info object
-  fInfo["mc_samples"] = fMcSampleList;
+  fInfo["mc_generator_labels"] = fMcGeneratorList;
 
   art::ServiceHandle<art::TFileService> tfs; 
   auto n = tfs->make<TNamed>("info", fInfo.dump().c_str());
@@ -863,9 +891,12 @@ TPValTreeWriter::endJob() {
 void 
 TPValTreeWriter::analyze(art::Event const& e) {
 
-  // Prepare maps for matching tracks to samples
-  this->build_tk_sample_map(e);
 
+  // initialise/reset all variables
+  this->resetVariables();  
+
+  // Prepare maps for matching tracks to samples
+  this->build_mctruth_to_sample_map(e);
 
   // Save settings used to create the TPs into the output file from the provenance of the first event.
   if (fSaveTPs & fFirstEvent) {
@@ -874,9 +905,6 @@ TPValTreeWriter::analyze(art::Event const& e) {
 
     this->store_tpg_config_infos(e);
   }
-
-  // initialise/reset all variables
-  this->resetVariables();  
 
   // Save event variables
   fEventData.event = e.id().event();
@@ -982,12 +1010,85 @@ std::vector<const sim::IDE*> TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& h
 }
 
 
+std::vector<const sim::IDE*> 
+TPValTreeWriter::find_ides_in_chan( int chan, int plane, int sample_start, int sample_end) const {
+  
+  std::vector<const sim::IDE*> retVec;
+  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
+  
+  //IDEs are computed based on the time during which the ionization cloud hits the readout plane. For ind. signals this corresponds to the inflection point
+  //need to introduce an offset for this effect to be properly accounted for 
+  int offset = 0;
 
-void TPValTreeWriter::resetVariables()
-{
+  switch (plane) {
+    case geo::kU:
+      offset = fOffsetU;
+      break;
+    case geo::kV:
+      offset = fOffsetV;
+      break;
+    case geo::kW:
+      offset = fOffsetX;
+      break;
+    default:
+      break;
+  }
+
+  // Adjust the sample_start and end time based on the hit, this may need to be expanded or modified
+  int start_tdc = sample_start + offset; //clockData.TPCTick2TDC(hit.PeakTimeMinusRMS(fHitTimeRMS));
+  int end_tdc = sample_end + offset;//clockData.TPCTick2TDC(hit.PeakTimePlusRMS(fHitTimeRMS));
+
+  // Ensure no negative TDC values
+  if (start_tdc < 0) start_tdc = 0;
+  if (end_tdc < 0) end_tdc = 0;
+
+  if (start_tdc > end_tdc) { throw; }
+
+  // Get the map of TDC values to IDEs
+  const std::vector<std::pair<unsigned short, std::vector<sim::IDE>>>& tdcIDEMap = (bt_serv->FindSimChannel(chan))->TDCIDEMap();
+
+  // Create a vector of pointers to the elements in the TDC-IDE map
+  std::vector<const std::pair<unsigned short, std::vector<sim::IDE>>*> tdcIDEMap_SortedPointers;
+  for (auto& pair : tdcIDEMap) {
+    tdcIDEMap_SortedPointers.push_back(&pair);
+  }
+
+  // Sort the map based on TDC values
+  auto pairSort = [](auto& a, auto& b) { return a->first < b->first; };
+  if (!std::is_sorted(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), pairSort)) {
+    std::sort(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), pairSort);
+  }
+
+  // Create dummy vectors for comparing pairs
+  std::vector<sim::IDE> dummyVec;
+  std::pair<double, std::vector<sim::IDE>> start_tdcPair = std::make_pair(start_tdc, dummyVec);
+  std::pair<double, std::vector<sim::IDE>> end_tdcPair = std::make_pair(end_tdc, dummyVec);
+
+  auto start_tdcPair_P = &start_tdcPair;
+  auto end_tdcPair_P = &end_tdcPair;
+
+  // Find the range of IDEs that fall between start_tdc and end_tdc using lower and upper bounds
+  auto mapFirst = std::lower_bound(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), start_tdcPair_P, pairSort);
+
+  // Upper bound is exclusive --> should give the first element after the end_tdc
+  auto mapLast = std::upper_bound(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), end_tdcPair_P, pairSort);
+
+  // Iterate through the range of IDEs that fall between start_tdc and end_tdc and save them to a vector
+  for (auto& mapitr = mapFirst; mapitr != mapLast; ++mapitr) {
+    for (auto& ide : (*mapitr)->second) {
+      // Save all IDEs within the specified time window
+      retVec.push_back(&ide);
+    }
+  }
+  // output the IDE vector 
+  return retVec;
+}
+
+
+void TPValTreeWriter::resetVariables() {
 
   // Clear track id map
-  fTrackToSampleMap.clear()
+  fMcTruthPtrToSampleMap.clear();
 
   // Clear data buffers
   fEventData.clear();
@@ -998,6 +1099,6 @@ void TPValTreeWriter::resetVariables()
   fNuTruthData.clear();
 }
 
-}
+} // namespace duneana
 
 DEFINE_ART_MODULE(duneana::TPValTreeWriter)

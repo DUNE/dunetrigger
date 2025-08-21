@@ -45,6 +45,7 @@ public:
   
   // Build the track to sample map 
   std::map<int, uint16_t> make_tk_sample_map(art::Event const& e);
+  std::map<art::Ptr<simb::MCTruth>, uint16_t> make_mctruth_to_sample_map(art::Event const& e);
 
   // Particle Inventory Service
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
@@ -99,6 +100,11 @@ duneana::TriggerTricks::make_tk_sample_map(art::Event const& e) {
 
   std::map<int, uint16_t> tk_to_sample;
 
+  std::cout << "--- MAKING MAP ---" << std::endl;
+
+
+  std::map<art::Ptr<simb::MCTruth>, uint16_t> mct_map;
+
   for ( auto mct : mctags ) {
 
     // Add this tag to the list of samples and get its index
@@ -106,6 +112,7 @@ duneana::TriggerTricks::make_tk_sample_map(art::Event const& e) {
 
     // Retrieve the truth vector for this tag
     auto mc_vec = e.getValidHandle<std::vector<simb::MCTruth>>(mct);
+    std::cout << "--- Truth ---" << mct << std::endl;
 
     // Loop over truths
     for( auto& mc : *mc_vec ) {
@@ -113,11 +120,47 @@ duneana::TriggerTricks::make_tk_sample_map(art::Event const& e) {
       for( int k=0; k<mc.NParticles(); ++k) {
         // Map track ids to samples
         tk_to_sample.emplace(mc.GetParticle(k).TrackId(), mc_index);
+        std::cout << "+++ track id " << mc.GetParticle(k).TrackId() << " -> " << mc_index << std::endl;
       }
     }
   }
+  std::cout << "--- MAKING MAP ---" << std::endl;
 
   return tk_to_sample;
+
+}
+
+
+
+std::map<art::Ptr<simb::MCTruth>, uint16_t>
+duneana::TriggerTricks::make_mctruth_to_sample_map(art::Event const& e) {
+
+  auto mctags = e.getInputTags<std::vector<simb::MCTruth>>();
+
+  std::cout << "--- MAKING TRUTH MAP ---" << std::endl;
+
+  std::map<art::Ptr<simb::MCTruth>, uint16_t> mct_to_sample_map;
+
+  for ( auto mct : mctags ) {
+
+    // Add this tag to the list of samples and get its index
+    uint16_t mc_index = this->register_sample(mct);
+
+    // Retrieve the truth vector for this tag
+    auto mc_vec = e.getValidHandle<std::vector<simb::MCTruth>>(mct);
+    std::cout << "--- Truth ---" << mct << std::endl;
+    std::cout << "    ProdId : " << mc_vec.id() << std::endl;
+
+    for(size_t i(0); i<mc_vec->size(); ++i) {
+      art::Ptr<simb::MCTruth> ptr(mc_vec, i);
+      mct_to_sample_map[ptr] = mc_index;
+      std::cout << ptr << " ---- " << mc_index << std::endl;
+    }
+
+  }
+  std::cout << "--- MAKING TRUTH MAP ---" << std::endl;
+
+  return mct_to_sample_map;
 
 }
 
@@ -135,45 +178,11 @@ duneana::TriggerTricks::analyze(art::Event const& e)
   auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>("tpcrawdecoder:simpleSC");
 
   std::map<int, uint16_t> tk_to_sample_map = this->make_tk_sample_map(e);
+  auto mctp_to_sample = make_mctruth_to_sample_map(e);
 
-
-  // std::map<uint16_t, const std::vector<simb::MCTruth>*> truths;
-  // Loop over MC tags
-  // std::cout << "xxxxxxxxxxxxxxxxxxx" << std::endl;
-  // for ( auto t : mctags ) {
-
-  //   // 1. Check if label exists in the index
-  //   auto it = mc_label_to_index.find(t.label());
-  //   uint16_t mc_index;
-  //   if ( it != mc_label_to_index.end() ) {
-  //     // 1.1 save the index
-  //     mc_index = it->second;
-  //   } else {
-  //     // 1.2 or create a new one 
-  //     mc_index = mc_label_to_index.size();
-
-  //     // Populate the maps
-  //     mc_label_to_index.emplace( t.label(), mc_index);
-  //     mc_index_to_label.emplace( mc_index, t.label());
-  //   }
-
-
-    
-  //   auto mc_vec = e.getValidHandle<std::vector<simb::MCTruth>>(t);
-
-  //   std::cout << "label " << t.label() << " process " << t.process() << " instance " << t.instance() << " [" << t.encode() << "] : index = " << mc_index << std::endl;
-
-  //   // Loop over the truth vector for this sample
-  //   for( auto& mc : *mc_vec ) {
-  //     // loop over particles
-  //     for( int k=0; k<mc.NParticles(); ++k) {
-  //       tk_to_sample_map[mc.GetParticle(k).TrackId()] = mc_index;
-  //     }
-  //   }
-
-  // }
-  // std::cout << "-------------------" << std::endl;
-
+  for( auto& [tk_id, mc_idx] : tk_to_sample_map ) {
+    std::cout << "--- track id " << tk_id << " -> " << mc_idx << std::endl;
+  }
 
   for( auto& [label, mc_index] : mc_label_to_index ) {
     std::cout << "label = " << label << ", index = " << mc_index << std::endl;
@@ -189,13 +198,16 @@ duneana::TriggerTricks::analyze(art::Event const& e)
     for (const auto& [t, tdcide] : tdcidemap) {
       for (const auto& ide : tdcide) {
         if ( ide.trackID == 0) {
-            std::cout << "WARN TID=0: simchan=" << sc.Channel() << ", ide=" << ide_i << ": t_id=" << ide.trackID << std::endl;
+            std::cout << "WARN TID=0: simchan=" << sc.Channel() << ", ide=" << ide_i << ": t_id=" << ide.trackID << " orig tk_id: " <<  ide.origTrackID << std::endl;
             continue;
         }
 
         if ( ide_i < 1000 ) {
-          uint16_t sample_id = tk_to_sample_map[ide.trackID];
-          std::cout << "simchan=" << sc.Channel() << ", ide=" << ide_i << ": t_id=" << ide.trackID << " ~ sample_id " << sample_id << " sample_name='" << mc_index_to_label[sample_id] << "'" << std::endl;
+          // uint16_t sample_id = tk_to_sample_map.at(ide.trackID);
+
+          const art::Ptr< simb::MCTruth >& ptr = pi_serv->TrackIdToMCTruth_P (ide.trackID);
+
+          std::cout << "simchan=" << sc.Channel() << ", ide=" << ide_i << ", t_id=" << ide.trackID << " ~~~ prd id: " << ptr.id() << " ~~~ mct idx: " << mctp_to_sample.at(ptr) << std::endl;
         }
 
       }
