@@ -50,4 +50,8 @@ physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
   end_paths:      [ stream1, ana ]
 }
 
+physics_triggersim_simpleThr_absRS: @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin
+physics_triggersim_simpleThr_absRS.producers: @local::producers_triggersim_simpleThr_absRS
+physics_triggersim_simpleThr_absRS.makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
+
 END_PROLOG
