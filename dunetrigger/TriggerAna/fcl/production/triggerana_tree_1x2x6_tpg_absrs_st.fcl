@@ -13,17 +13,4 @@ services: {
 source:	@local::source_triggerana_tree
 outputs: @local::outputs_triggerana_tree
 
-producers_triggersim_simpleThr_absRS: {
-	tpmakerTPCsimpleThr: @local::tpmakerTPC_ADCSimpleThreshold
-	tpmakerTPCabsRS: @local::tpmakerTPC_ABSRunningSum
-}
-
-physics_triggersim_simpleThr_absRS: {
-	producers: @local::producers_triggersim_simpleThr_absRS
-	stream1: [ out1 ]
-	makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
-	trigger_paths: [ makers ]
-	end_paths: [ stream1 ]
-}
-
 physics: @local::physics_triggersim_simpleThr_absRS
