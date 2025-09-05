@@ -122,11 +122,11 @@ public:
     initialize_channel_state(channel, adcs);
 
 
-    // Dry-run Phase: Process the first ~300 samples (no hit detection, only pedestal stabilization)
+    // Dry-run Phase: Process the first ~1000 samples (no hit detection, only pedestal stabilization)
     // once that's done, process the waveform normally from the top, otherwise we get a lot of noise TPs before the baseline plateaus
     // this wouldn't be necessary in the online system where we only get 'dead time' at the beginning of the run, and then we have continuous readout 
     // but it becomes noticable in the simulation where the waveform has to be initialised over and over for each event  
-    for (size_t jj = 0; jj < 300 ; ++jj) {
+    for (size_t jj = 0; jj < 1000 ; ++jj) {
       int16_t sample = adcs[jj];
 
       // Update the pedestal estimate
