@@ -28,13 +28,13 @@ tpmakerTPC_ABSRunningSum:
     rawdigit_tag: "tpcrawdecoder:daq"
     tpalg: {
 	tool_type: TPAlgTPCAbsRunningSum
-	accum_limit_: 10
-	scale_factor_: 5
-	r_value_: 8
+	accum_limit: 10
+	scale_factor: 5
+	r_value: 8
 	threshold_tpg_plane0: 80 
 	threshold_tpg_plane1: 80
 	threshold_tpg_plane2: 65
-	verbosity_: 0
+	verbosity: 0
     }
  }
 
