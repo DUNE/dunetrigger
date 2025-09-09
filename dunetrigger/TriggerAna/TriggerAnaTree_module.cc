@@ -16,6 +16,7 @@
 #include "art_root_io/TFileService.h"
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Utilities/InputTag.h"
+#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -38,7 +39,38 @@ using dunedaq::trgdataformats::TriggerPrimitive;
 
 namespace dunetrigger {
 class TriggerAnaTree;
-}
+
+// Adapts similar storage optimization techniques as TPv2, but expanding all
+// bitfields.
+struct TriggerPrimitiveBuffer {
+  uint8_t version;
+  uint8_t flag;
+  uint8_t detid;
+
+  uint32_t channel;
+  uint16_t samples_over_threshold;
+  uint64_t time_start;
+  uint16_t samples_to_peak;
+  uint32_t adc_integral;
+  uint16_t adc_peak;
+
+  void from_tp(const TriggerPrimitive &tp) {
+    version = tp.version;
+    flag = 0;
+    detid = tp.detid;
+    channel = tp.channel;
+    samples_over_threshold =
+        (tp.time_over_threshold) /
+        dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+    time_start = tp.time_start;
+    samples_to_peak = (tp.time_peak - tp.time_start) /
+                      dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+    adc_integral = tp.adc_integral;
+    adc_peak = tp.adc_peak;
+  }
+};
+
+} // namespace dunetrigger
 
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
 public:
@@ -73,10 +105,10 @@ private:
   int fAssnIdx;
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
-  std::map<std::string, dunedaq::trgdataformats::TriggerPrimitive> tp_bufs;
+  std::map<std::string, TriggerPrimitiveBuffer> tp_bufs;
   std::map<std::string, ChannelInfo> tp_channel_info_bufs;
-  std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
-  std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
+  std::map<std::string, TriggerActivityData> ta_bufs;
+  std::map<std::string, TriggerCandidateData> tc_bufs;
 
   bool dump_tp, dump_ta, dump_tc;
 
@@ -234,7 +266,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     for (auto const &mctruthHandle : mctruthHandles) {
       std::string generator_name =
           mctruthHandle.provenance()->inputTag().label();
-        mctruth_id = truth_block_counter;
+      mctruth_id = truth_block_counter;
       // NOTE: here we are making an assumption that the geant4 stage's process
       // name is largeant. This should be safe mostly.
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
@@ -347,7 +379,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string map_tag = "tp/" + tag;
       make_tp_tree_if_needed(tag);
       for (const TriggerPrimitive &tp : *tpHandle) {
-        tp_bufs[map_tag] = tp;
+        tp_bufs[map_tag].from_tp(tp);
         tp_channel_info_bufs[map_tag] =
             get_channel_info_for_channel(geom, tp.channel);
         tree_map[map_tag]->Fill();
@@ -379,7 +411,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           fAssnIdx = i;
           std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
           for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
-            tp_bufs[map_tpInTaTag] = *tp;
+            tp_bufs[map_tpInTaTag].from_tp(*tp);
             tp_channel_info_bufs[map_tag] =
                 get_channel_info_for_channel(geom, tp->channel);
             tree_map[map_tpInTaTag]->Fill();
@@ -440,20 +472,19 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag,
     std::replace(tree_name.begin(), tree_name.end(), ':', '_');
     TTree *tree = tp_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
-    TriggerPrimitive &tp = tp_bufs[map_tag];
+    TriggerPrimitiveBuffer &tp = tp_bufs[map_tag];
     tree->Branch("Event", &fEventID, "Event/i");
     tree->Branch("Run", &fRun, "Run/i");
     tree->Branch("SubRun", &fSubRun, "SubRun/i");
     tree->Branch("version", &tp.version);
-    tree->Branch("time_start", &tp.time_start);
-    tree->Branch("time_peak", &tp.time_peak);
-    tree->Branch("time_over_threshold", &tp.time_over_threshold);
+    tree->Branch("flag", &tp.flag);
+    tree->Branch("detid", &tp.detid);
     tree->Branch("channel", &tp.channel);
+    tree->Branch("samples_over_threshold", &tp.samples_over_threshold);
+    tree->Branch("time_start", &tp.time_start);
+    tree->Branch("samples_to_peak", &tp.samples_to_peak);
     tree->Branch("adc_integral", &tp.adc_integral);
     tree->Branch("adc_peak", &tp.adc_peak);
-    tree->Branch("detid", &tp.detid);
-    tree->Branch("type", &tp.type, "type/I");
-    tree->Branch("algorithm", &tp.algorithm, "algorithm/I");
     ChannelInfo &chinfo = tp_channel_info_bufs[map_tag];
     tree->Branch("ropid", &chinfo.rop_id, "ropid/i");
     tree->Branch("view", &chinfo.view, "view/I");
