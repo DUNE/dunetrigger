@@ -39,6 +39,11 @@ producers_triggersim_simpleThr_simpleWin_simpleWin: {
     tcmakerTPC: @local::tcmakerTPC_ADCSimpleWindow
 }
 
+producers_triggersim_simpleThr_chargeDensity: {
+    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold
+    tamakerTPC: @local::tamakerTPC_ChargeDensity
+}
+
 # Run both AbsRS and SimpleThreshold TPG
 producers_triggersim_simpleThr_absRS: {
 	tpmakerTPCsimpleThr: @local::tpmakerTPC_ADCSimpleThreshold
@@ -50,6 +55,14 @@ physics_triggersim_simpleThr_simpleWin_simpleWin: {
     producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
     stream1: [ out1 ]
     makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    trigger_paths: [ makers ]
+    end_paths: [ stream1 ]
+}
+
+physics_triggersim_simpleThr_chargeDensity: {
+    producers: @local::producers_triggersim_simpleThr_chargeDensity
+    stream1: [ out1 ]
+    makers: [ tpmakerTPC, tamakerTPC ]
     trigger_paths: [ makers ]
     end_paths: [ stream1 ]
 }

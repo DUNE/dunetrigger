@@ -54,4 +54,8 @@ physics_triggersim_simpleThr_absRS: @local::physics_triggerana_tree_simpleThr_si
 physics_triggersim_simpleThr_absRS.producers: @local::producers_triggersim_simpleThr_absRS
 physics_triggersim_simpleThr_absRS.makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
 
+physics_triggerana_tree_simpleThr_chargeDensity: @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin
+physics_triggerana_tree_simpleThr_chargeDensity.producers: @local::producers_triggersim_simpleThr_chargeDensity
+physics_triggerana_tree_simpleThr_chargeDensity.makers: [ tpmakerTPC, tamakerTPC ]
+
 END_PROLOG

@@ -11,6 +11,7 @@ basic_plugin(triggeralgs module
   src/TAWindow.cpp
   src/TPWindow.cpp
   src/TriggerActivityMakerADCSimpleWindow.cpp
+  src/TriggerActivityMakerChargeDensity.cpp
   src/TriggerActivityMakerBundleN.cpp
   src/TriggerActivityMakerChannelAdjacency.cpp
   src/TriggerActivityMakerChannelDistance.cpp

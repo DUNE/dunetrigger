@@ -47,6 +47,14 @@ ta_algconfig_simplewindow:
 	adc_threshold: 2000
 }
 
+ta_algconfig_chargedensity:
+{
+	channel_window: 6
+	time_window: 1200
+  adc_threshold: 10
+}
+
+
 ta_algconfig_adjacencyplugin:
 {
 	window_length: 4000
@@ -78,6 +86,23 @@ tamakerTPC_ADCSimpleWindow:
     print_tp_info: false
     verbosity: 1
   }
+
+tamakerTPC_ChargeDensity:
+{
+    module_type: TriggerActivityMakerTPC
+    tp_tag: "tpmakerTPC"
+    algorithm: "TriggerActivityMakerChargeDensityPlugin"
+    algconfig_plane0: @local::ta_algconfig_chargedensity # induction 1
+    algconfig_plane1: @local::ta_algconfig_chargedensity # induction 2
+    algconfig_plane2: @local::ta_algconfig_chargedensity # collection facing one side (readout differentiates)
+    algconfig_plane3: @local::ta_algconfig_chargedensity # collection facing the other side (readout differentiates)
+    nmodules: @local::nmodules_protodunehd # just a default
+    mergecollwires: true
+    flush: true
+	  prescale: 1
+    print_tp_info: false
+    verbosity: 1
+}
 
 #======================================================================
 # TC makers
