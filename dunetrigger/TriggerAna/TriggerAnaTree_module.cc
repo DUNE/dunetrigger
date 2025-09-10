@@ -109,6 +109,8 @@ private:
   std::map<std::string, ChannelInfo> tp_channel_info_bufs;
   std::map<std::string, TriggerActivityData> ta_bufs;
   std::map<std::string, TriggerCandidateData> tc_bufs;
+  std::map<int, double> track_en_sums;
+  std::map<int, double> track_electron_sums;
 
   bool dump_tp, dump_ta, dump_tc;
 
@@ -146,6 +148,9 @@ private:
   double mcparticle_end_x, mcparticle_end_y, mcparticle_end_z, mcparticle_end_t;
   double mcparticle_Px, mcparticle_Py, mcparticle_Pz;
   double mcparticle_en;
+  double mcparticle_edep, mcparticle_numelectrons;
+  double mcparticle_shower_edep,
+      mcparticle_shower_numelectrons;
 
   bool dump_simides;
   std::string simchannel_tag;
@@ -231,6 +236,17 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mcparticle_tree->Branch("Py", &mcparticle_Py);
     mcparticle_tree->Branch("Pz", &mcparticle_Pz);
     mcparticle_tree->Branch("en", &mcparticle_en);
+    mcparticle_tree->Branch("edep", &mcparticle_edep,
+                            "edep/D");
+    mcparticle_tree->Branch("numelectrons",
+                            &mcparticle_numelectrons,
+                            "numelectrons/D");
+    mcparticle_tree->Branch("shower_edep",
+                            &mcparticle_shower_edep,
+                            "shower_edep/D");
+    mcparticle_tree->Branch("shower_numelectrons",
+                            &mcparticle_shower_numelectrons,
+                            "shower_numelectrons/D");
     mcparticle_tree->Branch("process", &mcparticle_process);
   }
   if (dump_simides) {
@@ -241,7 +257,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree->Branch("ChannelID", &sim_channel_id, "ChannelID/i");
     simide_tree->Branch("Timestamp", &tdc, "Timestamp/s");
     simide_tree->Branch("numElectrons", &ide_numElectrons,
-                        "ide_numElectrons/i");
+                        "ide_numElectrons/F");
     simide_tree->Branch("Energy", &ide_energy, "ide_energy/F");
     simide_tree->Branch("x", &ide_x, "ide_x/F");
     simide_tree->Branch("y", &ide_y, "ide_y/F");
@@ -318,6 +334,31 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       }
     }
   }
+  if (dump_simides) {
+    auto simchannels =
+        e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
+    track_en_sums.clear();
+    track_electron_sums.clear();
+    for (const sim::SimChannel &sc : *simchannels) {
+      sim_channel_id = sc.Channel();
+      sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
+      for (const sim::TDCIDE &tdcide : tdcidemap) {
+        tdc = tdcide.first;
+        for (sim::IDE ide : tdcide.second) {
+          ide_numElectrons = ide.numElectrons;
+          ide_energy = ide.energy;
+          ide_x = ide.x;
+          ide_y = ide.y;
+          ide_z = ide.z;
+          ide_trkId = ide.trackID;
+          ide_origTrkId = ide.origTrackID;
+          track_en_sums[ide.trackID] += ide.energy;
+          track_electron_sums[ide.trackID] += ide.numElectrons;
+          simide_tree->Fill();
+        }
+      }
+    }
+  }
   if (dump_mcparticles) {
     std::vector<art::Handle<std::vector<simb::MCParticle>>> mcparticleHandles =
         e.getMany<std::vector<simb::MCParticle>>();
@@ -345,29 +386,22 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         mcparticle_Py = part.Py();
         mcparticle_Pz = part.Pz();
         mcparticle_en = part.E();
+        mcparticle_edep = track_en_sums.count(part.TrackId())
+                                          ? track_en_sums.at(part.TrackId())
+                                          : 0;
+        mcparticle_numelectrons =
+            track_electron_sums.count(part.TrackId())
+                ? track_electron_sums.at(part.TrackId())
+                : 0;
+        mcparticle_shower_edep =
+            track_en_sums.count(-part.TrackId())
+                ? track_en_sums.at(-part.TrackId())
+                : 0;
+        mcparticle_shower_numelectrons =
+            track_electron_sums.count(-part.TrackId())
+                ? track_electron_sums.at(-part.TrackId())
+                : 0;
         mcparticle_tree->Fill();
-      }
-    }
-  }
-  if (dump_simides) {
-
-    auto simchannels =
-        e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
-    for (const sim::SimChannel &sc : *simchannels) {
-      sim_channel_id = sc.Channel();
-      sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
-      for (const sim::TDCIDE &tdcide : tdcidemap) {
-        tdc = tdcide.first;
-        for (sim::IDE ide : tdcide.second) {
-          ide_numElectrons = ide.numElectrons;
-          ide_energy = ide.energy;
-          ide_x = ide.x;
-          ide_y = ide.y;
-          ide_z = ide.z;
-          ide_trkId = ide.trackID;
-          ide_origTrkId = ide.origTrackID;
-          simide_tree->Fill();
-        }
       }
     }
   }
