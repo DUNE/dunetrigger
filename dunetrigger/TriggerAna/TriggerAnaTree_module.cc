@@ -187,7 +187,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mctruth_tree->Branch("Run", &fRun);
     mctruth_tree->Branch("SubRun", &fSubRun);
     mctruth_tree->Branch("block_id", &mctruth_id);
-    mctruth_tree->Branch("track_id", &mctruth_trackid);
+    mctruth_tree->Branch("truth_track_id", &mctruth_trackid);
     mctruth_tree->Branch("pdg", &mctruth_pdg);
     mctruth_tree->Branch("generator_name", &mctruth_gen_name);
     mctruth_tree->Branch("status_code", &mctruth_status);
@@ -197,7 +197,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mctruth_tree->Branch("px", &mctruth_Px);
     mctruth_tree->Branch("py", &mctruth_Py);
     mctruth_tree->Branch("pz", &mctruth_Pz);
-    mctruth_tree->Branch("en", &mctruth_en);
+    mctruth_tree->Branch("energy", &mctruth_en);
     mctruth_tree->Branch("process", &mctruth_process);
 
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
@@ -229,9 +229,9 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mcparticle_tree->Branch("pdg", &mcparticle_pdg);
     mcparticle_tree->Branch("generator_name", &mcparticle_gen_name);
     mcparticle_tree->Branch("status_code", &mcparticle_status);
-    mcparticle_tree->Branch("track_id", &mcparticle_trackid);
+    mcparticle_tree->Branch("g4_track_id", &mcparticle_trackid);
     mcparticle_tree->Branch("mother", &mcparticle_mother);
-    mcparticle_tree->Branch("truth_id", &mcparticle_truthid);
+    mcparticle_tree->Branch("truth_block_id", &mcparticle_truthid);
     mcparticle_tree->Branch("x", &mcparticle_x);
     mcparticle_tree->Branch("y", &mcparticle_y);
     mcparticle_tree->Branch("z", &mcparticle_z);
@@ -243,7 +243,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mcparticle_tree->Branch("px", &mcparticle_Px);
     mcparticle_tree->Branch("py", &mcparticle_Py);
     mcparticle_tree->Branch("pz", &mcparticle_Pz);
-    mcparticle_tree->Branch("en", &mcparticle_en);
+    mcparticle_tree->Branch("energy", &mcparticle_en);
     mcparticle_tree->Branch("edep", &mcparticle_edep);
     mcparticle_tree->Branch("numelectrons", &mcparticle_numelectrons);
     mcparticle_tree->Branch("shower_edep", &mcparticle_shower_edep);
@@ -259,7 +259,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree->Branch("channel", &sim_channel_id);
     simide_tree->Branch("timestamp", &tdc);
     simide_tree->Branch("numelectrons", &ide_numElectrons);
-    simide_tree->Branch("en", &ide_energy);
+    simide_tree->Branch("energy", &ide_energy);
     simide_tree->Branch("x", &ide_x);
     simide_tree->Branch("y", &ide_y);
     simide_tree->Branch("z", &ide_z);
