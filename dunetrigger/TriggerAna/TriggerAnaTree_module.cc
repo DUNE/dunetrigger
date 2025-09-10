@@ -27,6 +27,8 @@
 #include "larcore/Geometry/WireReadout.h"
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "lardataobj/Simulation/SimChannel.h"
+#include "larsim/MCCheater/BackTrackerService.h"
+
 #include "nusimdata/SimulationBase/MCParticle.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 #include <TDirectory.h>
@@ -37,8 +39,16 @@ using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
 using dunedaq::trgdataformats::TriggerPrimitive;
 
+#define INVALID -99999
+
 namespace dunetrigger {
 class TriggerAnaTree;
+
+struct ChannelInfo {
+  unsigned int rop_id;
+  int view;
+  unsigned int tpcset_id;
+};
 
 // Adapts similar storage optimization techniques as TPv2, but expanding all
 // bitfields.
@@ -54,32 +64,21 @@ struct TriggerPrimitiveBuffer {
   uint32_t adc_integral;
   uint16_t adc_peak;
 
-  void from_tp(const TriggerPrimitive &tp) {
-    version = tp.version;
-    flag = 0;
-    detid = tp.detid;
-    channel = tp.channel;
-    samples_over_threshold =
-        (tp.time_over_threshold) /
-        dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-    time_start = tp.time_start;
-    samples_to_peak = (tp.time_peak - tp.time_start) /
-                      dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-    adc_integral = tp.adc_integral;
-    adc_peak = tp.adc_peak;
-  }
+  int bt_primary_track_id;
+  double bt_primary_track_numelectron_frac, bt_primary_track_energy_frac;
+  double bt_edep;
+  double bt_numelectrons;
+  double bt_x, bt_y, bt_z;
+  double bt_primary_x, bt_primary_y, bt_primary_z;
+
+  void from_tp(const TriggerPrimitive &tp);
+  void populate_backtracking_info(const std::vector<sim::IDE> &ides);
 };
 
 } // namespace dunetrigger
 
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
 public:
-  typedef struct ChannelInfo {
-    unsigned int rop_id;
-    int view;
-    unsigned int tpcset_id;
-  } matching_info;
-
   explicit TriggerAnaTree(fhicl::ParameterSet const &p);
   // The compiler-generated destructor is fine for non-base
   // classes without bare pointers or other resource use.
@@ -114,9 +113,15 @@ private:
 
   bool dump_tp, dump_ta, dump_tc;
 
+  bool tp_backtracking;
+  int fOffsetU, fOffsetV, fOffsetX;
+
   void make_tp_tree_if_needed(std::string tag, bool assn = false);
   void make_ta_tree_if_needed(std::string tag, bool assn = false);
   void make_tc_tree_if_needed(std::string tag);
+
+  std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveBuffer &tp,
+                                             const ChannelInfo &chinfo) const;
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom,
                                            int channel);
@@ -163,6 +168,10 @@ private:
 dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")),
       dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
+      tp_backtracking(p.get<bool>("tp_backtracking", false)),
+      fOffsetU(p.get<int>("U_window_offset", 0)),
+      fOffsetV(p.get<int>("V_window_offset", 0)),
+      fOffsetX(p.get<int>("X_window_offset", 0)),
       dump_mctruths(p.get<bool>("dump_mctruths", true)),
       dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
       dump_simides(p.get<bool>("dump_simides", true)),
@@ -404,8 +413,13 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       make_tp_tree_if_needed(tag);
       for (const TriggerPrimitive &tp : *tpHandle) {
         tp_bufs[map_tag].from_tp(tp);
-        tp_channel_info_bufs[map_tag] =
-            get_channel_info_for_channel(geom, tp.channel);
+        ChannelInfo chinfo = get_channel_info_for_channel(geom, tp.channel);
+        tp_channel_info_bufs[map_tag] = chinfo;
+        if (tp_backtracking) {
+          std::vector<sim::IDE> matched_ides =
+              match_simides_to_tps(tp_bufs[map_tag], chinfo);
+          tp_bufs[map_tag].populate_backtracking_info(matched_ides);
+        }
         tree_map[map_tag]->Fill();
       }
     }
@@ -515,6 +529,21 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag,
     tree->Branch("TPCSetID", &chinfo.tpcset_id);
     if (assn)
       tree->Branch("TAnumber", &fAssnIdx);
+    if (tp_backtracking) {
+      tree->Branch("bt_primary_track_id", &tp.bt_primary_track_id);
+      tree->Branch("bt_primary_track_numelectron_frac",
+                   &tp.bt_primary_track_numelectron_frac);
+      tree->Branch("bt_primary_track_energy_frac",
+                   &tp.bt_primary_track_energy_frac);
+      tree->Branch("bt_edep", &tp.bt_edep);
+      tree->Branch("bt_numelectrons", &tp.bt_numelectrons);
+      tree->Branch("bt_x", &tp.bt_x);
+      tree->Branch("bt_y", &tp.bt_y);
+      tree->Branch("bt_z", &tp.bt_z);
+      tree->Branch("bt_primary_x", &tp.bt_primary_x);
+      tree->Branch("bt_primary_y", &tp.bt_primary_y);
+      tree->Branch("bt_primary_z", &tp.bt_primary_z);
+    }
   }
 }
 
@@ -580,7 +609,7 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
   }
 }
 
-dunetrigger::TriggerAnaTree::ChannelInfo
+dunetrigger::ChannelInfo
 dunetrigger::TriggerAnaTree::get_channel_info_for_channel(
     geo::WireReadoutGeom const *geom, int channel) {
   readout::ROPID rop = geom->ChannelToROP(channel);
@@ -589,6 +618,101 @@ dunetrigger::TriggerAnaTree::get_channel_info_for_channel(
   result.tpcset_id = rop.asTPCsetID().TPCset;
   result.view = geom->View(rop);
   return result;
+}
+
+void dunetrigger::TriggerPrimitiveBuffer::from_tp(const TriggerPrimitive &tp) {
+  version = tp.version;
+  flag = 0;
+  detid = tp.detid;
+  channel = tp.channel;
+  samples_over_threshold = (tp.time_over_threshold) /
+                           dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  time_start = tp.time_start;
+  samples_to_peak = (tp.time_peak - tp.time_start) /
+                    dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  adc_integral = tp.adc_integral;
+  adc_peak = tp.adc_peak;
+}
+
+std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(
+    const TriggerPrimitiveBuffer &tp, const ChannelInfo &chinfo) const {
+  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
+  int offset = 0;
+  switch (chinfo.view) {
+  case geo::kU:
+    offset += fOffsetU;
+    break;
+  case geo::kV:
+    offset += fOffsetV;
+    break;
+  case geo::kW:
+    offset += fOffsetX;
+    break;
+  default:
+    break;
+  }
+  int sample_start = tp.time_start / TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  int sample_end = sample_start + tp.samples_over_threshold;
+  sample_start += offset;
+  sample_end += offset;
+  sample_start = std::max(0, sample_start);
+  sample_end = std::max(0, sample_end);
+
+  if (sample_start > sample_end) {
+    throw std::runtime_error("Invalid sample range");
+  }
+  art::Ptr<sim::SimChannel> sim_channel = bt_serv->FindSimChannel(tp.channel);
+  std::vector<sim::IDE> matched_ides =
+      sim_channel->TrackIDsAndEnergies(sample_start, sample_end);
+  return matched_ides;
+}
+
+void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
+    const std::vector<sim::IDE> &ides) {
+  bt_primary_track_id = INVALID;
+  bt_primary_track_numelectron_frac = INVALID;
+  bt_primary_track_energy_frac = INVALID;
+  bt_edep = 0;
+  bt_numelectrons = 0;
+  bt_x = INVALID;
+  bt_y = INVALID;
+  bt_z = INVALID;
+  bt_primary_x = INVALID;
+  bt_primary_y = INVALID;
+  bt_primary_z = INVALID;
+  if (ides.size() == 0) {
+    return;
+  }
+  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
+  std::map<int, double> track_numelectrons;
+  std::map<int, double> track_energies;
+  for (const sim::IDE &ide : ides) {
+    track_numelectrons[ide.trackID] += ide.numElectrons;
+    bt_numelectrons += ide.numElectrons;
+    bt_edep += ide.energy;
+  }
+  bt_primary_track_id =
+      std::max_element(
+          track_numelectrons.begin(), track_numelectrons.end(),
+          [](const auto &a, const auto &b) { return a.second < b.second; })
+          ->first;
+  std::vector<sim::IDE> primary_ides;
+  for (const sim::IDE &ide : ides) {
+    if (ide.trackID == bt_primary_track_id) {
+      primary_ides.push_back(ide);
+    }
+  }
+  bt_primary_track_numelectron_frac =
+      track_numelectrons[bt_primary_track_id] / bt_numelectrons;
+  bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
+  std::vector<double> bt_position = bt_serv->SimIDEsToXYZ(ides);
+  std::vector<double> primary_bt_position = bt_serv->SimIDEsToXYZ(primary_ides);
+  bt_x = bt_position[0];
+  bt_y = bt_position[1];
+  bt_z = bt_position[2];
+  bt_primary_x = primary_bt_position[0];
+  bt_primary_y = primary_bt_position[1];
+  bt_primary_z = primary_bt_position[2];
 }
 
 DEFINE_ART_MODULE(dunetrigger::TriggerAnaTree)

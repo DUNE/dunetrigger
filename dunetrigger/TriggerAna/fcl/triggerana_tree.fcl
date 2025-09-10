@@ -26,6 +26,12 @@ triggerAnaTree_dumpAll:
   dump_mcparticles: true 
   # If true, dump all simChannels and their IDEs in a tree named "simides" 
   dump_simides: true
+  # If true, perform backtracking to find energy depositions for each TP.
+  tp_backtracking: true
+  # Offset to apply for the backtracker, 
+  U_window_offset: 0
+  V_window_offset: 0
+  X_window_offset: 0
 
   simchannel_tag: "tpcrawdecoder:simpleSC"
 }
