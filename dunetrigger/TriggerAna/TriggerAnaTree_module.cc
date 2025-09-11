@@ -410,15 +410,16 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     for (auto const &tpHandle : tpHandles) {
       std::string tag = tpHandle.provenance()->inputTag().encode();
       std::string map_tag = "tp/" + tag;
+      TriggerPrimitiveBuffer &curr_tp_buf = tp_bufs[map_tag];
       make_tp_tree_if_needed(tag);
       for (const TriggerPrimitive &tp : *tpHandle) {
-        tp_bufs[map_tag].from_tp(tp);
+        curr_tp_buf.from_tp(tp);
         ChannelInfo chinfo = get_channel_info_for_channel(geom, tp.channel);
         tp_channel_info_bufs[map_tag] = chinfo;
         if (tp_backtracking) {
           std::vector<sim::IDE> matched_ides =
-              match_simides_to_tps(tp_bufs[map_tag], chinfo);
-          tp_bufs[map_tag].populate_backtracking_info(matched_ides);
+              match_simides_to_tps(curr_tp_buf, chinfo);
+          curr_tp_buf.populate_backtracking_info(matched_ides);
         }
         tree_map[map_tag]->Fill();
       }
