@@ -13,4 +13,4 @@ services: {
 source:	@local::source_triggerana_tree
 outputs: @local::outputs_triggerana_tree
 
-physics: @local::physics_triggersim_simpleThr_absRS
+physics: @local::physics_triggerana_simpleThr_absRS
