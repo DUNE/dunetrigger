@@ -307,9 +307,10 @@ struct TPsDataBuffer {
   std::vector<uint16_t> peakADC; 
   std::vector<int>      plane;
   std::vector<int>      TPC;
-  std::vector<int>      trueX;
-  std::vector<int>      trueY;
-  std::vector<int>      trueZ;
+  std::vector<float>    true_x;
+  std::vector<float>    true_y;
+  std::vector<float>    true_z;
+  std::vector<float>    true_n_el;
   std::vector<int>      signal;
   std::vector<int>      mcgen_key;
   std::vector<int>      n_mcgen;
@@ -323,9 +324,10 @@ struct TPsDataBuffer {
     tree->Branch("TP_peakADC", &peakADC);
     tree->Branch("TP_plane", &plane);
     tree->Branch("TP_TPC", &TPC);
-    tree->Branch("TP_trueX", &trueX);
-    tree->Branch("TP_trueY", &trueY);
-    tree->Branch("TP_trueZ", &trueZ);
+    tree->Branch("TP_trueX", &true_x);
+    tree->Branch("TP_trueY", &true_y);
+    tree->Branch("TP_trueZ", &true_z);
+    tree->Branch("TP_true_n_el", &true_n_el);
     tree->Branch("TP_signal", &signal);  
     tree->Branch("TP_mcgen_key", &mcgen_key);  
     tree->Branch("TP_n_mcgen", &n_mcgen);  
@@ -340,9 +342,10 @@ struct TPsDataBuffer {
     peakADC.clear();
     plane.clear();
     TPC.clear();
-    trueX.clear();
-    trueY.clear();
-    trueZ.clear();
+    true_x.clear();
+    true_y.clear();
+    true_z.clear();
+    true_n_el.clear();
     signal.clear();
     mcgen_key.clear();
     n_mcgen.clear();
@@ -368,8 +371,6 @@ public:
 private:
 
   void resetVariables();
-  //function for matching TPs to sim::IDEs 
-  std::vector<const sim::IDE*> TPToSimIDEs_Ps(recob::Hit const& hit) const;
 
   //fcl configurable sampling rate 
   int fADC_SAMPLING_RATE_IN_DTS; // DTS time ticks between adc samples
@@ -632,39 +633,9 @@ TPValTreeWriter::store_tps(art::Event const& e) {
     for (const auto& tp : tps) {
       auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(tp.channel)).at(0).Plane;
 
-      // // Create recob::Hit for TP (with a larger time window for induction planes)
-      // float tp_rms = (plane == 2) ? (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 2 : (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 4;
-      // recob::Hit ThisHit(
-      //                   static_cast<raw::ChannelID_t>(tp.channel),        //channel
-      //                   static_cast<raw::TDCtick_t>(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS), //start tick
-      //                   static_cast<raw::TDCtick_t>((tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS) + (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS)), //end tick
-      //                   static_cast<float>((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS)), // peak time 
-      //                   static_cast<float>((tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 0.5), // sigma peak time 
-      //                   static_cast<float>(tp_rms), // rms 
-      //                   static_cast<float>(tp.adc_peak), //peak amplitude 
-      //                   static_cast<float>(0), // sigma peak amplitude 
-      //                   static_cast<float>(tp.adc_integral), //ROI SADC 
-      //                   static_cast<float>(tp.adc_integral), //hit SADC 
-      //                   static_cast<float>(0), //hit integral 
-      //                   static_cast<float>(0), //hit sigma integral 
-      //                   static_cast<short int>(0), //multiplicity 
-      //                   static_cast<short int>(0), //local index 
-      //                   static_cast<float>(0), //goodness of fit 
-      //                   static_cast<int>(0), //degrees of freedom 
-      //                   geo::View_t(plane), //view 
-      //                   wireReadout.SignalType(plane), //sig type 
-      //                   wireReadout.ChannelToWire(tp.channel).front() //wire ID 
-      //                   );
-
       // Avoid reprocessing the same IDEs for different windows
 
       std::vector<const sim::IDE*> ides;
-      // try { 
-      //   //use standard backtracker based on peak time for RS/ST & custom one based on end/start times for AbsRS since the peak time is offset 
-      //   //it actually gives worse performance for RS & ST so just use the same approach for everything 
-      //   //ides = fAbsRS ? TPToSimIDEs_Ps(ThisHit) : bt_serv->HitToSimIDEs_Ps(clockData,ThisHit);
-      //   ides = TPToSimIDEs_Ps(ThisHit); 
-      // } catch(...) {}
 
       int sample_start = tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS;
       int sample_end = (tp.time_start+tp.time_over_threshold) / this->fADC_SAMPLING_RATE_IN_DTS;
@@ -694,13 +665,18 @@ TPValTreeWriter::store_tps(art::Event const& e) {
         }
 
         // Loop over detected IDEs and avoid double-counting using a set
+        double num_el = 0;
         std::map<uint16_t, float> nelec_by_mcgen;
-        std::unordered_set<const sim::IDE*> processedIDEs;
+        std::unordered_set<const sim::IDE*> unique_ides;
 
         for (const sim::IDE* ide_ptr : ides) {
-          if (processedIDEs.find(ide_ptr) == processedIDEs.end()) {
-            processedIDEs.insert(ide_ptr);
+          if (unique_ides.find(ide_ptr) == unique_ides.end()) {
+            unique_ides.insert(ide_ptr);
+            if (ide_ptr->trackID == 0) {
+              std::cout << "WARNING: IDE with tid 0 found" <<  std::endl;
+            }
             float ide_num_el = ide_ptr->numElectrons;
+            num_el += ide_num_el;
 
             if (plane == geo::kW) {
               fTPSummaryData.detected_charge_X += ide_num_el;
@@ -710,8 +686,10 @@ TPValTreeWriter::store_tps(art::Event const& e) {
               fTPSummaryData.detected_charge_V += ide_num_el;
             }
 
-            auto mct_ptr = pi_serv->TrackIdToMCTruth_P (ide_ptr->trackID);
-            nelec_by_mcgen[fMcTruthPtrToSampleMap.at(mct_ptr)] += ide_num_el;
+            if (ide_ptr->trackID != 0) {
+              auto mct_ptr = pi_serv->TrackIdToMCTruth_P (ide_ptr->trackID);
+              nelec_by_mcgen[fMcTruthPtrToSampleMap.at(mct_ptr)] += ide_num_el;
+            }
           }
         }
         
@@ -727,9 +705,10 @@ TPValTreeWriter::store_tps(art::Event const& e) {
 
         // Get the origin of this lump of ides
         std::vector<double> xyz = bt_serv->SimIDEsToXYZ(ides);
-        fTPsData.trueX.push_back(xyz[0]);
-        fTPsData.trueY.push_back(xyz[1]);
-        fTPsData.trueZ.push_back(xyz[2]);
+        fTPsData.true_x.push_back(xyz[0]);
+        fTPsData.true_y.push_back(xyz[1]);
+        fTPsData.true_z.push_back(xyz[2]);
+        fTPsData.true_n_el.push_back(num_el);
         fTPsData.signal.push_back(1);
         fTPsData.mcgen_key.push_back(max_gen_idx);
         fTPsData.n_mcgen.push_back(nelec_by_mcgen.size());
@@ -751,9 +730,10 @@ TPValTreeWriter::store_tps(art::Event const& e) {
         }
         
         fTPsData.signal.push_back(0);
-        fTPsData.trueX.push_back(-1);
-        fTPsData.trueY.push_back(-1);
-        fTPsData.trueZ.push_back(-1);
+        fTPsData.true_x.push_back(-1);
+        fTPsData.true_y.push_back(-1);
+        fTPsData.true_z.push_back(-1);
+        fTPsData.true_n_el.push_back(-1);
         fTPsData.mcgen_key.push_back(-1);
         fTPsData.n_mcgen.push_back(-1);
         
@@ -932,81 +912,6 @@ TPValTreeWriter::analyze(art::Event const& e) {
   if (fSaveIDEs)
     fIDEsTree->Fill();
 
-}
-
-//TP - ide matching based on hit start and end times rather than peak ADC time 
-std::vector<const sim::IDE*> TPValTreeWriter::TPToSimIDEs_Ps(recob::Hit const& hit) const
-{
-  std::vector<const sim::IDE*> retVec;
-  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-  
-  //IDEs are computed based on the time during which the ionization cloud hits the readout plane. For ind. signals this corresponds to the inflection point
-  //need to introduce an offset for this effect to be properly accounted for 
-  int offset = 0;
-
-  switch (hit.View()) {
-    case geo::kU:
-      offset = fOffsetU;
-      break;
-    case geo::kV:
-      offset = fOffsetV;
-      break;
-    case geo::kW:
-      offset = fOffsetX;
-      break;
-    default:
-      break;
-  }
-
-
-  // Adjust the start and end time based on the hit, this may need to be expanded or modified
-  int start_tdc = hit.StartTick() + offset; //clockData.TPCTick2TDC(hit.PeakTimeMinusRMS(fHitTimeRMS));
-  int end_tdc = hit.EndTick() + offset;//clockData.TPCTick2TDC(hit.PeakTimePlusRMS(fHitTimeRMS));
-
-  // Ensure no negative TDC values
-  if (start_tdc < 0) start_tdc = 0;
-  if (end_tdc < 0) end_tdc = 0;
-
-  if (start_tdc > end_tdc) { throw; }
-
-  // Get the map of TDC values to IDEs
-  const std::vector<std::pair<unsigned short, std::vector<sim::IDE>>>& tdcIDEMap = (bt_serv->FindSimChannel(hit.Channel()))->TDCIDEMap();
-
-  // Create a vector of pointers to the elements in the TDC-IDE map
-  std::vector<const std::pair<unsigned short, std::vector<sim::IDE>>*> tdcIDEMap_SortedPointers;
-  for (auto& pair : tdcIDEMap) {
-    tdcIDEMap_SortedPointers.push_back(&pair);
-  }
-
-  // Sort the map based on TDC values
-  auto pairSort = [](auto& a, auto& b) { return a->first < b->first; };
-  if (!std::is_sorted(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), pairSort)) {
-    std::sort(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), pairSort);
-  }
-
-  // Create dummy vectors for comparing pairs
-  std::vector<sim::IDE> dummyVec;
-  std::pair<double, std::vector<sim::IDE>> start_tdcPair = std::make_pair(start_tdc, dummyVec);
-  std::pair<double, std::vector<sim::IDE>> end_tdcPair = std::make_pair(end_tdc, dummyVec);
-
-  auto start_tdcPair_P = &start_tdcPair;
-  auto end_tdcPair_P = &end_tdcPair;
-
-  // Find the range of IDEs that fall between start_tdc and end_tdc using lower and upper bounds
-  auto mapFirst = std::lower_bound(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), start_tdcPair_P, pairSort);
-
-  // Upper bound is exclusive --> should give the first element after the end_tdc
-  auto mapLast = std::upper_bound(tdcIDEMap_SortedPointers.begin(), tdcIDEMap_SortedPointers.end(), end_tdcPair_P, pairSort);
-
-  // Iterate through the range of IDEs that fall between start_tdc and end_tdc and save them to a vector
-  for (auto& mapitr = mapFirst; mapitr != mapLast; ++mapitr) {
-    for (auto& ide : (*mapitr)->second) {
-      // Save all IDEs within the specified time window
-      retVec.push_back(&ide);
-    }
-  }
-  // output the IDE vector 
-  return retVec;
 }
 
 

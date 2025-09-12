@@ -1,0 +1,38 @@
+#include "services_dune.fcl"
+#include "tools_dune.fcl"
+
+
+process_name: TriggerAna
+
+source:
+{
+  module_type: RootInput
+  maxEvents:   -1
+}
+
+services:
+{
+ @table::dunefd_services
+  TFileService: {fileName : "trigger_digits_hists_%ifb.root"}
+  Geometry:             @local::dunevd10kt_1x8x6_3view_30deg_geo
+  AuxDetGeometry:       @local::dunevd10kt_1x8x6_3view_30deg_auxdet_geo
+}
+
+physics:
+{
+  analyzers:
+  {
+  triggerana: {
+   module_type: RawDigitAna
+   rawdigit_tag: "tpcrawdecoder:daq" #input to TPG-> Raw Digits
+   save_channels_with_ides_only : false
+   }
+}
+  path0:     [triggerana]
+  end_paths: [path0]
+}
+
+# services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC"
+
+outputs: {
+}
