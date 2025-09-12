@@ -23,7 +23,8 @@ public:
       : verbosity_(ps.get<int>("verbosity", 0)),
         accum_limit_(ps.get<int>("accum_limit", 10)),
         scale_factor_(ps.get<int>( "scale_factor", 5)), // AbsRS-specific parameter ensuring the scale of hit parameters remains in the same ballpark as raw ADCs 
-        r_value_(ps.get<int>("r_value", 9)), // AbsRS-specific "memory" parameter.
+        r_value_(ps.get<int>("r_value", 8)), // AbsRS-specific "memory" parameter.
+        stabilisation_period_(ps.get<int>("stabilisation_period", 1000)), //pedestal stabilisation time (measured in sample counts)
         threshold_tpg_plane0_(ps.get<int16_t>("threshold_tpg_plane0")),
         threshold_tpg_plane1_(ps.get<int16_t>("threshold_tpg_plane1")),
         threshold_tpg_plane2_(ps.get<int16_t>("threshold_tpg_plane2")) {}
@@ -122,11 +123,11 @@ public:
     initialize_channel_state(channel, adcs);
 
 
-    // Dry-run Phase: Process the first ~300 samples (no hit detection, only pedestal stabilization)
+    // Dry-run Phase: Process the first N samples (no hit detection, only pedestal stabilization)
     // once that's done, process the waveform normally from the top, otherwise we get a lot of noise TPs before the baseline plateaus
     // this wouldn't be necessary in the online system where we only get 'dead time' at the beginning of the run, and then we have continuous readout 
     // but it becomes noticable in the simulation where the waveform has to be initialised over and over for each event  
-    for (size_t jj = 0; jj < 300 ; ++jj) {
+    for (int jj = 0; jj < stabilisation_period_ ; ++jj) {
       int16_t sample = adcs[jj];
 
       // Update the pedestal estimate
@@ -211,6 +212,7 @@ private:
   // AbsRS-specific configuration parameters
   const int scale_factor_;
   const int r_value_;
+  const int stabilisation_period_;
 
   // Thresholds
   const int16_t threshold_tpg_plane0_;
