@@ -536,8 +536,8 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag,
     tree->Branch("adc_integral", &tp.adc_integral);
     tree->Branch("adc_peak", &tp.adc_peak);
     ChannelInfo &chinfo = tp_channel_info_bufs[map_tag];
-    tree->Branch("ropid", &chinfo.rop_id);
-    tree->Branch("view", &chinfo.view);
+    tree->Branch("readout_plane_id", &chinfo.rop_id);
+    tree->Branch("readout_view", &chinfo.view);
     tree->Branch("TPCSetID", &chinfo.tpcset_id);
     if (assn)
       tree->Branch("TAnumber", &fAssnIdx);
