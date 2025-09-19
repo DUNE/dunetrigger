@@ -114,14 +114,15 @@ private:
   bool dump_tp, dump_ta, dump_tc;
 
   bool tp_backtracking;
-  int fOffsetU, fOffsetV, fOffsetX;
 
   void make_tp_tree_if_needed(std::string tag, bool assn = false);
   void make_ta_tree_if_needed(std::string tag, bool assn = false);
   void make_tc_tree_if_needed(std::string tag);
 
-  std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveBuffer &tp,
-                                             const ChannelInfo &chinfo) const;
+  std::vector<sim::IDE>
+  match_simides_to_tps(const TriggerPrimitiveBuffer &tp,
+                       const ChannelInfo &chinfo,
+                       const std::string &tool_type) const;
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom,
                                            int channel);
@@ -156,6 +157,8 @@ private:
   double mcparticle_edep, mcparticle_numelectrons;
   double mcparticle_shower_edep, mcparticle_shower_numelectrons;
 
+  std::map<std::string, std::array<int, 3>> bt_offsets;
+
   bool dump_simides;
   std::string simchannel_tag;
   TTree *simide_tree;
@@ -169,16 +172,20 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")),
       dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
       tp_backtracking(p.get<bool>("tp_backtracking", false)),
-      fOffsetU(p.get<int>("U_window_offset", 0)),
-      fOffsetV(p.get<int>("V_window_offset", 0)),
-      fOffsetX(p.get<int>("X_window_offset", 0)),
       dump_mctruths(p.get<bool>("dump_mctruths", true)),
       dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
       dump_simides(p.get<bool>("dump_simides", true)),
       simchannel_tag(
           p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 // More initializers here.
-{}
+{
+  std::vector<fhicl::ParameterSet> offsets =
+      p.get<std::vector<fhicl::ParameterSet>>("window_offsets");
+  for (const auto &offset : offsets) {
+    bt_offsets[offset.get<std::string>("tool_type")] = {
+        offset.get<int>("U"), offset.get<int>("V"), offset.get<int>("X")};
+  }
+}
 
 void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_mctruths) {
@@ -409,6 +416,10 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         e.getMany<std::vector<TriggerPrimitive>>();
     for (auto const &tpHandle : tpHandles) {
       std::string tag = tpHandle.provenance()->inputTag().encode();
+      fhicl::ParameterSet tp_params =
+          tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>(
+              "tpalg");
+      std::string tp_tool_type = tp_params.get<std::string>("tool_type");
       std::string map_tag = "tp/" + tag;
       TriggerPrimitiveBuffer &curr_tp_buf = tp_bufs[map_tag];
       make_tp_tree_if_needed(tag);
@@ -418,7 +429,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         tp_channel_info_bufs[map_tag] = chinfo;
         if (tp_backtracking) {
           std::vector<sim::IDE> matched_ides =
-              match_simides_to_tps(curr_tp_buf, chinfo);
+              match_simides_to_tps(curr_tp_buf, chinfo, tp_tool_type);
           curr_tp_buf.populate_backtracking_info(matched_ides);
         }
         tree_map[map_tag]->Fill();
@@ -525,8 +536,8 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag,
     tree->Branch("adc_integral", &tp.adc_integral);
     tree->Branch("adc_peak", &tp.adc_peak);
     ChannelInfo &chinfo = tp_channel_info_bufs[map_tag];
-    tree->Branch("ropid", &chinfo.rop_id);
-    tree->Branch("view", &chinfo.view);
+    tree->Branch("readout_plane_id", &chinfo.rop_id);
+    tree->Branch("readout_view", &chinfo.view);
     tree->Branch("TPCSetID", &chinfo.tpcset_id);
     if (assn)
       tree->Branch("TAnumber", &fAssnIdx);
@@ -636,18 +647,26 @@ void dunetrigger::TriggerPrimitiveBuffer::from_tp(const TriggerPrimitive &tp) {
 }
 
 std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(
-    const TriggerPrimitiveBuffer &tp, const ChannelInfo &chinfo) const {
+    const TriggerPrimitiveBuffer &tp, const ChannelInfo &chinfo,
+    const std::string &tool_type) const {
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
+  auto it = bt_offsets.find(tool_type);
+  if (it == bt_offsets.end()) {
+    std::cout << "No offsets found for tool type " << tool_type
+              << ", using 0,0,0" << std::endl;
+  }
+  const std::array<int, 3> &offsets =
+      it != bt_offsets.end() ? it->second : std::array<int, 3>{0, 0, 0};
   int offset = 0;
   switch (chinfo.view) {
   case geo::kU:
-    offset += fOffsetU;
+    offset = offsets[0];
     break;
   case geo::kV:
-    offset += fOffsetV;
+    offset = offsets[1];
     break;
   case geo::kW:
-    offset += fOffsetX;
+    offset = offsets[2];
     break;
   default:
     break;
