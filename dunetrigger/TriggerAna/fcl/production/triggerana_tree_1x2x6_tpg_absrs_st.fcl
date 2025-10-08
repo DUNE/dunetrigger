@@ -12,5 +12,6 @@ services: {
 
 source:	@local::source_triggerana_tree
 outputs: @local::outputs_triggerana_tree
+outputs.out1.outputCommands: ["keep *_*_*_*", "drop raw::RawDigit*_*_*_*"] 
 
 physics: @local::physics_triggerana_simpleThr_absRS
