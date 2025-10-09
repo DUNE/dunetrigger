@@ -633,7 +633,7 @@ dunetrigger::TriggerAnaTree::get_channel_info_for_channel(
 }
 
 void dunetrigger::TriggerPrimitiveBuffer::from_tp(const TriggerPrimitive &tp) {
-  version = tp.version;
+  version = 2; // temp, since variables below are converted to v2 version while the TP version in TriggerSim is still 1. Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
   flag = 0;
   detid = tp.detid;
   channel = tp.channel;
