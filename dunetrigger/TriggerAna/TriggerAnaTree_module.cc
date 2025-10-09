@@ -161,8 +161,8 @@ private:
   bool dump_summary_info; 
   //visible energy for the event 
   TTree *summary_tree;
-  double ftot_visible_energy_U, ftot_visible_energy_V, ftot_visible_energy_X;  
-  
+  double ftot_visible_energy_U, ftot_visible_energy_V, ftot_visible_energy_X;
+  double ftot_numElectrons_U, ftot_numElectrons_V, ftot_numElectrons_X;  
 
   std::map<std::string, std::array<int, 3>> bt_offsets;
 
@@ -295,6 +295,9 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     summary_tree->Branch("tot_visible_energy_U", &ftot_visible_energy_U);
     summary_tree->Branch("tot_visible_energy_V", &ftot_visible_energy_V);
     summary_tree->Branch("tot_visible_energy_X", &ftot_visible_energy_X);
+    summary_tree->Branch("tot_numElectrons_U", &ftot_numElectrons_U);
+    summary_tree->Branch("tot_numElectrons_V", &ftot_numElectrons_V);
+    summary_tree->Branch("tot_numElectrons_X", &ftot_numElectrons_X);
   }
 }
 
@@ -306,6 +309,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   
   //reset visible energy counters
   ftot_visible_energy_U = ftot_visible_energy_V = ftot_visible_energy_X = 0;
+  ftot_numElectrons_U = ftot_numElectrons_V = ftot_numElectrons_X = 0;  
   
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom =  &art::ServiceHandle<geo::WireReadout>()->Get();
@@ -397,11 +401,20 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 	  ide_readout_view = chinfo.view;
 	  ide_detector_element = chinfo.tpcset_id; //APA/CRP ID
 	  //populate the total visible energy counters by plane
-	  if (ide_readout_view == geo::kU) { ftot_visible_energy_U += ide_energy; } 
-	  if (ide_readout_view == geo::kV) { ftot_visible_energy_V += ide_energy; } 
-	  if (ide_readout_view == geo::kX) { ftot_visible_energy_X += ide_energy; } 
-          simide_tree->Fill();
-        }
+	  if (ide_readout_view == geo::kU) { 
+	    ftot_visible_energy_U += ide_energy; 
+	    ftot_numElectrons_U += ide_numElectrons;
+	  } 
+	  if (ide_readout_view == geo::kV) { 
+	    ftot_visible_energy_V += ide_energy;
+	    ftot_numElectrons_V += ide_numElectrons;
+	  } 
+	  if (ide_readout_view == geo::kW) { 
+	    ftot_visible_energy_X += ide_energy; 
+	    ftot_numElectrons_X += ide_numElectrons; 
+	  } 
+	  simide_tree->Fill();
+	}
       }
     }
   }
