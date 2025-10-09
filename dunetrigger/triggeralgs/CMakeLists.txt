@@ -7,7 +7,6 @@ basic_plugin(triggeralgs module
   BASENAME_ONLY
   LIBRARIES
   OfflineTPCChannelMap_module
-  #treelite::treelite
   SOURCE
   src/TAWindow.cpp
   src/TPWindow.cpp
@@ -37,7 +36,6 @@ basic_plugin(triggeralgs module
   src/TriggerActivityMakerBSMWindow.cpp
   src/TriggerCandidateMakerBSMWindow.cpp
   src/BSMWindow/BSMWindow.cpp
-  #src/BSMWindow/TreeliteModelInterface.cpp
   src/BSMWindow/CompiledModelInterface.cpp
   src/BSMWindow/treelite2dmodel.c
 )

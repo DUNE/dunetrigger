@@ -35,9 +35,9 @@ TriggerActivityMakerBSMWindow::operator()(const TriggerPrimitive& input_tp, std:
     m_first_channel = static_cast<channel_t>(channelMap->get_first_channel_on_plane(input_tp.channel));
     channel_t n_channels_on_plane = static_cast<channel_t>(channelMap->get_nchannels_on_plane(input_tp.channel));
     m_last_channel = m_first_channel + n_channels_on_plane;
-    m_chan_bin_length = n_channels_on_plane / nchanbins;
+    m_chan_bin_length = n_channels_on_plane / m_num_chanbins;
     std::cout << "1st Chan = " << m_first_channel << ", 2nd Chan = " << m_last_channel << std::endl
-      << "Number of bins = " << nchanbins << ", and bin length = " << m_chan_bin_length << std::endl;
+      << "Number of bins = " << m_num_chanbins << ", and bin length = " << m_chan_bin_length << std::endl;
     return;
   } 
 
@@ -46,17 +46,15 @@ TriggerActivityMakerBSMWindow::operator()(const TriggerPrimitive& input_tp, std:
   if((input_tp.time_start - m_current_window.time_start) < m_window_length){
     TLOG_DEBUG(TLVL_DEBUG_HIGH) << "[TAM:ADCSW] Window not yet complete, adding the input_tp to the window.";
     m_current_window.add(input_tp);
-    //m_current_window.add(input_tp, flat_batched_inputs, m_bin_length, m_chan_bin_length, nbins, nchanbins, m_first_channel);
   }
   // If the addition of the current TP to the window would make it longer
-  // than the specified window length, don't add it but check whether the sum of all adc in
-  // the existing window is above the specified threshold. If it is, make a TA and start 
-  // a fresh window with the current TP.
+  // than the specified window length, don't add it
+  // Instead go through a series of filters and eventually a XGBoost model to determine whether to create a TA
   else if (
       (m_current_window.time_start - m_last_pred_time) > m_bin_length && // check enough time has passed since last window
       m_current_window.tp_list.size() > 20 && // need enough TPs in window to bother
       m_current_window.adc_integral > m_adc_threshold && // set a low minimum threshold for the ADC integral sum
-      (m_current_window.mean_tot() / m_current_window.mean_adc_peak()) > m_ratio_threshold && //
+      (m_current_window.mean_adc_peak() / m_current_window.mean_tot()) > m_ratio_threshold && // mean peak / tot cut
       compute_treelite_classification() // XGBoost classifier 
       )
   {
@@ -64,13 +62,11 @@ TriggerActivityMakerBSMWindow::operator()(const TriggerPrimitive& input_tp, std:
     output_ta.push_back(construct_ta());
     TLOG_DEBUG(TLVL_DEBUG_HIGH) << "[TAM:ADCSW] Resetting window with input_tp.";
     m_current_window.reset(input_tp);
-    //m_current_window.reset(input_tp, flat_batched_inputs);
   }
   // If it is not, move the window along.
   else{
     TLOG_DEBUG(TLVL_DEBUG_ALL) << "[TAM:ADCSW] Window is at required length but adc threshold not met, shifting window along.";
     m_current_window.move(input_tp, m_window_length);
-    //m_current_window.move(input_tp, m_window_length, flat_batched_inputs, m_bin_length, m_chan_bin_length, nbins, nchanbins, m_first_channel);
   }
   
   TLOG_DEBUG(TLVL_DEBUG_ALL) << "[TAM:ADCSW] " << m_current_window;
@@ -85,17 +81,17 @@ TriggerActivityMakerBSMWindow::configure(const nlohmann::json &config)
 {
   //FIXME use some schema here
   if (config.is_object()){
-    if (config.contains("bin_length")) m_bin_length = config["bin_length"];
+    if (config.contains("num_time_bins")) m_num_timebins = config["num_time_bins"];
     if (config.contains("adc_threshold")) m_adc_threshold = config["adc_threshold"];
     if (config.contains("ratio_threshold")) {
       m_ratio_threshold = config["ratio_threshold"];
       m_ratio_threshold *= 0.01;
     }
-    //if (config.contains("batch_size")) nbatch = config["batch_size"];
     if (config.contains("window_length")) {
       m_window_length = config["window_length"];
-      std::cout << "window length = " << m_window_length << " and bin length = " << m_bin_length << std::endl;
-      nbins = static_cast<int>(m_window_length / m_bin_length);
+      //std::cout << "window length = " << m_window_length << " and bin length = " << m_bin_length << std::endl;
+      //m_num_timebins = static_cast<int>(m_window_length / m_bin_length);
+      m_bin_length = static_cast<timestamp_t>(m_window_length / m_num_timebins);
     }
     if (config.contains("bdt_threshold")) {
       uint64_t int_bdt_threshold = config["bdt_threshold"];
@@ -104,62 +100,27 @@ TriggerActivityMakerBSMWindow::configure(const nlohmann::json &config)
       else if (int_bdt_threshold <= 10000) m_bdt_threshold = static_cast<float>(int_bdt_threshold * 0.0001);
       else m_bdt_threshold = static_cast<float>(int_bdt_threshold * 0.01);
     }
-    if (config.contains("alg_type")) m_algtype = config["alg_type"];
   }
   else{
     TLOG_DEBUG(TLVL_IMPORTANT) << "[TAM:ADCSW] The DEFAULT values of window_length and adc_threshold are being used.";
   }
-  TLOG_DEBUG(TLVL_IMPORTANT) << "[TAM:ADCSW] If the total ADC of trigger primitives with times within a "
-                         << m_bin_length << " tick time window is above " << m_adc_threshold << " counts, a trigger will be issued.";
-  std::cout << "bin length is " << m_bin_length << " for a window of " << nbins << " bins. ADC threshold across window set to " << m_adc_threshold << std::endl;
+  
+  std::cout << "Bin length is " << m_bin_length << " for a window of " << m_num_timebins << 
+    " bins. ADC threshold across window set to " << m_adc_threshold << std::endl;
 
-  m_geom = &art::ServiceHandle<geo::WireReadout>()->Get();
-  nbatch_iterator = 0;
+  const size_t num_feature = get_num_feature();
+  flat_batched_inputs.resize(num_feature);
 
-  std::cout << "Batch size = " << nbatch << std::endl;
+  m_num_chanbins = num_feature / m_num_timebins;
+  std::cout << "Using 2D model. Set num chan bins to " << m_num_chanbins << std::endl;
 
-  flat_batched_inputs.resize(nbatch * nbins);
-
-  if (m_algtype == 0) {
-    std::cout << "Using ADCSimpleWindow equivelent algorithm." << std::endl;
+  flat_batched_Entries.clear();
+  for (size_t i = 0; i < num_feature; ++i) {
+    union Entry zero;
+    zero.fvalue = 0.0;
+    flat_batched_Entries.emplace_back(zero);
   }
-
-  else if (m_algtype == 1) { // Treelite for inference Algorithm
-    std::cout << "Using XGBoost model with Treelite GTIL inference window algorithm." << std::endl;  
-    std::string xgboost_model_path = "/exp/dune/app/users/chasnip/CERN_Fellowship/DUNE_DAQ_Development/sourcecode/triggeralgs/include/triggeralgs/BSMWindow/models/nu_cosmicoverlay_classifier_xgboost.json";
-    //m_treelite_model_interface = std::make_unique<TreeliteModelInterface>(xgboost_model_path.c_str(), nbatch);
-    //m_treelite_model_interface->ModelWarmUp(flat_batched_inputs.data());
-  }
-
-  else if (m_algtype == 2 || m_algtype == 3) {
-    std::cout << "Using XGBoost model with compiled Treelite inference window algorithm." << std::endl;
-    const size_t num_feature = get_num_feature();
-    //if ((size_t)nbins != num_feature) {
-    //  std::cerr << "[ERROR] Using compiled model, so number of user-defined features " << nbins << 
-    //    " must match model number of features " << num_feature << "\n";
-    //  exit(1);
-    //}
-    //nbins = num_feature
-    
-    flat_batched_inputs.resize(nbatch * num_feature);
-
-    if (m_algtype == 3) {
-      nchanbins = num_feature / nbins;
-      std::cout << "Using 2D model. Set num chan bins to " << nchanbins << std::endl;
-    }
-
-    flat_batched_Entries.clear();
-    for (size_t i = 0; i < num_feature; ++i) {
-      union Entry zero;
-      zero.fvalue = 0.0;
-      flat_batched_Entries.emplace_back(zero);
-    }
-    m_compiled_model_interface = std::make_unique<CompiledModelInterface>(nbatch);
-  }
-  else {
-    std::cerr << "[ERROR] unrecognised algorithm number " << m_algtype << ". Must be 0, 1 or 2\n";
-    exit(1);
-  }
+  m_compiled_model_interface = std::make_unique<CompiledModelInterface>(nbatch);
 }
 
 TriggerActivityMakerBSMWindow::~TriggerActivityMakerBSMWindow() {
@@ -196,49 +157,18 @@ TriggerActivityMakerBSMWindow::construct_ta() const
 bool TriggerActivityMakerBSMWindow::compute_treelite_classification() {
 
   m_last_pred_time = m_current_window.time_start;
-  //m_current_window.bin_window(flat_batched_inputs, m_bin_length, nbins);
- // auto start_bin = std::chrono::high_resolution_clock::now();
-  if (m_algtype == 2) {
-    m_current_window.bin_window(flat_batched_inputs, m_bin_length, nbins);
-  } else if (m_algtype == 3) {
-    m_current_window.bin_window(flat_batched_inputs, m_bin_length, m_chan_bin_length, nbins, nchanbins, m_first_channel);
-  }
-  //auto end_bin = std::chrono::high_resolution_clock::now();
-  //auto duration_bin = std::chrono::duration_cast<std::chrono::nanoseconds>(end_bin - start_bin);
-  //std::cout << ">>> Binning time: " << duration_bin.count() << std::endl; 
-
-//  if (m_algtype == 1) {
-    
-    //std::vector<float> result(m_treelite_model_interface->GetShapeElement(0), 0.0f);
-    //auto start_inference = std::chrono::high_resolution_clock::now();
-    //m_treelite_model_interface->Predict(flat_batched_inputs.data(), result.data());
-    //auto end_inference = std::chrono::high_resolution_clock::now();
-    //auto duration_inference = std::chrono::duration_cast<std::chrono::nanoseconds>(end_inference - start_inference);
-    //std::cout << ">>> Inference time: " << duration_inference.count() << std::endl;
-
-    //return m_treelite_model_interface->Classify(result.data(), m_bdt_threshold);
   
-  //} else if (m_algtype == 2) {
- // } else if (m_algtype == 2 || m_algtype == 3) {
-  if (m_algtype == 2 || m_algtype == 3) {
+  m_current_window.bin_window(flat_batched_inputs, m_bin_length, m_chan_bin_length, m_num_timebins, m_num_chanbins, m_first_channel);
+  
+  m_current_window.fill_entry_window(flat_batched_Entries, flat_batched_inputs); 
     
-    //auto start_inference = std::chrono::high_resolution_clock::now();
-    //std::cout << "entries size = " << flat_batched_Entries.size() << ", inputs size = " << flat_batched_inputs.size() << std::endl;
-    m_current_window.fill_entry_window(flat_batched_Entries, flat_batched_inputs); 
-    
-    std::vector<float> result(nbatch, 0.0f);
-    //auto start_inference = std::chrono::high_resolution_clock::now();
-    m_compiled_model_interface->Predict(flat_batched_Entries.data(), result.data());
-    //auto end_inference = std::chrono::high_resolution_clock::now();
-    //auto duration_inference = std::chrono::duration_cast<std::chrono::nanoseconds>(end_inference - start_inference);
-    //std::cout << ">>> Inference time: " << duration_inference.count() << std::endl;
-    return m_compiled_model_interface->Classify(result.data(), m_bdt_threshold);
-
-  } else {
-    std::cerr << "[ERROR] Algorithm choice is not configured : " << m_algtype << "\n";
-    exit(1);
-    return false;
-  }
+  std::vector<float> result(nbatch, 0.0f);
+  //auto start_inference = std::chrono::high_resolution_clock::now();
+  m_compiled_model_interface->Predict(flat_batched_Entries.data(), result.data());
+  //auto end_inference = std::chrono::high_resolution_clock::now();
+  //auto duration_inference = std::chrono::duration_cast<std::chrono::nanoseconds>(end_inference - start_inference);
+  //std::cout << ">>> Inference time: " << duration_inference.count() << std::endl;
+  return m_compiled_model_interface->Classify(result.data(), m_bdt_threshold);
 }
 
 // Register algo in TA Factory

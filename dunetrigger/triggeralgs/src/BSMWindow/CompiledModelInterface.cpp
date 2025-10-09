@@ -21,7 +21,7 @@ void CompiledModelInterface::ModelWarmUp(Entry *input) {
 
 void CompiledModelInterface::Predict(Entry *input, float *result) {
   /*std::cout << "Input of : ";
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 26; i++) {
     std::cout << input[i].fvalue << ", ";
   }
   std::cout << "\n";*/

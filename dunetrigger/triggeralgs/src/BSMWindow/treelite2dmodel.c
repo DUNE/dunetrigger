@@ -1,5 +1,5 @@
 
-#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/models/treelite_compmodel_classifier_xgboost/treelitemodel.h"
+#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/models/treelitemodel.h"
 
 
 static const int32_t num_class[] = {  1, };

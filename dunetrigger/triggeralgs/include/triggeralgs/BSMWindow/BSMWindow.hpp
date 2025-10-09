@@ -3,7 +3,7 @@
 
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerPrimitive.hpp"
 #include "dunetrigger/triggeralgs/include/triggeralgs/Types.hpp"
-#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/models/treelite_compmodel_classifier_xgboost/treelitemodel.h"
+#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/models/treelitemodel.h"
 
 #include <ostream>
 #include <vector>
@@ -15,18 +15,11 @@ class BSMWindow {
   public:
     bool is_empty() const;
     void add(TriggerPrimitive const &input_tp);
-    //void add(TriggerPrimitive const &input_tp, std::vector<float> &input, 
-    //         timestamp_t time_bin_width, channel_t chan_bin_width,
-    //         int num_time_bins, int num_chan_bins, channel_t first_channel);
 
     void clear();
     void move(TriggerPrimitive const &input_tp, timestamp_t const &window_length);
-    //void move(TriggerPrimitive const &input_tp, timestamp_t const &window_length, std::vector<float> &input,
-    //          timestamp_t time_bin_width, channel_t chan_bin_width,
-    //          int num_time_bins, int num_chan_bins, channel_t first_channel);
 
     void reset(TriggerPrimitive const &input_tp);
-    //void reset(TriggerPrimitive const &input_tp, std::vector<float> &input);
 
     // Overload bin_window function for both 1D time and 2D time v channel binning
     void bin_window(std::vector<float> &input, timestamp_t bin_width, int num_bins);
