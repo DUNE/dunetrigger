@@ -1,0 +1,24 @@
+# triggersim_triggerana_dune10kt_1x2x6.fcl
+
+#include "triggerana_tree.fcl"
+#include "tools_dune.fcl"
+
+process_name: TriggerSimAna
+
+services: {
+	@table::services_triggersim
+	@table::dunefd_1x2x6_reco_services
+}
+
+source:	@local::source_triggerana_tree
+outputs: @local::outputs_triggerana_tree
+outputs.out1.outputCommands: [
+  "keep *_*_*_*", 
+  "drop raw::RawDigit*_*_*_*",
+  "drop raw::OpDet*_*_*_*",
+  "drop simb::OpDet*_*_*_*",
+  "drop sim::OpDet*_*_*_*",
+  "drop sim::SimEnergyDeposits*_*_*_*"
+] 
+
+physics: @local::physics_triggerana_simpleThr_absRS
