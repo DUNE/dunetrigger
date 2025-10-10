@@ -24,6 +24,7 @@
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 
+#include "larcore/Geometry/Geometry.h"
 #include "larcore/Geometry/WireReadout.h"
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "lardataobj/Simulation/SimChannel.h"
@@ -35,6 +36,9 @@
 #include <TDirectory.h>
 #include <TFile.h>
 #include <TTree.h>
+
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
@@ -49,6 +53,25 @@ struct ChannelInfo {
   unsigned int rop_id;
   int view;
   unsigned int tpcset_id;
+};
+
+// Standard structure for all trees
+struct EventDataBuffer {
+  int event;
+  int run;
+  int subrun;
+
+  void branch_on( TTree* tree ) {
+    tree->Branch("event",&event,"event/i");
+    tree->Branch("run",&run,"run/i");
+    tree->Branch("subrun",&subrun,"subrun/i");
+  }
+
+  void clear() {
+    event = -1;
+    run = -1;
+    subrun = -1; 
+  }
 };
 
 // Adapts similar storage optimization techniques as TPv2, but expanding all
@@ -93,6 +116,19 @@ struct TriggerPrimitiveBuffer {
 
   // Reset the buffer
   void reset(){
+
+    version = 0;
+    flag = 0x0;
+    detid = 0;
+
+    channel = 0;
+    samples_over_threshold = 0;
+    time_start = 0;
+    samples_to_peak = 0;
+    adc_integral = 0;
+    adc_peak = 0;
+
+  
     // Reset backtracker members
     bt_primary_track_id = INVALID;
     bt_primary_track_numelectron_frac = INVALID;
@@ -128,15 +164,18 @@ public:
   // Required functions.
   void beginJob() override;
   void analyze(art::Event const &e) override;
-  // void endJob() override;
+  void endJob() override;
 
 private:
   art::ServiceHandle<art::TFileService> tfs;
   std::map<std::string, TTree *> tree_map;
   // buffers for writing to ROOT Trees
-  uint32_t fEventID;
-  uint32_t fRun;
-  uint32_t fSubRun;
+  EventDataBuffer ev_buf;
+
+  // uint32_t fEventID;
+  // uint32_t fRun;
+  // uint32_t fSubRun;
+
   size_t fAssnIdx;
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
@@ -197,8 +236,8 @@ private:
   bool dump_summary_info; 
   //visible energy for the event 
   TTree *summary_tree;
-  double ftot_visible_energy_U, ftot_visible_energy_V, ftot_visible_energy_X;
-  double ftot_numElectrons_U, ftot_numElectrons_V, ftot_numElectrons_X;  
+  double tot_visible_energy_U, tot_visible_energy_V, tot_visible_energy_X;
+  double tot_numelectrons_U, tot_numelectrons_V, tot_numelectrons_X;  
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
@@ -209,6 +248,9 @@ private:
   unsigned short tdc;
   float ide_numElectrons, ide_energy, ide_x, ide_y, ide_z;
   int ide_trkId, ide_origTrkId, ide_readout_plane_id, ide_readout_view, ide_detector_element;
+
+  // JSON metadata
+  json info_data;
 
 };
 
@@ -233,9 +275,7 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
 void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_mctruths) {
     mctruth_tree = tfs->make<TTree>("mctruths", "mctruths");
-    mctruth_tree->Branch("Event", &fEventID);
-    mctruth_tree->Branch("Run", &fRun);
-    mctruth_tree->Branch("SubRun", &fSubRun);
+    ev_buf.branch_on(mctruth_tree);
     mctruth_tree->Branch("block_id", &mctruth_id);
     mctruth_tree->Branch("truth_track_id", &mctruth_trackid);
     mctruth_tree->Branch("pdg", &mctruth_pdg);
@@ -254,9 +294,8 @@ void dunetrigger::TriggerAnaTree::beginJob() {
 
 
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
-    mcneutrino_tree->Branch("Event", &fEventID);
-    mcneutrino_tree->Branch("Run", &fRun);
-    mcneutrino_tree->Branch("SubRun", &fSubRun);
+    ev_buf.branch_on(mcneutrino_tree);
+
     mcneutrino_tree->Branch("block_id", &mctruth_id);
     mcneutrino_tree->Branch("generator_name", &mctruth_gen_name);
     mcneutrino_tree->Branch("nupdg", &mcneutrino_nupdg);
@@ -276,9 +315,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
   if (dump_mcparticles) {
     mcparticle_tree = tfs->make<TTree>("mcparticles", "mcparticles");
-    mcparticle_tree->Branch("Event", &fEventID);
-    mcparticle_tree->Branch("Run", &fRun);
-    mcparticle_tree->Branch("SubRun", &fSubRun);
+    ev_buf.branch_on(mcparticle_tree);
     mcparticle_tree->Branch("pdg", &mcparticle_pdg);
     mcparticle_tree->Branch("generator_name", &mcparticle_gen_name);
     mcparticle_tree->Branch("status_code", &mcparticle_status);
@@ -307,9 +344,8 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
   if (dump_simides) {
     simide_tree = tfs->make<TTree>("simides", "simides");
-    simide_tree->Branch("Event", &fEventID);
-    simide_tree->Branch("Run", &fRun);
-    simide_tree->Branch("SubRun", &fSubRun);
+    ev_buf.branch_on(simide_tree);
+
     simide_tree->Branch("channel", &sim_channel_id);
     simide_tree->Branch("timestamp", &tdc);
     simide_tree->Branch("numelectrons", &ide_numElectrons);
@@ -324,28 +360,38 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree->Branch("detector_element", &ide_detector_element);
   }
   if (dump_summary_info) {
-    summary_tree = tfs->make<TTree>("summary", "summary");
-    summary_tree->Branch("Event", &fEventID);
-    summary_tree->Branch("Run", &fRun);
-    summary_tree->Branch("SubRun", &fSubRun);
-    summary_tree->Branch("tot_visible_energy_U", &ftot_visible_energy_U);
-    summary_tree->Branch("tot_visible_energy_V", &ftot_visible_energy_V);
-    summary_tree->Branch("tot_visible_energy_X", &ftot_visible_energy_X);
-    summary_tree->Branch("tot_numElectrons_U", &ftot_numElectrons_U);
-    summary_tree->Branch("tot_numElectrons_V", &ftot_numElectrons_V);
-    summary_tree->Branch("tot_numElectrons_X", &ftot_numElectrons_X);
+    summary_tree = tfs->make<TTree>("event_summary", "event_summary");
+    ev_buf.branch_on(summary_tree);
+    summary_tree->Branch("tot_visible_energy_U", &tot_visible_energy_U);
+    summary_tree->Branch("tot_visible_energy_V", &tot_visible_energy_V);
+    summary_tree->Branch("tot_visible_energy_X", &tot_visible_energy_X);
+    summary_tree->Branch("tot_numelectrons_U", &tot_numelectrons_U);
+    summary_tree->Branch("tot_numelectrons_V", &tot_numelectrons_V);
+    summary_tree->Branch("tot_numelectrons_X", &tot_numelectrons_X);
   }
+
+
+
+  // Save detector settings
+  auto const& geo = art::ServiceHandle<geo::Geometry>();
+
+  // Geometry
+  info_data["geo"] = {};
+  info_data["geo"]["detector"] = geo->DetectorName();
 }
 
-void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
-  fRun = e.run();
-  fSubRun = e.subRun();
-  fEventID = e.id().event();
+void
+dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
+  ev_buf.run = e.run();
+  ev_buf.subrun = e.subRun();
+  ev_buf.event = e.event();
+
+
 
   
   //reset visible energy counters
-  ftot_visible_energy_U = ftot_visible_energy_V = ftot_visible_energy_X = 0;
-  ftot_numElectrons_U = ftot_numElectrons_V = ftot_numElectrons_X = 0;  
+  tot_visible_energy_U = tot_visible_energy_V = tot_visible_energy_X = 0;
+  tot_numelectrons_U = tot_numelectrons_V = tot_numelectrons_X = 0;  
   
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
@@ -397,6 +443,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
             trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
           }
+          std::cout << "MCParticle to MCBlock map size: " << trkId_to_truthBlockId.size() << std::endl;
         }
 
         for (int ipart = 0; ipart < nparticles; ipart++) {
@@ -414,7 +461,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           mctruth_Pz = part.Pz();
           mctruth_P  = part.P();
           mctruth_en = part.E();
-	  mctruth_ek = part.E() - part.Mass();
+	        mctruth_ek = part.E() - part.Mass();
           mctruth_tree->Fill();
         }
         truth_block_counter++;
@@ -450,16 +497,16 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 	  ide_detector_element = chinfo.tpcset_id; //APA/CRP ID
 	  //populate the total visible energy counters by plane
 	  if (ide_readout_view == geo::kU) { 
-	    ftot_visible_energy_U += ide_energy; 
-	    ftot_numElectrons_U += ide_numElectrons;
+	    tot_visible_energy_U += ide_energy; 
+	    tot_numelectrons_U += ide_numElectrons;
 	  } 
 	  if (ide_readout_view == geo::kV) { 
-	    ftot_visible_energy_V += ide_energy;
-	    ftot_numElectrons_V += ide_numElectrons;
+	    tot_visible_energy_V += ide_energy;
+	    tot_numelectrons_V += ide_numElectrons;
 	  } 
 	  if (ide_readout_view == geo::kW) { 
-	    ftot_visible_energy_X += ide_energy; 
-	    ftot_numElectrons_X += ide_numElectrons; 
+	    tot_visible_energy_X += ide_energy; 
+	    tot_numelectrons_X += ide_numElectrons; 
 	  } 
 	  simide_tree->Fill();
 	}
@@ -495,7 +542,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         mcparticle_Py = part.Py();
         mcparticle_Pz = part.Pz();
         mcparticle_en = part.E();
-	mcparticle_ek = part.E() - part.Mass();
+	      mcparticle_ek = part.E() - part.Mass();
         mcparticle_edep = track_en_sums.count(part.TrackId())
                               ? track_en_sums.at(part.TrackId())
                               : 0;
@@ -517,10 +564,27 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_tp) {
     std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = e.getMany<std::vector<TriggerPrimitive>>();
 
+
+    if (tp_backtracking) {
+      for ( const auto& [tool, offsets] : bt_view_offsets) {
+        info_data["backtracker"][tool]["offset_U"] = offsets[0];      
+        info_data["backtracker"][tool]["offset_V"] = offsets[1];      
+        info_data["backtracker"][tool]["offset_X"] = offsets[2];      
+      }
+    }
+    info_data["tpg"] = {};
+
     for (auto const& tpHandle : tpHandles) {
+
       std::string tag = tpHandle.provenance()->inputTag().encode();
       fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
+
+      info_data["tpg"][tag]["tool"] = tp_tool_type;
+      info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
+      info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
+      info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+
       std::string map_tag = "tp/" + tag;
 
       TriggerPrimitiveBuffer& curr_tp_buf = tp_bufs[map_tag];
@@ -616,6 +680,16 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 }
 
 
+void 
+dunetrigger::TriggerAnaTree::endJob() {
+
+  art::ServiceHandle<art::TFileService> tfs; 
+  auto n = tfs->make<TNamed>("info", info_data.dump().c_str());
+  n->Write();
+
+}
+
+
 void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag,
                                                          bool assn) {
   std::string map_tag = "tp/" + tag;
@@ -635,9 +709,8 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag,
 
     // Initialize TP buffer
     TriggerPrimitiveBuffer &tp = tp_bufs[map_tag];
-    tree->Branch("Event", &fEventID);
-    tree->Branch("Run", &fRun);
-    tree->Branch("SubRun", &fSubRun);
+
+    ev_buf.branch_on(tree);
     tp.branch_on(tree, tp_backtracking);
     if (assn)
       tree->Branch("TAnumber", &fAssnIdx);
@@ -658,9 +731,8 @@ void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag,
     TTree *tree = ta_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
     TriggerActivityData &ta = ta_bufs[map_tag];
-    tree->Branch("Event", &fEventID);
-    tree->Branch("Run", &fRun);
-    tree->Branch("SubRun", &fSubRun);
+    ev_buf.branch_on(tree);
+
     tree->Branch("version", &ta.version);
     tree->Branch("time_start", &ta.time_start);
     tree->Branch("time_end", &ta.time_end);
@@ -693,9 +765,8 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
     TTree *tree = tc_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
     TriggerCandidateData &tc = tc_bufs[map_tag];
-    tree->Branch("Event", &fEventID);
-    tree->Branch("Run", &fRun);
-    tree->Branch("SubRun", &fSubRun);
+    ev_buf.branch_on(tree);
+
     tree->Branch("version", &tc.version);
     tree->Branch("time_start", &tc.time_start);
     tree->Branch("time_end", &tc.time_end);
@@ -793,6 +864,8 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
     bt_primary_y = primary_bt_position[1];
     bt_primary_z = primary_bt_position[2];
 
+    // std::cout << "TPBT -> bt_primary_track_id: " << bt_primary_track_id << std::endl;
+    
     bt_mctruth_block_id = trkid_to_truth_block.at(bt_primary_track_id);
     bt_mctruth_gen_name = truth_id_to_gen.at(bt_mctruth_block_id);
 }
