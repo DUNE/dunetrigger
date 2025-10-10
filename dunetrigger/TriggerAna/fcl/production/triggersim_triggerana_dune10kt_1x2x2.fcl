@@ -4,6 +4,6 @@
 
 process_name: TriggerSimAna
 services: {
-	@table::services_triggersim
+	@table::services_triggerana_tree
 	@table::dunefd_1x2x2_reco_services
 }
