@@ -62,10 +62,10 @@ physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
   # (equivalent to a reco2 step, if reco1 is generating trigger data from rawDigits).
 
   analyzers: {
-    triggerAnaDumpAll: @local::triggerAnaTree_dumpAll
+    triggerAna: @local::triggerAnaTree_dumpAll
   }
 
-  ana:            [ triggerAnaDumpAll ]
+  ana:            [ triggerAna ]
   stream1:        [ out1 ]
   end_paths:      [ stream1, ana ]
 }

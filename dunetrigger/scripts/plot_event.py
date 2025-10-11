@@ -15,20 +15,20 @@ def main():
     args = parser.parse_args()
     with uproot.open(args.input) as rootfile:
         evids = np.unique(
-            rootfile["triggerAnaDumpAll/mctruths"]["Event"].array(library="numpy")
+            rootfile["triggerAna/mctruths"]["Event"].array(library="numpy")
         )
         evid = evids[args.index]
         cut_expr = f"Event == {evid}"
         tps = rootfile[
-            "triggerAnaDumpAll/TriggerPrimitives/tpmakerTPCsimpleThr__TriggerAnaTree1x2x6"
+            "triggerAna/TriggerPrimitives/tpmakerTPCsimpleThr__TriggerAnaTree1x2x6"
         ].arrays(library="pd", cut=cut_expr)
-        simides = rootfile["triggerAnaDumpAll/simides"].arrays(
+        simides = rootfile["triggerAna/simides"].arrays(
             library="pd", cut=cut_expr
         )
-        mctruths = rootfile["triggerAnaDumpAll/mctruths"].arrays(
+        mctruths = rootfile["triggerAna/mctruths"].arrays(
             library="pd", cut=cut_expr
         )
-        mcparticles = rootfile["triggerAnaDumpAll/mcparticles"].arrays(
+        mcparticles = rootfile["triggerAna/mcparticles"].arrays(
             library="pd", cut=cut_expr
         )
 
