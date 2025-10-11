@@ -57,6 +57,7 @@ struct ChannelInfo {
 
 // Standard structure for all trees
 struct EventDataBuffer {
+  // buffer data members
   int event;
   int run;
   int subrun;
@@ -73,6 +74,20 @@ struct EventDataBuffer {
     subrun = -1;
   }
 };
+
+
+struct MCTruthBuffer {
+  int pdg;
+  std::string process;
+  int status, id, trackid;
+  std::string gen_name;
+  double x, y, z;
+  double Px, Py, Pz, P;
+  double en, ek;
+};
+
+struct MCParticleBuffer {};
+struct SimIDEBuffer {};
 
 // Adapts similar storage optimization techniques as TPv2, but expanding all
 // bitfields.
@@ -167,10 +182,6 @@ private:
   std::map<std::string, TTree *> tree_map;
   // buffers for writing to ROOT Trees
   EventDataBuffer ev_buf;
-
-  // uint32_t fEventID;
-  // uint32_t fRun;
-  // uint32_t fSubRun;
 
   size_t fAssnIdx;
 
