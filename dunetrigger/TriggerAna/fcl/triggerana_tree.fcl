@@ -29,7 +29,7 @@ triggerAnaTree_dumpAll:
   # If true, perform backtracking to find energy depositions for each TP.
   tp_backtracking: true
   # Offset to apply for the backtracker
-  window_offsets: [
+  bt_window_offsets: [
     {
       tool_type: "TPAlgTPCSimpleThreshold"
       U: 8

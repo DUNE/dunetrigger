@@ -33,9 +33,13 @@
 
 #include "nusimdata/SimulationBase/MCParticle.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
+
+#include <regex>
+
 #include <TDirectory.h>
 #include <TFile.h>
 #include <TTree.h>
+
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -195,6 +199,8 @@ private:
   std::map<int, double> track_electron_sums;
 
   bool dump_tp, dump_ta, dump_tc;
+  std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
+  
 
   bool tp_backtracking;
 
@@ -252,16 +258,27 @@ private:
 
   // JSON metadata
   json info_data;
+  bool first_event_flag;
 };
 
 dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
-    : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")), dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
-      tp_backtracking(p.get<bool>("tp_backtracking", false)), dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
-      dump_summary_info(p.get<bool>("dump_summary_info", true)), dump_simides(p.get<bool>("dump_simides", true)),
-      simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
+    : EDAnalyzer{p}, 
+    dump_tp(p.get<bool>("dump_tp")),
+    dump_ta(p.get<bool>("dump_ta")),
+    dump_tc(p.get<bool>("dump_tc")),
+    tp_tag_regex(p.get<std::string>("tp_tag_regex", ".*")),
+    ta_tag_regex(p.get<std::string>("ta_tag_regex", ".*")),
+    tc_tag_regex(p.get<std::string>("tc_tag_regex", ".*")),
+    tp_backtracking(p.get<bool>("tp_backtracking", false)),
+    dump_mctruth(p.get<bool>("dump_mctruth", true)),
+    dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
+    dump_summary_info(p.get<bool>("dump_summary_info", true)),
+    dump_simides(p.get<bool>("dump_simides", true)),
+    simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 // More initializers here.
 {
-  std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("window_offsets");
+  // FIXME: rename `window_offsets` to `bt_window_offsets`
+  std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
                                                              offset.get<int>("X")};
@@ -370,9 +387,20 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   // Geometry
   info_data["geo"] = {};
   info_data["geo"]["detector"] = geo->DetectorName();
+
+  if (tp_backtracking) {
+    for (const auto &[tool, offsets] : bt_view_offsets) {
+      info_data["backtracker"][tool]["offset_U"] = offsets[0];
+      info_data["backtracker"][tool]["offset_V"] = offsets[1];
+      info_data["backtracker"][tool]["offset_X"] = offsets[2];
+    }
+  }
+
+  first_event_flag = true;
 }
 
 void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
+
   ev_buf.run = e.run();
   ev_buf.subrun = e.subRun();
   ev_buf.event = e.event();
@@ -404,6 +432,11 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       for (size_t i = 0; i < mctruthHandle->size(); i++) {
         const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
 
+        std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
+        for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
+          trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
+        }
+
         if (truthblock.NeutrinoSet()) {
           const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
           mcneutrino_nupdg = mcneutrino.Nu().PdgCode();
@@ -424,15 +457,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         }
 
         int nparticles = truthblock.NParticles();
-
-        // TODO: The track -> mc truth map could be needed for backtracking even if mcparticles are not dumped to file
-        if (dump_mcparticles) {
-          std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
-          for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
-            trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
-          }
-          std::cout << "MCParticle to MCBlock map size: " << trkId_to_truthBlockId.size() << std::endl;
-        }
 
         for (int ipart = 0; ipart < nparticles; ipart++) {
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
@@ -500,6 +524,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       }
     }
   }
+
   if (dump_mcparticles) {
 
     std::vector<art::Handle<std::vector<simb::MCParticle>>> mcparticleHandles =
@@ -544,25 +569,27 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_tp) {
     std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = e.getMany<std::vector<TriggerPrimitive>>();
 
-    if (tp_backtracking) {
-      for (const auto &[tool, offsets] : bt_view_offsets) {
-        info_data["backtracker"][tool]["offset_U"] = offsets[0];
-        info_data["backtracker"][tool]["offset_V"] = offsets[1];
-        info_data["backtracker"][tool]["offset_X"] = offsets[2];
-      }
+    if ( first_event_flag ) {
+      info_data["tpg"] = {};
     }
-    info_data["tpg"] = {};
 
+    std::regex tp_regex(this->tp_tag_regex);
     for (auto const &tpHandle : tpHandles) {
 
       std::string tag = tpHandle.provenance()->inputTag().encode();
+      if ( !std::regex_match(tag, tp_regex) ) {
+        continue;
+      }
+
       fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
-      info_data["tpg"][tag]["tool"] = tp_tool_type;
-      info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
-      info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
-      info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+      if ( first_event_flag ) {
+        info_data["tpg"][tag]["tool"] = tp_tool_type;
+        info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
+        info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
+        info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+      }
 
       std::string map_tag = "tp/" + tag;
 
@@ -648,6 +675,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_summary_info) {
     summary_tree->Fill();
   }
+
+  first_event_flag = false;
 }
 
 void dunetrigger::TriggerAnaTree::endJob() {
