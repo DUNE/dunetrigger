@@ -245,7 +245,7 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p) :
     dump_ta(p.get<bool>("dump_ta")),
     dump_tc(p.get<bool>("dump_tc")),
     tp_backtracking(p.get<bool>("tp_backtracking", false)), 
-    dump_mctruth(p.get<bool>("dump_mctruth", true)),
+    dump_mctruths(p.get<bool>("dump_mctruths", true)),
     dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
     dump_summary_info(p.get<bool>("dump_summary_info", true)),
     dump_simides(p.get<bool>("dump_simides", true)),
