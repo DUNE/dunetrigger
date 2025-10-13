@@ -394,7 +394,12 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
       for (size_t i = 0; i < mctruthHandle->size(); i++) {
         const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
-
+        
+        std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
+        for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
+          trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
+        }
+        
         if (truthblock.NeutrinoSet()) {
           const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
           mcneutrino_nupdg = mcneutrino.Nu().PdgCode();
@@ -416,14 +421,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
         int nparticles = truthblock.NParticles();
 
-        // TODO: The track -> mc truth map could be needed for backtracking even if mcparticles are not dumped to file
-        if (dump_mcparticles) {
-          std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
-          for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
-            trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
-          }
-          std::cout << "MCParticle to MCBlock map size: " << trkId_to_truthBlockId.size() << std::endl;
-        }
+
 
         for (int ipart = 0; ipart < nparticles; ipart++) {
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
