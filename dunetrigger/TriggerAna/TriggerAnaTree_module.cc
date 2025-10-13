@@ -270,14 +270,13 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     ta_tag_regex(p.get<std::string>("ta_tag_regex", ".*")),
     tc_tag_regex(p.get<std::string>("tc_tag_regex", ".*")),
     tp_backtracking(p.get<bool>("tp_backtracking", false)),
-    dump_mctruth(p.get<bool>("dump_mctruth", true)),
+    dump_mctruths(p.get<bool>("dump_mctruths", true)),
     dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
     dump_summary_info(p.get<bool>("dump_summary_info", true)),
     dump_simides(p.get<bool>("dump_simides", true)),
     simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 // More initializers here.
 {
-  // FIXME: rename `window_offsets` to `bt_window_offsets`
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
@@ -431,6 +430,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
       for (size_t i = 0; i < mctruthHandle->size(); i++) {
         const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
+
 
         std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
         for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
