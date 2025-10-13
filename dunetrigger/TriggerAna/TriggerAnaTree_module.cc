@@ -168,10 +168,6 @@ private:
   // buffers for writing to ROOT Trees
   EventDataBuffer ev_buf;
 
-  // uint32_t fEventID;
-  // uint32_t fRun;
-  // uint32_t fSubRun;
-
   size_t fAssnIdx;
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
@@ -243,13 +239,19 @@ private:
   json info_data;
 };
 
-dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
-    : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")), dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
-      tp_backtracking(p.get<bool>("tp_backtracking", false)), dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
-      dump_summary_info(p.get<bool>("dump_summary_info", true)), dump_simides(p.get<bool>("dump_simides", true)),
-      simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
-// More initializers here.
+dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p) : 
+    EDAnalyzer{p},
+    dump_tp(p.get<bool>("dump_tp")),
+    dump_ta(p.get<bool>("dump_ta")),
+    dump_tc(p.get<bool>("dump_tc")),
+    tp_backtracking(p.get<bool>("tp_backtracking", false)), 
+    dump_mctruth(p.get<bool>("dump_mctruth", true)),
+    dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
+    dump_summary_info(p.get<bool>("dump_summary_info", true)),
+    dump_simides(p.get<bool>("dump_simides", true)),
+    simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 {
+// More initializers here.
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
