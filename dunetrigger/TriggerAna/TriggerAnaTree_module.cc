@@ -612,10 +612,16 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_ta) {
     std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
         e.getMany<std::vector<TriggerActivityData>>();
+
+    std::regex ta_regex(this->ta_tag_regex);
+
     for (auto const &taHandle : taHandles) {
 
       art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
       std::string tag = taHandle.provenance()->inputTag().encode();
+      if ( !std::regex_match(tag, ta_regex) ) {
+        continue;
+      }
       std::string map_tag = "ta/" + tag;
       make_ta_tree_if_needed(tag);
       for (size_t i = 0; i < taHandle->size(); i++) {
@@ -646,9 +652,15 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_tc) {
     std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
         e.getMany<std::vector<TriggerCandidateData>>();
+
+    std::regex tc_regex(this->tc_tag_regex);
+
     for (auto const &tcHandle : tcHandles) {
       art::FindManyP<TriggerActivityData> assns(tcHandle, e, tcHandle.provenance()->moduleLabel());
       std::string tag = tcHandle.provenance()->inputTag().encode();
+      if ( !std::regex_match(tag, tc_regex) ) {
+        continue;
+      }
       std::string map_tag = "tc/" + tag;
       make_tc_tree_if_needed(tag);
       for (size_t i = 0; i < tcHandle->size(); i++) {
