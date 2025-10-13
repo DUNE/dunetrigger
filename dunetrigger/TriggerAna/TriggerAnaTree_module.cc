@@ -168,10 +168,6 @@ private:
   // buffers for writing to ROOT Trees
   EventDataBuffer ev_buf;
 
-  // uint32_t fEventID;
-  // uint32_t fRun;
-  // uint32_t fSubRun;
-
   size_t fAssnIdx;
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
@@ -243,13 +239,19 @@ private:
   json info_data;
 };
 
-dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
-    : EDAnalyzer{p}, dump_tp(p.get<bool>("dump_tp")), dump_ta(p.get<bool>("dump_ta")), dump_tc(p.get<bool>("dump_tc")),
-      tp_backtracking(p.get<bool>("tp_backtracking", false)), dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
-      dump_summary_info(p.get<bool>("dump_summary_info", true)), dump_simides(p.get<bool>("dump_simides", true)),
-      simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
-// More initializers here.
+dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p) : 
+    EDAnalyzer{p},
+    dump_tp(p.get<bool>("dump_tp")),
+    dump_ta(p.get<bool>("dump_ta")),
+    dump_tc(p.get<bool>("dump_tc")),
+    tp_backtracking(p.get<bool>("tp_backtracking", false)), 
+    dump_mctruths(p.get<bool>("dump_mctruths", true)),
+    dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
+    dump_summary_info(p.get<bool>("dump_summary_info", true)),
+    dump_simides(p.get<bool>("dump_simides", true)),
+    simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 {
+// More initializers here.
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
@@ -392,7 +394,12 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
       for (size_t i = 0; i < mctruthHandle->size(); i++) {
         const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
-
+        
+        std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
+        for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
+          trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
+        }
+        
         if (truthblock.NeutrinoSet()) {
           const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
           mcneutrino_nupdg = mcneutrino.Nu().PdgCode();
@@ -414,14 +421,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
         int nparticles = truthblock.NParticles();
 
-        // TODO: The track -> mc truth map could be needed for backtracking even if mcparticles are not dumped to file
-        if (dump_mcparticles) {
-          std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
-          for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
-            trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
-          }
-          std::cout << "MCParticle to MCBlock map size: " << trkId_to_truthBlockId.size() << std::endl;
-        }
+
 
         for (int ipart = 0; ipart < nparticles; ipart++) {
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
