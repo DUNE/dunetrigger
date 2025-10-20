@@ -108,6 +108,7 @@ struct TriggerPrimitiveBuffer {
   uint16_t adc_peak;
 
   int bt_primary_track_id;
+  int bt_num_tracks;
   double bt_primary_track_numelectron_frac;
   double bt_primary_track_energy_frac;
   double bt_edep;
@@ -147,6 +148,7 @@ struct TriggerPrimitiveBuffer {
 
     // Reset backtracker members
     bt_primary_track_id = INVALID;
+    bt_num_tracks = INVALID;
     bt_primary_track_numelectron_frac = INVALID;
     bt_primary_track_energy_frac = INVALID;
     bt_edep = 0;
@@ -804,7 +806,8 @@ void dunetrigger::TriggerPrimitiveBuffer::from_tp(const TriggerPrimitive &tp) {
 }
 
 void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
-    const std::vector<sim::IDE> &ides, const std::unordered_map<int, int> &trkid_to_truth_block,
+    const std::vector<sim::IDE> &ides, 
+    const std::unordered_map<int, int> &trkid_to_truth_block,
     std::unordered_map<int, std::string> &truth_id_to_gen) {
 
   // Reset backtracker members
@@ -825,12 +828,24 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
   if (ides.size() == 0) {
     return;
   }
+  
+  // Backtracked ides - consider only ides with valid track ID.
+  std::vector<sim::IDE> bt_ides;
+  bt_ides.reserve(ides.capacity());
+  std::copy_if (ides.begin(), ides.end(), std::back_inserter(bt_ides), [](const sim::IDE& ide){return ide.trackID != 0;} );
+
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
 
   std::map<int, double> track_numelectrons;
   std::map<int, double> track_energies;
-  for (const sim::IDE &ide : ides) {
+
+  if (bt_ides.empty() ) {
+    std::cout << "Empty IDEs set!" << std::endl;
+    return;
+  }
+
+  for (const sim::IDE &ide : bt_ides) {
     int mc_track_id = pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId();
     track_numelectrons[mc_track_id] += ide.numElectrons;
     bt_numelectrons += ide.numElectrons;
@@ -842,12 +857,13 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
       })->first;
 
   std::vector<sim::IDE> primary_ides;
-  for (const sim::IDE &ide : ides) {
+  for (const sim::IDE &ide : bt_ides) {
     if (pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId() == bt_primary_track_id) {
       primary_ides.push_back(ide);
     }
   }
 
+  bt_num_tracks = track_numelectrons.size();
   bt_primary_track_numelectron_frac = track_numelectrons[bt_primary_track_id] / bt_numelectrons;
   bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
 
@@ -860,8 +876,6 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
   bt_primary_x = primary_bt_position[0];
   bt_primary_y = primary_bt_position[1];
   bt_primary_z = primary_bt_position[2];
-
-  // std::cout << "TPBT -> bt_primary_track_id: " << bt_primary_track_id << std::endl;
 
   bt_mctruth_block_id = trkid_to_truth_block.at(bt_primary_track_id);
   bt_mctruth_gen_name = truth_id_to_gen.at(bt_mctruth_block_id);
