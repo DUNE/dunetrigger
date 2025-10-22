@@ -1,0 +1,7 @@
+#include "tpg_dune10kt_1x2x6.fcl"
+
+process_name: TPGen
+services: {
+	@table::services_triggersim
+	@table::dunefd_1x2x2_reco_services
+}

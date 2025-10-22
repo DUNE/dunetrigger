@@ -1,0 +1,8 @@
+#include "triggerana_dune10kt_1x2x6.fcl"
+
+process_name: TriggerAna
+
+services: {
+	@table::services_triggerana_tree
+	@table::dunefd_1x2x2_reco_services
+}
