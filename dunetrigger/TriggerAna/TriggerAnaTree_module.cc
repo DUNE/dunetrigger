@@ -222,8 +222,8 @@ private:
   bool dump_summary_info;
   // visible energy for the event
   TTree *summary_tree;
-  double tot_visible_energy_0, tot_visible_energy_1, tot_visible_energy_2, tot_visible_energy_3; // total visible energy per readout plane ID
-  double tot_numelectrons_0, tot_numelectrons_1, tot_numelectrons_2, tot_numelectrons_3;
+  double tot_visible_energy_rop0, tot_visible_energy_rop1, tot_visible_energy_rop2, tot_visible_energy_rop3; // total visible energy per readout plane ID
+  double tot_numelectrons_rop0, tot_numelectrons_rop1, tot_numelectrons_rop2, tot_numelectrons_rop3;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
@@ -347,14 +347,14 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_summary_info) {
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
     ev_buf.branch_on(summary_tree);
-    summary_tree->Branch("tot_visible_energy_0", &tot_visible_energy_0);
-    summary_tree->Branch("tot_visible_energy_1", &tot_visible_energy_1);
-    summary_tree->Branch("tot_visible_energy_2", &tot_visible_energy_2);
-    summary_tree->Branch("tot_visible_energy_3", &tot_visible_energy_3);
-    summary_tree->Branch("tot_numelectrons_0", &tot_numelectrons_0);
-    summary_tree->Branch("tot_numelectrons_1", &tot_numelectrons_1);
-    summary_tree->Branch("tot_numelectrons_2", &tot_numelectrons_2);
-    summary_tree->Branch("tot_numelectrons_3", &tot_numelectrons_3);
+    summary_tree->Branch("tot_visible_energy_rop0", &tot_visible_energy_rop0);
+    summary_tree->Branch("tot_visible_energy_rop1", &tot_visible_energy_rop1);
+    summary_tree->Branch("tot_visible_energy_rop2", &tot_visible_energy_rop2);
+    summary_tree->Branch("tot_visible_energy_rop3", &tot_visible_energy_rop3);
+    summary_tree->Branch("tot_numelectrons_rop0", &tot_numelectrons_rop0);
+    summary_tree->Branch("tot_numelectrons_rop1", &tot_numelectrons_rop1);
+    summary_tree->Branch("tot_numelectrons_rop2", &tot_numelectrons_rop2);
+    summary_tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
   }
 
   // Save detector settings
@@ -371,8 +371,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   ev_buf.event = e.event();
 
   // reset visible energy counters
-  tot_visible_energy_0 = tot_visible_energy_1 = tot_visible_energy_2 = tot_visible_energy_3 = 0;
-  tot_numelectrons_0 = tot_numelectrons_1 = tot_numelectrons_2 = tot_numelectrons_3 = 0;
+  tot_visible_energy_rop0 = tot_visible_energy_rop1 = tot_visible_energy_rop2 = tot_visible_energy_rop3 = 0;
+  tot_numelectrons_rop0 = tot_numelectrons_rop1 = tot_numelectrons_rop2 = tot_numelectrons_rop3 = 0;
 
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
@@ -475,20 +475,20 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           ide_detector_element = chinfo.tpcset_id; // APA/CRP ID
           // populate the total visible energy counters by plane
           if (ide_readout_plane_id == 0) {
-            tot_visible_energy_0 += ide_energy;
-            tot_numelectrons_0 += ide_numElectrons;
+            tot_visible_energy_rop0 += ide_energy;
+            tot_numelectrons_rop0 += ide_numElectrons;
           }
           else if (ide_readout_plane_id == 1) {
-            tot_visible_energy_1 += ide_energy;
-            tot_numelectrons_1 += ide_numElectrons;
+            tot_visible_energy_rop1 += ide_energy;
+            tot_numelectrons_rop1 += ide_numElectrons;
           }
           else if (ide_readout_plane_id == 2) {
-            tot_visible_energy_2 += ide_energy;
-            tot_numelectrons_2 += ide_numElectrons;
+            tot_visible_energy_rop2 += ide_energy;
+            tot_numelectrons_rop2 += ide_numElectrons;
           }
           else if (ide_readout_plane_id == 3) {
-            tot_visible_energy_3 += ide_energy;
-            tot_numelectrons_3 += ide_numElectrons;
+            tot_visible_energy_rop3 += ide_energy;
+            tot_numelectrons_rop3 += ide_numElectrons;
           }
           simide_tree->Fill();
         }
