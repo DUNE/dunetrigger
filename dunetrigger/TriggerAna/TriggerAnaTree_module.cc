@@ -48,7 +48,8 @@ using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
 using dunedaq::trgdataformats::TriggerPrimitive;
 
-#define INVALID -99999
+// #define INVALID -99999
+constexpr int INVALID=-99999;
 
 namespace dunetrigger {
 class TriggerAnaTree;
@@ -91,7 +92,62 @@ struct MCTruthBuffer {
 };
 
 struct MCParticleBuffer {};
-struct SimIDEBuffer {};
+
+
+struct SimIDEBuffer {
+
+  unsigned int sim_channel_id;
+  int tdc;
+  float numElectrons;
+  float energy;
+  float x;
+  float y;
+  float z;
+  int trkId;
+  float origTrkId;
+  float readout_plane_id;
+  float readout_view;
+  float detector_element;
+  // int particle_pdg;
+  // int parent_pdg;
+
+  void branch_on(TTree *tree) {
+    tree->Branch("channel", &sim_channel_id);
+    tree->Branch("timestamp", &tdc);
+    tree->Branch("numelectrons", &numElectrons);
+    tree->Branch("energy", &energy);
+    tree->Branch("x", &x);
+    tree->Branch("y", &y);
+    tree->Branch("z", &z);
+    tree->Branch("trackID", &trkId);
+    tree->Branch("origTrackID", &origTrkId);
+
+    tree->Branch("readout_plane_id", &readout_plane_id);
+    tree->Branch("readout_view", &readout_view);
+    tree->Branch("detector_element", &detector_element);
+
+    // tree->Branch("pdg_id", &particle_pdg);
+    // tree->Branch("parent_pdg_id", &parent_pdg);
+  }
+
+  void clear() {
+    sim_channel_id = INVALID;
+    tdc = INVALID;
+    numElectrons = INVALID;
+    energy = INVALID;
+    x = INVALID;
+    y = INVALID;
+    z = INVALID;
+    trkId = INVALID;
+    origTrkId = INVALID;
+    readout_plane_id = INVALID;
+    readout_view = INVALID;
+    detector_element = INVALID;
+    // particle_pdg = INVALID;
+    // parent_pdg = INVALID;
+  }
+
+};
 
 // Adapts similar storage optimization techniques as TPv2, but expanding all
 // bitfields.
@@ -129,8 +185,38 @@ struct TriggerPrimitiveBuffer {
                                   const std::unordered_map<int, int> &trkid_to_truth_block,
                                   std::unordered_map<int, std::string> &truth_id_to_gen);
 
-  // Branch this buffer to a TTree
-  void branch_on(TTree *tree, bool backtracking);
+  void branch_on(TTree *tree, bool backtracking) {
+    tree->Branch("version", &this->version);
+    tree->Branch("flag", &this->flag);
+    tree->Branch("detid", &this->detid);
+    tree->Branch("channel", &this->channel);
+    tree->Branch("samples_over_threshold", &this->samples_over_threshold);
+    tree->Branch("time_start", &this->time_start);
+    tree->Branch("samples_to_peak", &this->samples_to_peak);
+    tree->Branch("adc_integral", &this->adc_integral);
+    tree->Branch("adc_peak", &this->adc_peak);
+
+    tree->Branch("readout_plane_id", &this->chinfo.rop_id);
+    tree->Branch("readout_view", &this->chinfo.view);
+    tree->Branch("TPCSetID", &this->chinfo.tpcset_id);
+
+    // Add backtracking only if requested
+    if (backtracking) {
+      tree->Branch("bt_primary_track_id", &this->bt_primary_track_id);
+      tree->Branch("bt_primary_track_numelectron_frac", &this->bt_primary_track_numelectron_frac);
+      tree->Branch("bt_primary_track_energy_frac", &this->bt_primary_track_energy_frac);
+      tree->Branch("bt_edep", &this->bt_edep);
+      tree->Branch("bt_numelectrons", &this->bt_numelectrons);
+      tree->Branch("bt_x", &this->bt_x);
+      tree->Branch("bt_y", &this->bt_y);
+      tree->Branch("bt_z", &this->bt_z);
+      tree->Branch("bt_primary_x", &this->bt_primary_x);
+      tree->Branch("bt_primary_y", &this->bt_primary_y);
+      tree->Branch("bt_primary_z", &this->bt_primary_z);
+      tree->Branch("bt_truth_block_id", &this->bt_mctruth_block_id);
+      tree->Branch("bt_generator_name", &this->bt_mctruth_gen_name);
+    }
+  }
 
   // Reset the buffer
   void reset() {
@@ -253,10 +339,13 @@ private:
   bool dump_simides;
   std::string simchannel_tag;
   TTree *simide_tree;
-  unsigned int sim_channel_id;
-  unsigned short tdc;
-  float ide_numElectrons, ide_energy, ide_x, ide_y, ide_z;
-  int ide_trkId, ide_origTrkId, ide_readout_plane_id, ide_readout_view, ide_detector_element;
+  SimIDEBuffer simide_buf;
+  
+  // unsigned int sim_channel_id;
+  // int tdc;
+  // float ide_numElectrons, ide_energy, ide_x, ide_y, ide_z;
+  // int ide_trkId, ide_origTrkId, ide_readout_plane_id, ide_readout_view, ide_detector_element;
+  // int ide_particle_pdg, ide_parent_pdg;
 
   // JSON metadata
   json info_data;
@@ -357,19 +446,22 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_simides) {
     simide_tree = tfs->make<TTree>("simides", "simides");
     ev_buf.branch_on(simide_tree);
+    simide_buf.branch_on(simide_tree);
 
-    simide_tree->Branch("channel", &sim_channel_id);
-    simide_tree->Branch("timestamp", &tdc);
-    simide_tree->Branch("numelectrons", &ide_numElectrons);
-    simide_tree->Branch("energy", &ide_energy);
-    simide_tree->Branch("x", &ide_x);
-    simide_tree->Branch("y", &ide_y);
-    simide_tree->Branch("z", &ide_z);
-    simide_tree->Branch("trackID", &ide_trkId);
-    simide_tree->Branch("origTrackID", &ide_origTrkId);
-    simide_tree->Branch("readout_plane_id", &ide_readout_plane_id);
-    simide_tree->Branch("readout_view", &ide_readout_view);
-    simide_tree->Branch("detector_element", &ide_detector_element);
+    // simide_tree->Branch("channel", &sim_channel_id);
+    // simide_tree->Branch("timestamp", &tdc);
+    // simide_tree->Branch("numelectrons", &ide_numElectrons);
+    // simide_tree->Branch("energy", &ide_energy);
+    // simide_tree->Branch("x", &ide_x);
+    // simide_tree->Branch("y", &ide_y);
+    // simide_tree->Branch("z", &ide_z);
+    // simide_tree->Branch("trackID", &ide_trkId);
+    // simide_tree->Branch("origTrackID", &ide_origTrkId);
+    // simide_tree->Branch("pdg_id", &ide_particle_pdg);
+    // simide_tree->Branch("parent_pdg_id", &ide_parent_pdg);
+    // simide_tree->Branch("readout_plane_id", &ide_readout_plane_id);
+    // simide_tree->Branch("readout_view", &ide_readout_view);
+    // simide_tree->Branch("detector_element", &ide_detector_element);
   }
   if (dump_summary_info) {
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
@@ -486,40 +578,71 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_simides) {
     auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
 
+    art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
+
     track_en_sums.clear();
     track_electron_sums.clear();
     for (const sim::SimChannel &sc : *simchannels) {
-      sim_channel_id = sc.Channel();
+      // FIXME: Remove // sim_channel_id = sc.Channel();
+      simide_buf.sim_channel_id = sc.Channel();
+
       sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
       for (const sim::TDCIDE &tdcide : tdcidemap) {
-        tdc = tdcide.first;
-        for (sim::IDE ide : tdcide.second) {
-          ide_numElectrons = ide.numElectrons;
-          ide_energy = ide.energy;
-          ide_x = ide.x;
-          ide_y = ide.y;
-          ide_z = ide.z;
-          ide_trkId = ide.trackID;
-          ide_origTrkId = ide.origTrackID;
+        // FIXME: Remove // tdc = tdcide.first;
+        simide_buf.tdc = tdcide.first;
+        for (const sim::IDE& ide : tdcide.second) {
+          // ide_numElectrons = ide.numElectrons;
+          // ide_energy = ide.energy;
+          // ide_x = ide.x;
+          // ide_y = ide.y;
+          // ide_z = ide.z;
+          // ide_trkId = ide.trackID;
+          // ide_particle_pdg = ( ide.trackID != 0 ? pi_serv->TrackIdToParticle_P(ide.trackID)->PdgCode(): INVALID);
+          // if ( ide.trackID != 0  ) {
+          //   auto* mcp = pi_serv->TrackIdToParticle_P(ide.trackID);
+          //   ide_particle_pdg = mcp->PdgCode();
+          //   std::cout << "Mother " << mcp->Mother() << std::endl;
+
+          //   if ( mcp->Mother() > 0 ) {
+          //     ide_parent_pdg = pi_serv->TrackIdToParticle_P(mcp->Mother())->PdgCode();
+          //   } else {
+          //     ide_parent_pdg = INVALID;
+          //   }
+          // } else {
+          //   ide_particle_pdg = INVALID;
+          //   ide_parent_pdg = INVALID;
+          // };
+          // ide_origTrkId = ide.origTrackID;
+
+          simide_buf.numElectrons = ide.numElectrons;
+          simide_buf.energy = ide.energy;
+          simide_buf.x = ide.x;
+          simide_buf.y = ide.y;
+          simide_buf.z = ide.z;
+          simide_buf.trkId = ide.trackID;
+          simide_buf.origTrkId = ide.origTrackID;
+
+
           track_en_sums[ide.trackID] += ide.energy;
           track_electron_sums[ide.trackID] += ide.numElectrons;
           // higher level geometric info for IDEs
-          ChannelInfo chinfo = get_channel_info_for_channel(geom, sim_channel_id);
-          ide_readout_plane_id = chinfo.rop_id;
-          ide_readout_view = chinfo.view;
-          ide_detector_element = chinfo.tpcset_id; // APA/CRP ID
+          ChannelInfo chinfo = get_channel_info_for_channel(geom, simide_buf.sim_channel_id);
+          simide_buf.readout_plane_id = chinfo.rop_id;
+          simide_buf.readout_view = chinfo.view;
+          simide_buf.detector_element = chinfo.tpcset_id; // APA/CRP ID
+          
           // populate the total visible energy counters by plane
-          if (ide_readout_view == geo::kU) {
-            tot_visible_energy_U += ide_energy;
-            tot_numelectrons_U += ide_numElectrons;
+          if (chinfo.view == geo::kU) {
+            tot_visible_energy_U += ide.energy;
+            tot_numelectrons_U += ide.numElectrons;
           }
-          if (ide_readout_view == geo::kV) {
-            tot_visible_energy_V += ide_energy;
-            tot_numelectrons_V += ide_numElectrons;
+          if (chinfo.view == geo::kV) {
+            tot_visible_energy_V += ide.energy;
+            tot_numelectrons_V += ide.numElectrons;
           }
-          if (ide_readout_view == geo::kW) {
-            tot_visible_energy_X += ide_energy;
-            tot_numelectrons_X += ide_numElectrons;
+          if (chinfo.view == geo::kW) {
+            tot_visible_energy_X += ide.energy;
+            tot_numelectrons_X += ide.numElectrons;
           }
           simide_tree->Fill();
         }
@@ -881,38 +1004,38 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
   bt_mctruth_gen_name = truth_id_to_gen.at(bt_mctruth_block_id);
 }
 
-void dunetrigger::TriggerPrimitiveBuffer::branch_on(TTree *tree, bool backtracking) {
-  tree->Branch("version", &this->version);
-  tree->Branch("flag", &this->flag);
-  tree->Branch("detid", &this->detid);
-  tree->Branch("channel", &this->channel);
-  tree->Branch("samples_over_threshold", &this->samples_over_threshold);
-  tree->Branch("time_start", &this->time_start);
-  tree->Branch("samples_to_peak", &this->samples_to_peak);
-  tree->Branch("adc_integral", &this->adc_integral);
-  tree->Branch("adc_peak", &this->adc_peak);
+// void dunetrigger::TriggerPrimitiveBuffer::branch_on(TTree *tree, bool backtracking) {
+//   tree->Branch("version", &this->version);
+//   tree->Branch("flag", &this->flag);
+//   tree->Branch("detid", &this->detid);
+//   tree->Branch("channel", &this->channel);
+//   tree->Branch("samples_over_threshold", &this->samples_over_threshold);
+//   tree->Branch("time_start", &this->time_start);
+//   tree->Branch("samples_to_peak", &this->samples_to_peak);
+//   tree->Branch("adc_integral", &this->adc_integral);
+//   tree->Branch("adc_peak", &this->adc_peak);
 
-  tree->Branch("readout_plane_id", &this->chinfo.rop_id);
-  tree->Branch("readout_view", &this->chinfo.view);
-  tree->Branch("TPCSetID", &this->chinfo.tpcset_id);
+//   tree->Branch("readout_plane_id", &this->chinfo.rop_id);
+//   tree->Branch("readout_view", &this->chinfo.view);
+//   tree->Branch("TPCSetID", &this->chinfo.tpcset_id);
 
-  // Add backtracking only if requested
-  if (backtracking) {
-    tree->Branch("bt_primary_track_id", &this->bt_primary_track_id);
-    tree->Branch("bt_primary_track_numelectron_frac", &this->bt_primary_track_numelectron_frac);
-    tree->Branch("bt_primary_track_energy_frac", &this->bt_primary_track_energy_frac);
-    tree->Branch("bt_edep", &this->bt_edep);
-    tree->Branch("bt_numelectrons", &this->bt_numelectrons);
-    tree->Branch("bt_x", &this->bt_x);
-    tree->Branch("bt_y", &this->bt_y);
-    tree->Branch("bt_z", &this->bt_z);
-    tree->Branch("bt_primary_x", &this->bt_primary_x);
-    tree->Branch("bt_primary_y", &this->bt_primary_y);
-    tree->Branch("bt_primary_z", &this->bt_primary_z);
-    tree->Branch("bt_truth_block_id", &this->bt_mctruth_block_id);
-    tree->Branch("bt_generator_name", &this->bt_mctruth_gen_name);
-  }
-}
+//   // Add backtracking only if requested
+//   if (backtracking) {
+//     tree->Branch("bt_primary_track_id", &this->bt_primary_track_id);
+//     tree->Branch("bt_primary_track_numelectron_frac", &this->bt_primary_track_numelectron_frac);
+//     tree->Branch("bt_primary_track_energy_frac", &this->bt_primary_track_energy_frac);
+//     tree->Branch("bt_edep", &this->bt_edep);
+//     tree->Branch("bt_numelectrons", &this->bt_numelectrons);
+//     tree->Branch("bt_x", &this->bt_x);
+//     tree->Branch("bt_y", &this->bt_y);
+//     tree->Branch("bt_z", &this->bt_z);
+//     tree->Branch("bt_primary_x", &this->bt_primary_x);
+//     tree->Branch("bt_primary_y", &this->bt_primary_y);
+//     tree->Branch("bt_primary_z", &this->bt_primary_z);
+//     tree->Branch("bt_truth_block_id", &this->bt_mctruth_block_id);
+//     tree->Branch("bt_generator_name", &this->bt_mctruth_gen_name);
+//   }
+// }
 
 std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const TriggerPrimitiveBuffer &tp,
                                                                         const std::string &tool_type) const {
