@@ -5,12 +5,12 @@
 BEGIN_PROLOG
 
 services_triggerana_tree: @local::services_triggersim
-services_triggerana_tree.TFileService.fileName: "triggerAnaTree_hist.root"
+services_triggerana_tree.TFileService.fileName: "triggerAna.ntuple.root"
 
 source_triggerana_tree: @local::source_triggersim
 
 outputs_triggerana_tree: @local::outputs_triggersim
-outputs_triggerana_tree.out1.fileName: "triggerAnaTree.root"
+outputs_triggerana_tree.out1.fileName: "triggerAna.root"
 
 ## These are analyzers
 

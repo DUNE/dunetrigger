@@ -331,8 +331,8 @@ private:
   bool dump_summary_info;
   // visible energy for the event
   TTree *summary_tree;
-  double tot_visible_energy_U, tot_visible_energy_V, tot_visible_energy_X;
-  double tot_numelectrons_U, tot_numelectrons_V, tot_numelectrons_X;
+  double tot_visible_energy_rop0, tot_visible_energy_rop1, tot_visible_energy_rop2, tot_visible_energy_rop3; // total visible energy per readout plane ID
+  double tot_numelectrons_rop0, tot_numelectrons_rop1, tot_numelectrons_rop2, tot_numelectrons_rop3;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
@@ -466,12 +466,14 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_summary_info) {
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
     ev_buf.branch_on(summary_tree);
-    summary_tree->Branch("tot_visible_energy_U", &tot_visible_energy_U);
-    summary_tree->Branch("tot_visible_energy_V", &tot_visible_energy_V);
-    summary_tree->Branch("tot_visible_energy_X", &tot_visible_energy_X);
-    summary_tree->Branch("tot_numelectrons_U", &tot_numelectrons_U);
-    summary_tree->Branch("tot_numelectrons_V", &tot_numelectrons_V);
-    summary_tree->Branch("tot_numelectrons_X", &tot_numelectrons_X);
+    summary_tree->Branch("tot_visible_energy_rop0", &tot_visible_energy_rop0);
+    summary_tree->Branch("tot_visible_energy_rop1", &tot_visible_energy_rop1);
+    summary_tree->Branch("tot_visible_energy_rop2", &tot_visible_energy_rop2);
+    summary_tree->Branch("tot_visible_energy_rop3", &tot_visible_energy_rop3);
+    summary_tree->Branch("tot_numelectrons_rop0", &tot_numelectrons_rop0);
+    summary_tree->Branch("tot_numelectrons_rop1", &tot_numelectrons_rop1);
+    summary_tree->Branch("tot_numelectrons_rop2", &tot_numelectrons_rop2);
+    summary_tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
   }
 
   // Save detector settings
@@ -499,8 +501,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   ev_buf.event = e.event();
 
   // reset visible energy counters
-  tot_visible_energy_U = tot_visible_energy_V = tot_visible_energy_X = 0;
-  tot_numelectrons_U = tot_numelectrons_V = tot_numelectrons_X = 0;
+  tot_visible_energy_rop0 = tot_visible_energy_rop1 = tot_visible_energy_rop2 = tot_visible_energy_rop3 = 0;
+  tot_numelectrons_rop0 = tot_numelectrons_rop1 = tot_numelectrons_rop2 = tot_numelectrons_rop3 = 0;
 
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
@@ -632,17 +634,21 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           simide_buf.detector_element = chinfo.tpcset_id; // APA/CRP ID
           
           // populate the total visible energy counters by plane
-          if (chinfo.view == geo::kU) {
-            tot_visible_energy_U += ide.energy;
-            tot_numelectrons_U += ide.numElectrons;
+          if (chinfo.rop_id == 0) {
+            tot_visible_energy_rop0 += ide.energy;
+            tot_numelectrons_rop0 += ide.numElectrons;
           }
-          if (chinfo.view == geo::kV) {
-            tot_visible_energy_V += ide.energy;
-            tot_numelectrons_V += ide.numElectrons;
+          else if (chinfo.rop_id == 1) {
+            tot_visible_energy_rop1 += ide.energy;
+            tot_numelectrons_rop1 += ide.numElectrons;
           }
-          if (chinfo.view == geo::kW) {
-            tot_visible_energy_X += ide.energy;
-            tot_numelectrons_X += ide.numElectrons;
+          else if (chinfo.rop_id == 2) {
+            tot_visible_energy_rop2 += ide.energy;
+            tot_numelectrons_rop2 += ide.numElectrons;
+          }
+          else if (chinfo.rop_id == 3) {
+            tot_visible_energy_rop3 += ide.energy;
+            tot_numelectrons_rop3 += ide.numElectrons;
           }
           simide_tree->Fill();
         }
