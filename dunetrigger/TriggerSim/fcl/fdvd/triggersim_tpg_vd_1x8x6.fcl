@@ -1,0 +1,102 @@
+# include "services_dune.fcl"
+# include "tools_dune.fcl"
+#include "triggersim.fcl"
+#include "triggersim_makers_vd.fcl"
+
+
+process_name: TriggerPrimitiveMaker
+
+services: {
+  @table::services_triggersim
+	@table::dunefdvd_1x8x6_3view_30deg_reco_services
+}
+
+# source:
+# {
+#   # module_type: RootInput
+#   # maxEvents:  10        # Number of events to create
+#   # saveMemoryObjectThreshold: 0
+# }
+
+
+source:	@local::source_triggersim
+outputs: @local::outputs_triggersim
+
+physics:
+{
+  producers: {
+    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold_vd
+    
+  }
+  makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+  stream1:  [ out1 ]
+  sim: [ tpmakerTPCSimpleThreshold ]
+  trigger_paths: [sim]
+  end_paths: [stream1]
+}
+# physics:
+# {
+#   producers:
+#   {
+#     tpmakerTPCSimpleThreshold:
+#     {
+#      module_type: TriggerPrimitiveMakerTPC
+#      rawdigit_tag: "tpcrawdecoder:daq" #input to TPG-> Raw Digits
+#      tpalg: {
+#       tool_type: TPAlgTPCSimpleThreshold #Use Simple Threshold TPG alg.
+#       verbosity: 0
+#       threshold_tpg_plane0: 45 # induction U
+#       threshold_tpg_plane1: 45 # induction V
+#       threshold_tpg_plane2: 45 # collection plane X
+#      }
+#     }
+#     # tpmakerTPCRunningSum:
+#     # {
+#     #   module_type: TriggerPrimitiveMakerTPC
+#     #   rawdigit_tag: "tpcrawdecoder:daq" # input to TPG-> Raw Digits
+#     #   tpalg: {
+#     #     tool_type: TPAlgTPCRunningSum # Use Running Sum TPG alg.
+#     #     verbosity: 0
+#     #     threshold_tpg_plane0: 80 #induction U
+#     #     threshold_tpg_plane1: 80 #induction V
+#     #     threshold_tpg_plane2: 70  #collection plane threshold
+#     #   }
+#     # }
+#     # tpmakerTPCAbsoluteRunningSum:
+#     # {
+#     #   module_type: TriggerPrimitiveMakerTPC
+#     #   rawdigit_tag: "tpcrawdecoder:daq" #input to TPG-> Raw Digits
+#     #   tpalg: {
+#     #     tool_type: TPAlgTPCAbsRunningSum # Use AbsRunning Sum TPG alg.
+#     #     verbosity: 0
+#     #     threshold_tpg_plane0: 80 #induction U
+#     #     threshold_tpg_plane1: 80 #induction V
+#     #     threshold_tpg_plane2: 70  #collection plane threshold
+#     #   }
+#     # }
+#   }
+#   makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+
+#   stream1:  [ out1 ]
+#   sim: [ tpmakerTPCSimpleThreshold ]
+#   trigger_paths: [sim]
+
+#   end_paths: [stream1]
+# }
+
+# outputs:
+# {
+#  out1:
+#  {
+#    module_type: RootOutput
+#    fileName:    "singlee_test_trigprims.root"
+#    compressionLevel: 1
+#    saveMemoryObjectThreshold: 0 
+#    # drop the rawdigits after TPs are generated 
+#    outputCommands: ["keep *_*_*_*", "drop raw::RawDigit*_*_*_*"] 
+#  }
+# }
+
+outputs.out1.outputCommands: ["keep *_*_*_*", "drop raw::RawDigit*_*_*_*"] 
+
+

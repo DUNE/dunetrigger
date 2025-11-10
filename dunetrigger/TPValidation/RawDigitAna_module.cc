@@ -90,28 +90,29 @@ public:
  
 private:
 
-  void ResetVariables();
+  void reset_variables();
 
   // Producer module, configurable from fhicl
   art::InputTag fRawDigitLabel; // raw digi label
   std::string fSimChanLabel; // sim channel label
 
-  bool fOnlySaveChannelsWithIDEs;
+  bool fSaveWaveforms;
+  bool fSaveChannelsWithIDEsOnly;
 
   //ROOT tree for storing output information 
-  TTree* fRawDigisTree;
+  TTree* fRawDigisTree = nullptr;
 
   int fEvent, fRun, fSubRun;
 
-  TH2I* fADCsHistogramByPlane;
-  TH1I* fADCsHistogramX;
-  TH1I* fADCsHistogramU;
-  TH1I* fADCsHistogramV;
+  TH2I* fADCsHistogramByPlane = nullptr;
+  TH1I* fADCsHistogramX = nullptr;
+  TH1I* fADCsHistogramU = nullptr;
+  TH1I* fADCsHistogramV = nullptr;
 
-  TH2I* fNoiseADCsHistogramByPlane;
-  TH1I* fNoiseADCsHistogramX;
-  TH1I* fNoiseADCsHistogramU;
-  TH1I* fNoiseADCsHistogramV;
+  TH2I* fNoiseADCsHistogramByPlane = nullptr;
+  TH1I* fNoiseADCsHistogramX = nullptr;
+  TH1I* fNoiseADCsHistogramU = nullptr;
+  TH1I* fNoiseADCsHistogramV = nullptr;
 
   std::map<raw::ChannelID_t, raw::RawDigit::ADCvector_t> fWaveformsBuffer;
   std::vector<unsigned int> fActiveChannels;
@@ -123,7 +124,8 @@ duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
   fRawDigitLabel(p.get<art::InputTag>("rawdigit_tag", "tpcrawdecoder:daq")),
   fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
-  fOnlySaveChannelsWithIDEs(p.get<bool>("save_channels_with_ides_only",false))
+  fSaveWaveforms(p.get<bool>("save_waveforms",true)),
+  fSaveChannelsWithIDEsOnly(p.get<bool>("save_channels_with_ides_only",false))
   {
   }
 
@@ -143,40 +145,44 @@ void duneana::RawDigitAna::beginJob()
   fNoiseADCsHistogramU = tfs->make<TH1I>("ADCsNoisePlaneU", "ADCs on plane U", 4096, 0., 16384.);
   fNoiseADCsHistogramV = tfs->make<TH1I>("ADCsNoisePlaneV", "ADCs on plane X", 4096, 0., 16384.);
 
+
   fRawDigisTree = tfs->make<TTree>("rawdigis_tree", "test_ttree");
 
   fRawDigisTree->Branch("event",&fEvent,"event/i");
   fRawDigisTree->Branch("run",&fRun,"run/i");
   fRawDigisTree->Branch("subrun",&fSubRun,"subrun/i");
 
-  if (fOnlySaveChannelsWithIDEs) {
+  if (fSaveChannelsWithIDEsOnly) {
     fRawDigisTree->Branch("active_channels", &fActiveChannels);
   }
 
-  art::ServiceHandle<geo::Geometry> pgeo;
-  auto const& wire_readout = art::ServiceHandle<geo::WireReadout>()->Get();
+  if ( fSaveWaveforms ) {
 
-  for (geo::TPCGeo const& tpc: pgeo->Iterate<geo::TPCGeo>(geo::CryostatID{0})) {
+    art::ServiceHandle<geo::Geometry> pgeo;
+    auto const& wire_readout = art::ServiceHandle<geo::WireReadout>()->Get();
 
-    // Count the channels
-    std::vector<raw::ChannelID_t> channels;
+    for (geo::TPCGeo const& tpc: pgeo->Iterate<geo::TPCGeo>(geo::CryostatID{0})) {
 
-    for (auto const& wire : wire_readout.Iterate<geo::WireID>(tpc.ID())) {
+      // Count the channels
+      std::vector<raw::ChannelID_t> channels;
 
-        raw::ChannelID_t ch = wire_readout.PlaneWireToChannel(wire);
-        channels.push_back(ch);
-        
-        auto& buffer = fWaveformsBuffer[ch];
-        fRawDigisTree->Branch(std::to_string(ch).c_str(), &buffer);
+      for (auto const& wire : wire_readout.Iterate<geo::WireID>(tpc.ID())) {
+
+          raw::ChannelID_t ch = wire_readout.PlaneWireToChannel(wire);
+          channels.push_back(ch);
+          
+          auto& buffer = fWaveformsBuffer[ch];
+          fRawDigisTree->Branch(std::to_string(ch).c_str(), &buffer);
+      }
+      std::cout << "N Channels: " << channels.size() << "(First channel " << channels[0] << ")" << std::endl;
     }
-    std::cout << "N Channels: " << channels.size() << "(First channel " << channels[0] << ")" << std::endl;
   }
 
 
 }
 void duneana::RawDigitAna::analyze(art::Event const& e)
 {
-  ResetVariables();  // initialise/reset all variables
+  reset_variables();  // initialise/reset all variables
 
   fRun = e.run();
   fSubRun = e.subRun();
@@ -205,15 +211,16 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
   auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(fRawDigitLabel);
   auto& digits_in =*digits_handle;
 
-  size_t counts(0);
+  size_t channel_count(0);
+  size_t digi_count(0);
 
   std::cout << digits_in.size() << " Digits found in this event" << std::endl;
 
   for(auto&& digit: digits_in){
 
-    if ( counts % 1000 == 0) 
-      std::cout << " >>> " << counts << std::endl;
-    ++counts;
+    if ( channel_count % 1000 == 0) 
+      std::cout << " >>> " << channel_count << std::endl;
+    ++channel_count;
 
     auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(digit.Channel())).at(0).Plane;
     int plane_idx = -1;
@@ -238,8 +245,9 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
         break;
     }
 
+    bool has_signal = (signal_chans.find(digit.Channel()) != signal_chans.end());
+    // Fill histograms
     for(auto& adc : digit.ADCs() ){
-      bool has_signal = (signal_chans.find(digit.Channel()) != signal_chans.end());
 
       plane_adc_hist->Fill(adc);
       fADCsHistogramByPlane->Fill(adc,plane_idx);
@@ -250,20 +258,27 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
         fNoiseADCsHistogramByPlane->Fill(adc,plane_idx);
       }
 
-      // Save ADCs if they have signals, or only save signals wf is disabled
-      if ( has_signal or !fOnlySaveChannelsWithIDEs ) {
-        fWaveformsBuffer[digit.Channel()]  = digit.ADCs();
-      }
-      
     }
+
+    // Save ADCs if they have signals, or only save signals wf is disabled
+    if ( fSaveWaveforms and (has_signal or !fSaveChannelsWithIDEsOnly) ) {
+      fWaveformsBuffer[digit.Channel()]  = digit.ADCs();        
+    }
+
+    digi_count += digit.ADCs().size();
+
   }
 
-  fRawDigisTree->Fill();
+  std::cout << "Processed channels " << channel_count << std::endl;
+  std::cout << "Processed rawdigit samples " << digi_count << std::endl;
+
+  if (fSaveWaveforms)
+    fRawDigisTree->Fill();
 
 }
 
 
-void duneana::RawDigitAna::ResetVariables()
+void duneana::RawDigitAna::reset_variables()
 {
   // Run information
   fEvent = fRun = fSubRun = -1; 

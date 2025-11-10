@@ -1,4 +1,5 @@
 add_subdirectory(production)
+add_subdirectory(fdvd)
 
 # Install fcl files in /job subdirectory.
 

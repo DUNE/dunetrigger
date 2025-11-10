@@ -448,6 +448,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     ev_buf.branch_on(simide_tree);
     simide_buf.branch_on(simide_tree);
 
+    // FIXME: Remove //
     // simide_tree->Branch("channel", &sim_channel_id);
     // simide_tree->Branch("timestamp", &tdc);
     // simide_tree->Branch("numelectrons", &ide_numElectrons);
@@ -593,6 +594,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         // FIXME: Remove // tdc = tdcide.first;
         simide_buf.tdc = tdcide.first;
         for (const sim::IDE& ide : tdcide.second) {
+          // FIXME: Remove //
           // ide_numElectrons = ide.numElectrons;
           // ide_energy = ide.energy;
           // ide_x = ide.x;
@@ -1010,6 +1012,7 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
   bt_mctruth_gen_name = truth_id_to_gen.at(bt_mctruth_block_id);
 }
 
+// FIXME: Remove //
 // void dunetrigger::TriggerPrimitiveBuffer::branch_on(TTree *tree, bool backtracking) {
 //   tree->Branch("version", &this->version);
 //   tree->Branch("flag", &this->flag);

@@ -1,0 +1,40 @@
+
+#include "triggerana_tree.fcl"
+#include "tools_dune.fcl"
+
+process_name: TriggerTreeMaker
+
+services: {
+	@table::services_triggerana_tree
+	@table::dunefdvd_1x8x6_3view_30deg_reco_services
+}
+services.TFileService.fileName : "trigtree_%ifb.root"
+
+source:	@local::source_triggerana_tree
+outputs : {}
+
+physics : {
+  analyzers: {
+    triggerAna: @local::triggerAnaTree_dumpAll
+  }
+
+  ana:            [ triggerAna ]
+  end_paths:      [ ana ]
+}
+
+
+physics.analyzers.triggerAna.tp_tag_regex: ".*SimpleThreshold.*"
+physics.analyzers.triggerAna.bt_window_offsets: [
+    {
+      tool_type: "TPAlgTPCSimpleThreshold"
+      U: 8
+      V: 1
+      X: -7
+    }
+  ]
+
+
+physics.producers : @erase
+physics.makers : @erase
+physics.stream1 : @erase
+outputs : @erase

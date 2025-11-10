@@ -25,7 +25,7 @@ physics:
   triggerana: {
    module_type: RawDigitAna
    rawdigit_tag: "tpcrawdecoder:daq" #input to TPG-> Raw Digits
-   save_channels_with_ides_only : true
+   save_channels_with_ides_only : false
    }
 }
   path0:     [triggerana]
