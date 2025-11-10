@@ -1,7 +1,7 @@
-# include "services_dune.fcl"
-# include "tools_dune.fcl"
+##include "services_dune.fcl"
 #include "triggersim.fcl"
 #include "triggersim_makers_vd.fcl"
+#include "tools_dune.fcl"
 
 
 process_name: TriggerPrimitiveMaker
@@ -25,13 +25,11 @@ outputs: @local::outputs_triggersim
 physics:
 {
   producers: {
-    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold_vd
-    
+    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold_vd    
   }
-  makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+  makers: [ tpmakerTPC ]
+  trigger_paths: [makers]
   stream1:  [ out1 ]
-  sim: [ tpmakerTPCSimpleThreshold ]
-  trigger_paths: [sim]
   end_paths: [stream1]
 }
 # physics:
