@@ -25,9 +25,9 @@ outputs: @local::outputs_triggersim
 physics:
 {
   producers: {
-    tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold_vd    
+    tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold_vd    
   }
-  makers: [ tpmakerTPC ]
+  makers: [ tpmakerTPCSimpleThreshold ]
   trigger_paths: [makers]
   stream1:  [ out1 ]
   end_paths: [stream1]
