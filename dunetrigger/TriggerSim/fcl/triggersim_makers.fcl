@@ -38,6 +38,18 @@ tpmakerTPC_ABSRunningSum:
     }
  }
 
+tpmakerPDS_ADCSimpleThreshold:
+  {
+    module_type: TriggerPrimitiveMakerPDS
+    opdetwaveform_tag: "opdigi10ppm"
+    tpalg: {
+      tool_type: TPAlgPDSSimpleThreshold
+      # SPE Peak is 9 ADC
+      threshold: 10
+      verbosity: 0
+    }
+  }
+
 #======================================================================
 # TA makers
 

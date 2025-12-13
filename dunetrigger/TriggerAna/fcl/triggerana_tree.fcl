@@ -74,4 +74,8 @@ physics_triggerana_simpleThr_absRS: @local::physics_triggerana_tree_simpleThr_si
 physics_triggerana_simpleThr_absRS.producers: @local::producers_triggersim_simpleThr_absRS
 physics_triggerana_simpleThr_absRS.makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
 
+physics_triggerana_pdsonly: @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin
+physics_triggerana_pdsonly.producers: @local::producers_triggersim_pdsonly
+physics_triggerana_pdsonly.makers: [ tpmakerPDS ]
+
 END_PROLOG

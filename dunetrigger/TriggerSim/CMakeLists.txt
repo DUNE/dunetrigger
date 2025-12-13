@@ -7,6 +7,7 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   lardataobj::RawData
   dunecore::DuneObj
   lardata::ArtDataHelper
+  lardataalg::DetectorInfo
   nusimdata::SimulationBase	
   art::Framework_Core
   art::Framework_Principal

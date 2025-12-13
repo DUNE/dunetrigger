@@ -16,7 +16,7 @@
 #include "art_root_io/TFileService.h"
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Utilities/InputTag.h"
-#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
+#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTool.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -555,9 +555,13 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
       info_data["tpg"][tag]["tool"] = tp_tool_type;
-      info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
-      info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
-      info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+      if (tp_tool_type.find("PDS") != std::string::npos) {
+        info_data["tpg"][tag]["threshold"] = tp_params.get<int>("threshold");
+      } else {
+        info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
+        info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
+        info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+      }
 
       std::string map_tag = "tp/" + tag;
 
@@ -750,9 +754,16 @@ void dunetrigger::TriggerPrimitiveBuffer::from_tp(const TriggerPrimitive &tp) {
   flag = 0;
   detid = tp.detid;
   channel = tp.channel;
-  samples_over_threshold = (tp.time_over_threshold) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  samples_over_threshold = tp.time_over_threshold;
   time_start = tp.time_start;
-  samples_to_peak = (tp.time_peak - tp.time_start) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  samples_to_peak = (tp.time_peak - tp.time_start);
+  if (tp.type == TriggerPrimitive::Type::kTPC) {
+    samples_over_threshold /= dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+    samples_to_peak /= dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  } else if (tp.type == TriggerPrimitive::Type::kPDS) {
+    samples_over_threshold /= dunetrigger::TPAlgPDSTool::ADC_SAMPLING_RATE_IN_DTS;
+    samples_to_peak /= dunetrigger::TPAlgPDSTool::ADC_SAMPLING_RATE_IN_DTS;
+  }
   adc_integral = tp.adc_integral;
   adc_peak = tp.adc_peak;
 }
@@ -857,6 +868,10 @@ void dunetrigger::TriggerPrimitiveBuffer::branch_on(TTree *tree, bool backtracki
 std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const TriggerPrimitiveBuffer &tp,
                                                                         const std::string &tool_type) const {
 
+  if (tool_type.find("PDS") != std::string::npos) {
+    // No backtracking for PDS TPs
+    return {};
+  }
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
   auto it = bt_view_offsets.find(tool_type);
   if (it == bt_view_offsets.end()) {

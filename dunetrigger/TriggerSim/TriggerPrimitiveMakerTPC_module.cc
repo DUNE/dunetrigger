@@ -7,7 +7,7 @@
 // from  version .
 ////////////////////////////////////////////////////////////////////////
 
-#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
+#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTool.hh"
 
 #include "detdataformats/DetID.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"

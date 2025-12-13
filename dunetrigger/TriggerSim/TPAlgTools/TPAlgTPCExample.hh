@@ -3,7 +3,7 @@
 
 #include "fhiclcpp/ParameterSet.h" 
 
-#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
+#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTool.hh"
 
 namespace dunetrigger {
 

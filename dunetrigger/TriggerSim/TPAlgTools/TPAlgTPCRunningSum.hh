@@ -8,7 +8,7 @@
 #include "larcore/Geometry/Geometry.h"
 #include "larcore/Geometry/WireReadout.h"
 
-#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
+#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTool.hh"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 #include <inttypes.h>
 #include <limits>

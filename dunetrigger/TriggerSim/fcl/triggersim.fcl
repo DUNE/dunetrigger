@@ -39,6 +39,10 @@ producers_triggersim_simpleThr_simpleWin_simpleWin: {
     tcmakerTPC: @local::tcmakerTPC_ADCSimpleWindow
 }
 
+producers_triggersim_pdsonly: {
+    tpmakerPDS: @local::tpmakerPDS_ADCSimpleThreshold
+}
+
 # Run both AbsRS and SimpleThreshold TPG
 producers_triggersim_simpleThr_absRS: {
 	tpmakerTPCsimpleThr: @local::tpmakerTPC_ADCSimpleThreshold
