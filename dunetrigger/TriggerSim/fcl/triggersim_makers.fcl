@@ -45,7 +45,7 @@ tpmakerPDS_ADCSimpleThreshold:
     tpalg: {
       tool_type: TPAlgPDSSimpleThreshold
       # SPE Peak is 9 ADC
-      threshold: 10
+      threshold: 15
       verbosity: 0
     }
   }

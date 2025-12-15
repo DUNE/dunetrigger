@@ -53,6 +53,9 @@ struct ChannelInfo {
   unsigned int rop_id;
   int view;
   unsigned int tpcset_id;
+  float opdet_x;
+  float opdet_y;
+  float opdet_z;
 };
 
 // Standard structure for all trees
@@ -179,6 +182,8 @@ private:
   std::map<int, double> track_en_sums;
   std::map<int, double> track_electron_sums;
 
+  const geo::WireReadoutGeom *fWireReadout;
+
   bool dump_tp, dump_ta, dump_tc;
 
   bool tp_backtracking;
@@ -189,7 +194,7 @@ private:
 
   std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveBuffer &tp, const std::string &tool_type) const;
 
-  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
+  ChannelInfo get_channel_info_for_channel(int channel);
 
   bool dump_mctruths;
   TTree *mctruth_tree;
@@ -375,7 +380,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   tot_numelectrons_rop0 = tot_numelectrons_rop1 = tot_numelectrons_rop2 = tot_numelectrons_rop3 = 0;
 
   // get a service handle for geometry
-  geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
+  fWireReadout = &art::ServiceHandle<geo::WireReadout>()->Get();
 
   if (dump_mctruths) {
     std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruthHandles = e.getMany<std::vector<simb::MCTruth>>();
@@ -469,7 +474,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           track_en_sums[ide.trackID] += ide.energy;
           track_electron_sums[ide.trackID] += ide.numElectrons;
           // higher level geometric info for IDEs
-          ChannelInfo chinfo = get_channel_info_for_channel(geom, sim_channel_id);
+          ChannelInfo chinfo = get_channel_info_for_channel(sim_channel_id);
           ide_readout_plane_id = chinfo.rop_id;
           ide_readout_view = chinfo.view;
           ide_detector_element = chinfo.tpcset_id; // APA/CRP ID
@@ -555,7 +560,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
       info_data["tpg"][tag]["tool"] = tp_tool_type;
-      if (tp_tool_type.find("PDS") != std::string::npos) {
+      bool is_pds_tp = tp_tool_type.find("PDS") != std::string::npos;
+      if (is_pds_tp) {
         info_data["tpg"][tag]["threshold"] = tp_params.get<int>("threshold");
       } else {
         info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
@@ -571,8 +577,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       TTree *cur_tp_tree = tree_map[map_tag];
       for (const TriggerPrimitive &tp : *tpHandle) {
         curr_tp_buf.from_tp(tp);
-        curr_tp_buf.chinfo = get_channel_info_for_channel(geom, tp.channel);
-        if (tp_backtracking) {
+        curr_tp_buf.chinfo = get_channel_info_for_channel(tp.channel);
+        if (!is_pds_tp && tp_backtracking) {
           std::vector<sim::IDE> matched_ides = match_simides_to_tps(curr_tp_buf, tp_tool_type);
           curr_tp_buf.populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
         }
@@ -605,7 +611,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
           for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
             curr_tp_buf.from_tp(*tp);
-            curr_tp_buf.chinfo = get_channel_info_for_channel(geom, tp->channel);
+            curr_tp_buf.chinfo = get_channel_info_for_channel(tp->channel);
             cur_tp_tree->Fill();
           }
         }
@@ -738,13 +744,23 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
   }
 }
 
-dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_channel(geo::WireReadoutGeom const *geom,
-                                                                                   int channel) {
-  readout::ROPID rop = geom->ChannelToROP(channel);
+dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_channel(int channel) {
+  readout::ROPID rop = fWireReadout->ChannelToROP(channel);
   ChannelInfo result;
   result.rop_id = rop.ROP;
   result.tpcset_id = rop.asTPCsetID().TPCset;
-  result.view = geom->View(rop);
+  result.view = fWireReadout->View(rop);
+  if (fWireReadout->IsValidOpChannel(channel)){
+    geo::OpDetGeo const &opdet = fWireReadout->OpDetGeoFromOpChannel(channel);
+    result.opdet_x = opdet.GetCenter().X();
+    result.opdet_y = opdet.GetCenter().Y();
+    result.opdet_z = opdet.GetCenter().Z();
+  }
+  else {
+    result.opdet_x = INVALID;
+    result.opdet_y = INVALID;
+    result.opdet_z = INVALID;
+  }
   return result;
 }
 
@@ -846,6 +862,9 @@ void dunetrigger::TriggerPrimitiveBuffer::branch_on(TTree *tree, bool backtracki
   tree->Branch("readout_plane_id", &this->chinfo.rop_id);
   tree->Branch("readout_view", &this->chinfo.view);
   tree->Branch("TPCSetID", &this->chinfo.tpcset_id);
+  tree->Branch("OpDetX", &this->chinfo.opdet_x);
+  tree->Branch("OpDetY", &this->chinfo.opdet_y);
+  tree->Branch("OpDetZ", &this->chinfo.opdet_z);
 
   // Add backtracking only if requested
   if (backtracking) {
