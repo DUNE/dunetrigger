@@ -1,6 +1,3 @@
-add_subdirectory(production)
-add_subdirectory(pds)
-
 # Install fcl files in /job subdirectory.
 
 install_fhicl()

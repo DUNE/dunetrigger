@@ -812,6 +812,7 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
   std::map<int, double> track_numelectrons;
   std::map<int, double> track_energies;
   for (const sim::IDE &ide : ides) {
+	if (!ide.trackID) continue;
     int mc_track_id = pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId();
     track_numelectrons[mc_track_id] += ide.numElectrons;
     bt_numelectrons += ide.numElectrons;
@@ -824,6 +825,7 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
 
   std::vector<sim::IDE> primary_ides;
   for (const sim::IDE &ide : ides) {
+	if (!ide.trackID) continue;
     if (pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId() == bt_primary_track_id) {
       primary_ides.push_back(ide);
     }

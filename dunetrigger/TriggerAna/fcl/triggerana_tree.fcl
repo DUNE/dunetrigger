@@ -52,6 +52,7 @@ triggerAnaTree_dumpAll:
 
 triggerAnaTree_simple: @local::triggerAnaTree_dumpAll
 triggerAnaTree_simple.dump_simides: false
+triggerAnaTree_simple.tp_backtracking: false
 
 
 ## Basic example of a physics configuration, better to create your own
