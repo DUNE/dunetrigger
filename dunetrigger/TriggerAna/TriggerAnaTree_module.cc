@@ -559,15 +559,24 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
-      info_data["tpg"][tag]["tool"] = tp_tool_type;
       bool is_pds_tp = tp_tool_type.find("PDS") != std::string::npos;
-      if (is_pds_tp) {
-        info_data["tpg"][tag]["threshold"] = tp_params.get<int>("threshold");
-      } else {
-        info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
-        info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
-        info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+      info_data["tpg"][tag]["tool"] = tp_tool_type;
+      for (const std::string& key: tp_params.get_all_keys()) {
+        std::string field_str = tp_params.get<std::string>(key);
+        auto field = nlohmann::json::parse(field_str, nullptr, false);
+        if (!field.is_discarded()) {
+          info_data["tpg"][tag]["config"][key] = field;
+          continue;
+        }
+        info_data["tpg"][tag]["config"][key] = field_str;
       }
+      // if (is_pds_tp) {
+      //   info_data["tpg"][tag]["threshold"] = tp_params.get<int>("threshold");
+      // } else {
+      //   info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
+      //   info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
+      //   info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+      // }
 
       std::string map_tag = "tp/" + tag;
 

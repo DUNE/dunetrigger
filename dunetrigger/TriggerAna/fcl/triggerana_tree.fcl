@@ -81,7 +81,7 @@ physics_triggerana_simpleThr_absRS.makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsR
 
 physics_triggerana_pdsonly: @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin
 physics_triggerana_pdsonly.producers: @local::producers_triggersim_pdsonly
-physics_triggerana_pdsonly.makers: [ tpmakerPDS ]
+physics_triggerana_pdsonly.makers: [ tpmakerPDSSimpleThreshold, tpmakerPDSLessSimpleThreshold ]
 physics_triggerana_pdsonly.analyzers: {
     triggerAna: @local::triggerAnaTree_simple
   }

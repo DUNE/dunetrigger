@@ -47,6 +47,20 @@ tpmakerPDS_ADCSimpleThreshold:
       # SPE Peak is 9 ADC
       threshold: 15
       verbosity: 0
+      fixed_pedestal: 100 # may be cheating, but this is done in reco.
+    }
+  }
+tpmakerPDS_ADCLessSimpleThreshold:
+  {
+    module_type: TriggerPrimitiveMakerPDS
+    opdetwaveform_tag: "opdigi10ppm"
+    tpalg: {
+      tool_type: TPAlgPDSLessSimpleThreshold
+      # SPE Peak is 9 ADC
+      threshold_fire: 15
+      threshold_arm: 1
+      fixed_pedestal: 100 # may be cheating, but this is done in reco.
+      verbosity: 0
     }
   }
 
