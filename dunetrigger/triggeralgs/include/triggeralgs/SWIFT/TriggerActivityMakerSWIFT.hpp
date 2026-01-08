@@ -25,7 +25,9 @@ namespace triggeralgs {
   private:
     TriggerActivity m_current_ta;
 
-    // configuration
+    // -- configuration --
+
+    //activity windows 
     uint64_t m_window_length = 32000; // fixed window size in DTS ticks (32 * 1k readout ticks @ 500ns/tick)
     uint64_t m_inspect_energy_threshold = 15000;
     uint64_t m_accept_energy_threshold = 55000;
@@ -36,7 +38,12 @@ namespace triggeralgs {
 
        
     //clustering 
-    // FIX ME : add epsilon and min. samples
+    //these depend on detector properties. default values for HD
+    float m_cm_per_tick = 0.016 * 0.16; // sampling rate [us/tick] * drift velocity [cm/us] 
+    float m_wire_pitch = 0.48; //cm 
+    int   m_db_min_samples = 2; //min samples for valid cluster 
+    float m_db_eps = 2; //nearest neighbour search radius in cm 
+    uint64_t m_cluster_energy_cut = 22000;
 
     //window state
     bool     m_initialised = false;
@@ -44,9 +51,10 @@ namespace triggeralgs {
     uint64_t m_window_energy = 0; 
     uint16_t m_tp_count = 0; 
 
-    const timestamp_t kMaxTime = 6000 * 32;  //  maximum simulation time otherwise the windows keep rolling forever 
+    const timestamp_t kMaxTime = 6000 * 32;  //  maximum simulation time otherwise the windows keep rolling forever. Hardcoded for HD FIXME
 
     void close_window(std::vector<TriggerActivity>& output_tas); 
+    uint64_t extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples);
 
 };
 
