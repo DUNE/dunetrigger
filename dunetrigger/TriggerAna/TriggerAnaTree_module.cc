@@ -447,22 +447,6 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree = tfs->make<TTree>("simides", "simides");
     ev_buf.branch_on(simide_tree);
     simide_buf.branch_on(simide_tree);
-
-    // FIXME: Remove //
-    // simide_tree->Branch("channel", &sim_channel_id);
-    // simide_tree->Branch("timestamp", &tdc);
-    // simide_tree->Branch("numelectrons", &ide_numElectrons);
-    // simide_tree->Branch("energy", &ide_energy);
-    // simide_tree->Branch("x", &ide_x);
-    // simide_tree->Branch("y", &ide_y);
-    // simide_tree->Branch("z", &ide_z);
-    // simide_tree->Branch("trackID", &ide_trkId);
-    // simide_tree->Branch("origTrackID", &ide_origTrkId);
-    // simide_tree->Branch("pdg_id", &ide_particle_pdg);
-    // simide_tree->Branch("parent_pdg_id", &ide_parent_pdg);
-    // simide_tree->Branch("readout_plane_id", &ide_readout_plane_id);
-    // simide_tree->Branch("readout_view", &ide_readout_view);
-    // simide_tree->Branch("detector_element", &ide_detector_element);
   }
   if (dump_summary_info) {
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
@@ -586,37 +570,12 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     track_en_sums.clear();
     track_electron_sums.clear();
     for (const sim::SimChannel &sc : *simchannels) {
-      // FIXME: Remove // sim_channel_id = sc.Channel();
       simide_buf.sim_channel_id = sc.Channel();
 
       sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
       for (const sim::TDCIDE &tdcide : tdcidemap) {
-        // FIXME: Remove // tdc = tdcide.first;
         simide_buf.tdc = tdcide.first;
         for (const sim::IDE& ide : tdcide.second) {
-          // FIXME: Remove //
-          // ide_numElectrons = ide.numElectrons;
-          // ide_energy = ide.energy;
-          // ide_x = ide.x;
-          // ide_y = ide.y;
-          // ide_z = ide.z;
-          // ide_trkId = ide.trackID;
-          // ide_particle_pdg = ( ide.trackID != 0 ? pi_serv->TrackIdToParticle_P(ide.trackID)->PdgCode(): INVALID);
-          // if ( ide.trackID != 0  ) {
-          //   auto* mcp = pi_serv->TrackIdToParticle_P(ide.trackID);
-          //   ide_particle_pdg = mcp->PdgCode();
-          //   std::cout << "Mother " << mcp->Mother() << std::endl;
-
-          //   if ( mcp->Mother() > 0 ) {
-          //     ide_parent_pdg = pi_serv->TrackIdToParticle_P(mcp->Mother())->PdgCode();
-          //   } else {
-          //     ide_parent_pdg = INVALID;
-          //   }
-          // } else {
-          //   ide_particle_pdg = INVALID;
-          //   ide_parent_pdg = INVALID;
-          // };
-          // ide_origTrkId = ide.origTrackID;
 
           simide_buf.numElectrons = ide.numElectrons;
           simide_buf.energy = ide.energy;
