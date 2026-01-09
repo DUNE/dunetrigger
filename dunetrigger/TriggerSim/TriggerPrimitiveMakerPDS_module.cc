@@ -59,8 +59,8 @@ dunetrigger::TriggerPrimitiveMakerPDS::TriggerPrimitiveMakerPDS(
     fhicl::ParameterSet const &p)
     : EDProducer{p},
       fOptDetWaveformTag(p.get<art::InputTag>("opdetwaveform_tag")),
-      fTPAlg{
-          art::make_tool<TPAlgPDSTool>(p.get<fhicl::ParameterSet>("tpalg"))} {
+      fTPAlg{art::make_tool<TPAlgPDSTool>(p.get<fhicl::ParameterSet>("tpalg"))},
+      fVerbosity(p.get<int>("verbosity", Verbosity::kInfo)) {
   // Call appropriate produces<>() functions here.
   // Call appropriate consumes<>() for any products to be retrieved by this
   // module.
