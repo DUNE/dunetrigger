@@ -52,7 +52,7 @@ namespace dunetrigger {
         //find the mode of the whole vector
         std::map<short,size_t> counts_per_value;
         for(auto const& adc : adcs)
-	        counts_per_value[adc] += 1;
+            counts_per_value[adc] += 1;
         size_t max_counts=0;
         for(auto it=counts_per_value.begin(); it!= counts_per_value.end(); ++it) {
           if (it->second > max_counts){
@@ -60,15 +60,15 @@ namespace dunetrigger {
             max_counts = it->second;
           }
         }
-	
+    
         accum_ = 0;
-	
+    
         prev_was_over_=false;
         hit_charge_=0;
         hit_tover_=0;
         hit_peak_adc_=0;
         hit_peak_time_=0;
-	
+    
     }
 
     void frugal_accum_update(const int16_t sample)
@@ -87,10 +87,10 @@ namespace dunetrigger {
     }
 
     void process_waveform(std::vector<short> const& adcs,
-			  dunedaq::trgdataformats::channel_t const channel,
-			  dunedaq::trgdataformats::detid_t const detid,
-			  dunedaq::trgdataformats::timestamp_t const start_time,
-			  std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) 
+              dunedaq::trgdataformats::channel_t const channel,
+              dunedaq::trgdataformats::detid_t const detid,
+              dunedaq::trgdataformats::timestamp_t const start_time,
+              std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) 
     {
         //setup a TP and initialize it with the common things for this algorithm/channel
         dunedaq::trgdataformats::TriggerPrimitive this_tp;
@@ -110,7 +110,7 @@ namespace dunetrigger {
             if (threshold_ < 0) continue; 
 
             //get the sample
-	          int16_t sample = adcs[i_t];
+            int16_t sample = adcs[i_t];
 
             //update the pedestal estimate
             frugal_accum_update(sample);
