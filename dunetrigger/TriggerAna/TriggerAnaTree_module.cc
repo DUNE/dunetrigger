@@ -983,11 +983,19 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info_pds(
   std::map<int, std::vector<double>> trackid_to_positions_z;
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
   auto const &wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
-  unsigned int opdetnum = wireReadout.OpDetFromOpChannel(this->channel);
+  int opdetnum = wireReadout.OpDetFromOpChannel(this->channel);
   for (auto const &handle : opdet_bt_handles) {
     auto const &records = *handle;
-    const sim::OpDetBacktrackerRecord &record = records.at(opdetnum);
-    std::vector<sim::SDP> contributions = record.TrackIDsAndEnergies(
+	const sim::OpDetBacktrackerRecord* record = nullptr;
+    /* const sim::OpDetBacktrackerRecord &record = records.at(opdetnum); */
+	for (auto const &curr_rec : records) {
+	  if (curr_rec.OpDetNum() == opdetnum) {
+		record = &curr_rec;
+	  	break;
+	  }
+	}
+	if (!record) continue;
+    std::vector<sim::SDP> contributions = record->TrackIDsAndEnergies(
         (static_cast<int64_t>(time_start) - 1) * 16.0,
         (static_cast<int64_t>(time_start) + samples_over_threshold + 1) * 16.0);
     for (const sim::SDP &sdp : contributions) {
