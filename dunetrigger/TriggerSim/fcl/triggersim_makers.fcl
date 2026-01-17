@@ -47,7 +47,8 @@ tpmakerPDS_ADCSimpleThreshold:
       # SPE Peak is 9 ADC
       threshold: 15
       verbosity: 0
-      fixed_pedestal: 100 # may be cheating, but this is done in reco.
+      pedestal_window_length: 3
+      # fixed_pedestal: 100
     }
   }
 tpmakerPDS_ADCLessSimpleThreshold:
@@ -59,7 +60,8 @@ tpmakerPDS_ADCLessSimpleThreshold:
       # SPE Peak is 9 ADC
       threshold_fire: 15
       threshold_arm: 1
-      fixed_pedestal: 100 # may be cheating, but this is done in reco.
+      pedestal_window_length: 3
+      # fixed_pedestal: 100
       verbosity: 0
     }
   }

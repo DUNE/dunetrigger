@@ -22,7 +22,7 @@ class TPAlgPDSLessSimpleThreshold : public TPAlgPDSTool {
 public:
   explicit TPAlgPDSLessSimpleThreshold(fhicl::ParameterSet const &ps)
       : fVerbosity(ps.get<int>("verbosity", 0)),
-        fPedWindowLength(ps.get<int>("pedestal_window_length", 20)),
+        fPedWindowLength(ps.get<int>("pedestal_window_length", 3)),
         fFixedPedestal(ps.get<int>("fixed_pedestal", -99999)),
         fThresholdArm(ps.get<int16_t>("threshold_arm")),
         fThresholdFire(ps.get<int16_t>("threshold_fire")) {}
@@ -79,11 +79,11 @@ public:
         continue;
 
       // get the sample
-      int16_t sample = adcs[i_t] - fPedestal;
+      double sample = adcs[i_t] - fPedestal;
 
       // check if we are over threshold
-      bool is_over = sample > fThresholdArm;
-      fire_this_tp_ = fire_this_tp_ || (sample > fThresholdFire);
+      bool is_over = sample >= fThresholdArm;
+      fire_this_tp_ = fire_this_tp_ || (sample >= fThresholdFire);
       if (is_over) {
         // we are over threshold, so need to update the hit charge and check for
         // peak time
