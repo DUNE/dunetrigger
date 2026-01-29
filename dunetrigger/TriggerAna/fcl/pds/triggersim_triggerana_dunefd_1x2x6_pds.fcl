@@ -1,0 +1,14 @@
+#include "triggersim_triggerana_dunefdvd_1x8x6_pds.fcl"
+
+process_name: TriggerSimAna
+
+services: {
+	@table::services_triggerana_tree
+	@table::dunefd_1x2x6_reco_services
+}
+# Commented out are correct values, but old simulations are done with the default of 100.
+#physics.producers.tpmakerPDSLessSimpleThreshold.tpalg.fixed_pedestal: 500
+#physics.producers.tpmakerPDSSimpleThreshold.tpalg.fixed_pedestal: 500
+physics.makers: [ tpmakerPDSLessSimpleThreshold ]
+physics.producers.tpmakerPDSSimpleThreshold.opdetwaveform_tag: "opdigi"
+physics.producers.tpmakerPDSLessSimpleThreshold.opdetwaveform_tag: "opdigi"
