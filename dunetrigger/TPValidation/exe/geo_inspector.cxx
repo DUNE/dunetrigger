@@ -34,6 +34,8 @@ int main(int argc, char** argv) {
 
     if ( geo_shortcuts.count(geo_id) == 1) {
         geo_id = geo_shortcuts[geo_id];
+
+        std::cout << "Geo ID: " << geo_id << std::endl;
     }
 
     json j_geo;
@@ -130,11 +132,14 @@ int main(int argc, char** argv) {
 
 
     std::cout << "-----------" << std::endl;
-    std::cout << j_geo << std::endl;
+    std::cout << std::setw(4) << j_geo << std::endl;
 
 
 
     // write prettified JSON to another file
-    std::ofstream o("pretty.json");
+    std::string json_geo_file = geo_id+".json";
+    std::cout << "Saving json geo to " << json_geo_file << std::endl;
+    std::ofstream o(json_geo_file);
     o << std::setw(4) << j_geo << std::endl;
+
 }

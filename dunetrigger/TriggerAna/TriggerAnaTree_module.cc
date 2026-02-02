@@ -401,6 +401,8 @@ struct TriggerPrimitiveBuffer {
 
 } // namespace dunetrigger
 
+
+
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
 public:
   explicit TriggerAnaTree(fhicl::ParameterSet const &p);
@@ -453,43 +455,17 @@ private:
   TTree *mctruth_tree;
   MCTruthBuffer mctruth_buf;
 
-
-  // int mctruth_pdg;
-  // std::string mctruth_process;
-  // int mctruth_status, mctruth_id, mctruth_trackid;
-  // std::string mctruth_gen_name;
-  // double mctruth_x, mctruth_y, mctruth_z;
-  // double mctruth_Px, mctruth_Py, mctruth_Pz, mctruth_P;
-  // double mctruth_en, mctruth_ek;
-
   TTree *mcneutrino_tree;
   MCNeutrinoBuffer mcneutrino_buf;
-
-  // int mcneutrino_nupdg, mcneutrino_leptonpdg, mcneutrino_ccnc, mcneutrino_mode, mcneutrino_iteractionType,
-  //     mcneutrino_target, mcneutrino_hitnuc, mcneutrino_hitquark;
-  // double mcneutrino_w, mcneutrino_x, mcneutrino_y, mcneutrino_qsqr, mcneutrino_pt, mcneutrino_theta;
 
   bool dump_mcparticles;
   TTree *mcparticle_tree;
   MCParticleBuffer mcparticle_buf;
 
-  // int mcparticle_pdg;
-  // std::string mcparticle_process;
-  // int mcparticle_status, mcparticle_trackid, mcparticle_truthid, mcparticle_mother;
-  // std::string mcparticle_gen_name;
-  // double mcparticle_x, mcparticle_y, mcparticle_z, mcparticle_t;
-  // double mcparticle_end_x, mcparticle_end_y, mcparticle_end_z, mcparticle_end_t;
-  // double mcparticle_Px, mcparticle_Py, mcparticle_Pz;
-  // double mcparticle_en, mcparticle_ek;
-  // double mcparticle_edep, mcparticle_numelectrons;
-  // double mcparticle_shower_edep, mcparticle_shower_numelectrons;
-
   bool dump_summary_info;
   // visible energy for the event
   TTree *summary_tree;
   EventSummaryBuffer evsum_buf;
-  // double tot_visible_energy_rop0, tot_visible_energy_rop1, tot_visible_energy_rop2, tot_visible_energy_rop3; // total visible energy per readout plane ID
-  // double tot_numelectrons_rop0, tot_numelectrons_rop1, tot_numelectrons_rop2, tot_numelectrons_rop3;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
@@ -498,12 +474,6 @@ private:
   TTree *simide_tree;
   SimIDEBuffer simide_buf;
   
-  // unsigned int sim_channel_id;
-  // int tdc;
-  // float ide_numElectrons, ide_energy, ide_x, ide_y, ide_z;
-  // int ide_trkId, ide_origTrkId, ide_readout_plane_id, ide_readout_view, ide_detector_element;
-  // int ide_particle_pdg, ide_parent_pdg;
-
   // JSON metadata
   json info_data;
   bool first_event_flag;
@@ -537,89 +507,29 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mctruth_tree = tfs->make<TTree>("mctruths", "mctruths");
     ev_buf.branch_on(mctruth_tree);
     mctruth_buf.branch_on(mctruth_tree);
-    // mctruth_tree->Branch("block_id", &mctruth_id);
-    // mctruth_tree->Branch("truth_track_id", &mctruth_trackid);
-    // mctruth_tree->Branch("pdg", &mctruth_pdg);
-    // mctruth_tree->Branch("generator_name", &mctruth_gen_name);
-    // mctruth_tree->Branch("status_code", &mctruth_status);
-    // mctruth_tree->Branch("x", &mctruth_x);
-    // mctruth_tree->Branch("y", &mctruth_y);
-    // mctruth_tree->Branch("z", &mctruth_z);
-    // mctruth_tree->Branch("px", &mctruth_Px);
-    // mctruth_tree->Branch("py", &mctruth_Py);
-    // mctruth_tree->Branch("pz", &mctruth_Pz);
-    // mctruth_tree->Branch("p", &mctruth_P);
-    // mctruth_tree->Branch("energy", &mctruth_en);
-    // mctruth_tree->Branch("kinetic_energy", &mctruth_ek);
-    // mctruth_tree->Branch("process", &mctruth_process);
 
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
     ev_buf.branch_on(mcneutrino_tree);
     mcparticle_buf.branch_on(mcneutrino_tree);
 
-    // mcneutrino_tree->Branch("block_id", &mctruth_id);
-    // mcneutrino_tree->Branch("generator_name", &mctruth_gen_name);
-    // mcneutrino_tree->Branch("nupdg", &mcneutrino_nupdg);
-    // mcneutrino_tree->Branch("leptonpdg", &mcneutrino_leptonpdg);
-    // mcneutrino_tree->Branch("ccnc", &mcneutrino_ccnc);
-    // mcneutrino_tree->Branch("mode", &mcneutrino_mode);
-    // mcneutrino_tree->Branch("interactionType", &mcneutrino_iteractionType);
-    // mcneutrino_tree->Branch("target", &mcneutrino_target);
-    // mcneutrino_tree->Branch("hitnuc", &mcneutrino_hitnuc);
-    // mcneutrino_tree->Branch("hitquark", &mcneutrino_hitquark);
-    // mcneutrino_tree->Branch("w", &mcneutrino_w);
-    // mcneutrino_tree->Branch("x", &mcneutrino_x);
-    // mcneutrino_tree->Branch("y", &mcneutrino_y);
-    // mcneutrino_tree->Branch("qsqr", &mcneutrino_qsqr);
-    // mcneutrino_tree->Branch("pt", &mcneutrino_pt);
-    // mcneutrino_tree->Branch("theta", &mcneutrino_theta);
   }
+
   if (dump_mcparticles) {
     mcparticle_tree = tfs->make<TTree>("mcparticles", "mcparticles");
     ev_buf.branch_on(mcparticle_tree);
     mcparticle_buf.branch_on(mcparticle_tree);
-    // mcparticle_tree->Branch("pdg", &mcparticle_pdg);
-    // mcparticle_tree->Branch("generator_name", &mcparticle_gen_name);
-    // mcparticle_tree->Branch("status_code", &mcparticle_status);
-    // mcparticle_tree->Branch("g4_track_id", &mcparticle_trackid);
-    // mcparticle_tree->Branch("mother", &mcparticle_mother);
-    // mcparticle_tree->Branch("truth_block_id", &mcparticle_truthid);
-    // mcparticle_tree->Branch("x", &mcparticle_x);
-    // mcparticle_tree->Branch("y", &mcparticle_y);
-    // mcparticle_tree->Branch("z", &mcparticle_z);
-    // mcparticle_tree->Branch("t", &mcparticle_t);
-    // mcparticle_tree->Branch("end_x", &mcparticle_end_x);
-    // mcparticle_tree->Branch("end_y", &mcparticle_end_y);
-    // mcparticle_tree->Branch("end_z", &mcparticle_end_z);
-    // mcparticle_tree->Branch("end_t", &mcparticle_end_t);
-    // mcparticle_tree->Branch("px", &mcparticle_Px);
-    // mcparticle_tree->Branch("py", &mcparticle_Py);
-    // mcparticle_tree->Branch("pz", &mcparticle_Pz);
-    // mcparticle_tree->Branch("energy", &mcparticle_en);
-    // mcparticle_tree->Branch("kinetic_energy", &mcparticle_ek);
-    // mcparticle_tree->Branch("edep", &mcparticle_edep);
-    // mcparticle_tree->Branch("numelectrons", &mcparticle_numelectrons);
-    // mcparticle_tree->Branch("shower_edep", &mcparticle_shower_edep);
-    // mcparticle_tree->Branch("shower_numelectrons", &mcparticle_shower_numelectrons);
-    // mcparticle_tree->Branch("process", &mcparticle_process);
   }
+
   if (dump_simides) {
     simide_tree = tfs->make<TTree>("simides", "simides");
     ev_buf.branch_on(simide_tree);
     simide_buf.branch_on(simide_tree);
   }
+
   if (dump_summary_info) {
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
     ev_buf.branch_on(summary_tree);
     evsum_buf.branch_on(summary_tree);
-    // summary_tree->Branch("tot_visible_energy_rop0", &tot_visible_energy_rop0);
-    // summary_tree->Branch("tot_visible_energy_rop1", &tot_visible_energy_rop1);
-    // summary_tree->Branch("tot_visible_energy_rop2", &tot_visible_energy_rop2);
-    // summary_tree->Branch("tot_visible_energy_rop3", &tot_visible_energy_rop3);
-    // summary_tree->Branch("tot_numelectrons_rop0", &tot_numelectrons_rop0);
-    // summary_tree->Branch("tot_numelectrons_rop1", &tot_numelectrons_rop1);
-    // summary_tree->Branch("tot_numelectrons_rop2", &tot_numelectrons_rop2);
-    // summary_tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
   }
 
   // Save detector settings
