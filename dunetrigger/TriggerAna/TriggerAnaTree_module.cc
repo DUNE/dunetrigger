@@ -157,6 +157,33 @@ struct TriggerPrimitiveBuffer {
   };
 };
 
+struct SDPBuffer {
+  int opdetsum;
+  double time;
+  int trkId;
+  float numPhotons;
+  float energy;
+  float x, y, z;
+  void branch_on(TTree *tree) {
+    tree->Branch("opdetsum", &opdetsum);
+    tree->Branch("time", &time);
+    tree->Branch("trkId", &trkId);
+    tree->Branch("numPhotons", &numPhotons);
+    tree->Branch("energy", &energy);
+    tree->Branch("x", &x);
+    tree->Branch("y", &y);
+    tree->Branch("z", &z);
+  }
+  void clear() {
+    opdetsum = INVALID;
+    time = INVALID;
+    trkId = INVALID;
+    numPhotons = 0;
+    energy = 0;
+    x = y = z = INVALID;
+  }
+};
+
 } // namespace dunetrigger
 
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
@@ -260,6 +287,10 @@ private:
   int ide_trkId, ide_origTrkId, ide_readout_plane_id, ide_readout_view,
       ide_detector_element;
 
+  bool dump_sdps;
+  TTree *sdp_tree;
+  SDPBuffer sdp_buf;
+
   // JSON metadata
   json info_data;
 };
@@ -273,7 +304,8 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
       dump_summary_info(p.get<bool>("dump_summary_info", true)),
       dump_simides(p.get<bool>("dump_simides", true)),
       simchannel_tag(
-          p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC")) {
+          p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC")),
+      dump_sdps(p.get<bool>("dump_sdps", true)) {
   // More initializers here.
   std::vector<fhicl::ParameterSet> offsets =
       p.get<std::vector<fhicl::ParameterSet>>("window_offsets");
@@ -369,6 +401,11 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree->Branch("readout_plane_id", &ide_readout_plane_id);
     simide_tree->Branch("readout_view", &ide_readout_view);
     simide_tree->Branch("detector_element", &ide_detector_element);
+  }
+  if (dump_sdps) {
+    sdp_tree = tfs->make<TTree>("sdps", "sdps");
+    ev_buf.branch_on(sdp_tree);
+    sdp_buf.branch_on(sdp_tree);
   }
   if (dump_summary_info) {
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
@@ -519,6 +556,32 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
             tot_numelectrons_rop3 += ide_numElectrons;
           }
           simide_tree->Fill();
+        }
+      }
+    }
+  }
+  if (dump_sdps) {
+    std::vector<art::Handle<std::vector<sim::OpDetBacktrackerRecord>>>
+        opdet_bt_handles =
+            e.getMany<std::vector<sim::OpDetBacktrackerRecord>>();
+    for (auto const &handle : opdet_bt_handles) {
+      auto const &records = *handle;
+      for (sim::OpDetBacktrackerRecord const &record : records) {
+        sdp_buf.clear();
+        sdp_buf.opdetsum = record.OpDetNum();
+        std::vector<sim::timePDclockSDP_t> const sdp_map =
+            record.timePDclockSDPsMap();
+        for (const auto &[time, sdps] : sdp_map) {
+          sdp_buf.time = time;
+          for (auto const &sdp : sdps) {
+            sdp_buf.trkId = sdp.trackID;
+            sdp_buf.numPhotons = sdp.numPhotons;
+            sdp_buf.energy = sdp.energy;
+            sdp_buf.x = sdp.x;
+            sdp_buf.y = sdp.y;
+            sdp_buf.z = sdp.z;
+            sdp_tree->Fill();
+          }
         }
       }
     }
@@ -984,17 +1047,21 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info_pds(
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
   auto const &wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
   int opdetnum = wireReadout.OpDetFromOpChannel(this->channel);
+  std::vector<const sim::OpDetBacktrackerRecord *> records_found;
   for (auto const &handle : opdet_bt_handles) {
     auto const &records = *handle;
-	const sim::OpDetBacktrackerRecord* record = nullptr;
+    const sim::OpDetBacktrackerRecord *record = nullptr;
     /* const sim::OpDetBacktrackerRecord &record = records.at(opdetnum); */
-	for (auto const &curr_rec : records) {
-	  if (curr_rec.OpDetNum() == opdetnum) {
-		record = &curr_rec;
-	  	break;
-	  }
-	}
-	if (!record) continue;
+    for (auto const &curr_rec : records) {
+      if (curr_rec.OpDetNum() == opdetnum) {
+        record = &curr_rec;
+        break;
+      }
+    }
+    if (!record) {
+      continue;
+    }
+    records_found.push_back(record);
     std::vector<sim::SDP> contributions = record->TrackIDsAndEnergies(
         (static_cast<int64_t>(time_start) - 1) * 16.0,
         (static_cast<int64_t>(time_start) + samples_over_threshold + 1) * 16.0);
