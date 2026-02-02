@@ -80,21 +80,170 @@ struct EventDataBuffer {
   }
 };
 
+struct EventSummaryBuffer {
+  /**
+   * Buffer of EventSummary data members
+   */
+
+  int mctruths_count;
+  int mcparticles_count;
+  int mcneutrinos_count;
+  int simides_count;
+  double tot_visible_energy_rop0, tot_visible_energy_rop1, tot_visible_energy_rop2, tot_visible_energy_rop3; // total visible energy per readout plane ID
+  double tot_numelectrons_rop0, tot_numelectrons_rop1, tot_numelectrons_rop2, tot_numelectrons_rop3;
+
+  void branch_on(TTree *tree) {
+    // TODO: add num of tps for all collections?
+    
+    
+    tree->Branch("mctruths_count", &mctruths_count);
+    tree->Branch("mcparticles_count", &mcparticles_count);
+    tree->Branch("mcneutrinos_count", &mcneutrinos_count);
+    tree->Branch("simides_count", &simides_count);
+
+    tree->Branch("tot_visible_energy_rop0", &tot_visible_energy_rop0);
+    tree->Branch("tot_visible_energy_rop1", &tot_visible_energy_rop1);
+    tree->Branch("tot_visible_energy_rop2", &tot_visible_energy_rop2);
+    tree->Branch("tot_visible_energy_rop3", &tot_visible_energy_rop3);
+    tree->Branch("tot_numelectrons_rop0", &tot_numelectrons_rop0);
+    tree->Branch("tot_numelectrons_rop1", &tot_numelectrons_rop1);
+    tree->Branch("tot_numelectrons_rop2", &tot_numelectrons_rop2);
+    tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
+  }
+
+
+  void clear() {
+    mctruths_count = -1;
+    mcparticles_count = -1;
+    mcneutrinos_count = -1;
+    simides_count = -1;
+
+    tot_visible_energy_rop0 = -1;
+    tot_visible_energy_rop1 = -1;
+    tot_visible_energy_rop2 = -1;
+    tot_visible_energy_rop3 = -1;
+  }
+};
 
 struct MCTruthBuffer {
+  /**
+   * Buffer of MCTruth data members
+   */
+  
   int pdg;
   std::string process;
   int status, id, trackid;
   std::string gen_name;
-  double x, y, z;
+  double x, y, z, t;
   double Px, Py, Pz, P;
   double en, ek;
+
+  void branch_on(TTree *tree) {
+    tree->Branch("block_id", &id);
+    tree->Branch("truth_track_id", &trackid);
+    tree->Branch("pdg", &pdg);
+    tree->Branch("generator_name", &gen_name);
+    tree->Branch("status_code", &status);
+    tree->Branch("x", &x);
+    tree->Branch("y", &y);
+    tree->Branch("z", &z);
+    tree->Branch("t", &t);
+    tree->Branch("px", &Px);
+    tree->Branch("py", &Py);
+    tree->Branch("pz", &Pz);
+    tree->Branch("p", &P);
+    tree->Branch("energy", &en);
+    tree->Branch("kinetic_energy", &ek);
+    tree->Branch("process", &process);
+  }
+
+  void clear() {
+    // FIXME: implement
+  }
 };
 
-struct MCParticleBuffer {};
+
+struct MCNeutrinoBuffer {
+
+  std::string mctruth_gen_name;
+  int mctruth_id;
+  int nupdg, leptonpdg, ccnc, mode, iteractionType,
+      target, hitnuc, hitquark;
+  double w, x, y, qsqr, pt, theta;
+
+  void branch_on(TTree *tree) {
+    tree->Branch("block_id", &mctruth_id);
+    tree->Branch("generator_name", &mctruth_gen_name);
+    tree->Branch("nupdg", &nupdg);
+    tree->Branch("leptonpdg", &leptonpdg);
+    tree->Branch("ccnc", &ccnc);
+    tree->Branch("mode", &mode);
+    tree->Branch("interactionType", &iteractionType);
+    tree->Branch("target", &target);
+    tree->Branch("hitnuc", &hitnuc);
+    tree->Branch("hitquark", &hitquark);
+    tree->Branch("w", &w);
+    tree->Branch("x", &x);
+    tree->Branch("y", &y);
+    tree->Branch("qsqr", &qsqr);
+    tree->Branch("pt", &pt);
+    tree->Branch("theta", &theta);
+  }
+};
+
+
+struct MCParticleBuffer {
+  /**
+   * Buffer of MCParticles data members
+   */
+  int pdg;
+  std::string process;
+  int status, trackid, truthid, mother;
+  std::string gen_name;
+  double x, y, z, t;
+  double end_x, end_y, end_z, end_t;
+  double Px, Py, Pz;
+  double en, ek;
+  double edep, numelectrons;
+  double shower_edep, shower_numelectrons;
+
+  void branch_on(TTree *tree) {
+    tree->Branch("pdg", &pdg);
+    tree->Branch("generator_name", &gen_name);
+    tree->Branch("status_code", &status);
+    tree->Branch("g4_track_id", &trackid);
+    tree->Branch("mother", &mother);
+    tree->Branch("truth_block_id", &truthid);
+    tree->Branch("x", &x);
+    tree->Branch("y", &y);
+    tree->Branch("z", &z);
+    tree->Branch("t", &t);
+    tree->Branch("end_x", &end_x);
+    tree->Branch("end_y", &end_y);
+    tree->Branch("end_z", &end_z);
+    tree->Branch("end_t", &end_t);
+    tree->Branch("px", &Px);
+    tree->Branch("py", &Py);
+    tree->Branch("pz", &Pz);
+    tree->Branch("energy", &en);
+    tree->Branch("kinetic_energy", &ek);
+    tree->Branch("edep", &edep);
+    tree->Branch("numelectrons", &numelectrons);
+    tree->Branch("shower_edep", &shower_edep);
+    tree->Branch("shower_numelectrons", &shower_numelectrons);
+    tree->Branch("process", &process);
+  }
+
+  void clear() {
+    // FIXME: implement
+  }
+};
 
 
 struct SimIDEBuffer {
+  /**
+   * Buffer of SimIDEBuffer data members
+   */
 
   unsigned int sim_channel_id;
   int tdc;
@@ -302,37 +451,45 @@ private:
 
   bool dump_mctruths;
   TTree *mctruth_tree;
-  int mctruth_pdg;
-  std::string mctruth_process;
-  int mctruth_status, mctruth_id, mctruth_trackid;
-  std::string mctruth_gen_name;
-  double mctruth_x, mctruth_y, mctruth_z;
-  double mctruth_Px, mctruth_Py, mctruth_Pz, mctruth_P;
-  double mctruth_en, mctruth_ek;
+  MCTruthBuffer mctruth_buf;
+
+
+  // int mctruth_pdg;
+  // std::string mctruth_process;
+  // int mctruth_status, mctruth_id, mctruth_trackid;
+  // std::string mctruth_gen_name;
+  // double mctruth_x, mctruth_y, mctruth_z;
+  // double mctruth_Px, mctruth_Py, mctruth_Pz, mctruth_P;
+  // double mctruth_en, mctruth_ek;
 
   TTree *mcneutrino_tree;
-  int mcneutrino_nupdg, mcneutrino_leptonpdg, mcneutrino_ccnc, mcneutrino_mode, mcneutrino_iteractionType,
-      mcneutrino_target, mcneutrino_hitnuc, mcneutrino_hitquark;
-  double mcneutrino_w, mcneutrino_x, mcneutrino_y, mcneutrino_qsqr, mcneutrino_pt, mcneutrino_theta;
+  MCNeutrinoBuffer mcneutrino_buf;
+
+  // int mcneutrino_nupdg, mcneutrino_leptonpdg, mcneutrino_ccnc, mcneutrino_mode, mcneutrino_iteractionType,
+  //     mcneutrino_target, mcneutrino_hitnuc, mcneutrino_hitquark;
+  // double mcneutrino_w, mcneutrino_x, mcneutrino_y, mcneutrino_qsqr, mcneutrino_pt, mcneutrino_theta;
 
   bool dump_mcparticles;
   TTree *mcparticle_tree;
-  int mcparticle_pdg;
-  std::string mcparticle_process;
-  int mcparticle_status, mcparticle_trackid, mcparticle_truthid, mcparticle_mother;
-  std::string mcparticle_gen_name;
-  double mcparticle_x, mcparticle_y, mcparticle_z, mcparticle_t;
-  double mcparticle_end_x, mcparticle_end_y, mcparticle_end_z, mcparticle_end_t;
-  double mcparticle_Px, mcparticle_Py, mcparticle_Pz;
-  double mcparticle_en, mcparticle_ek;
-  double mcparticle_edep, mcparticle_numelectrons;
-  double mcparticle_shower_edep, mcparticle_shower_numelectrons;
+  MCParticleBuffer mcparticle_buf;
+
+  // int mcparticle_pdg;
+  // std::string mcparticle_process;
+  // int mcparticle_status, mcparticle_trackid, mcparticle_truthid, mcparticle_mother;
+  // std::string mcparticle_gen_name;
+  // double mcparticle_x, mcparticle_y, mcparticle_z, mcparticle_t;
+  // double mcparticle_end_x, mcparticle_end_y, mcparticle_end_z, mcparticle_end_t;
+  // double mcparticle_Px, mcparticle_Py, mcparticle_Pz;
+  // double mcparticle_en, mcparticle_ek;
+  // double mcparticle_edep, mcparticle_numelectrons;
+  // double mcparticle_shower_edep, mcparticle_shower_numelectrons;
 
   bool dump_summary_info;
   // visible energy for the event
   TTree *summary_tree;
-  double tot_visible_energy_rop0, tot_visible_energy_rop1, tot_visible_energy_rop2, tot_visible_energy_rop3; // total visible energy per readout plane ID
-  double tot_numelectrons_rop0, tot_numelectrons_rop1, tot_numelectrons_rop2, tot_numelectrons_rop3;
+  EventSummaryBuffer evsum_buf;
+  // double tot_visible_energy_rop0, tot_visible_energy_rop1, tot_visible_energy_rop2, tot_visible_energy_rop3; // total visible energy per readout plane ID
+  // double tot_numelectrons_rop0, tot_numelectrons_rop1, tot_numelectrons_rop2, tot_numelectrons_rop3;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
@@ -379,69 +536,72 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_mctruths) {
     mctruth_tree = tfs->make<TTree>("mctruths", "mctruths");
     ev_buf.branch_on(mctruth_tree);
-    mctruth_tree->Branch("block_id", &mctruth_id);
-    mctruth_tree->Branch("truth_track_id", &mctruth_trackid);
-    mctruth_tree->Branch("pdg", &mctruth_pdg);
-    mctruth_tree->Branch("generator_name", &mctruth_gen_name);
-    mctruth_tree->Branch("status_code", &mctruth_status);
-    mctruth_tree->Branch("x", &mctruth_x);
-    mctruth_tree->Branch("y", &mctruth_y);
-    mctruth_tree->Branch("z", &mctruth_z);
-    mctruth_tree->Branch("px", &mctruth_Px);
-    mctruth_tree->Branch("py", &mctruth_Py);
-    mctruth_tree->Branch("pz", &mctruth_Pz);
-    mctruth_tree->Branch("p", &mctruth_P);
-    mctruth_tree->Branch("energy", &mctruth_en);
-    mctruth_tree->Branch("kinetic_energy", &mctruth_ek);
-    mctruth_tree->Branch("process", &mctruth_process);
+    mctruth_buf.branch_on(mctruth_tree);
+    // mctruth_tree->Branch("block_id", &mctruth_id);
+    // mctruth_tree->Branch("truth_track_id", &mctruth_trackid);
+    // mctruth_tree->Branch("pdg", &mctruth_pdg);
+    // mctruth_tree->Branch("generator_name", &mctruth_gen_name);
+    // mctruth_tree->Branch("status_code", &mctruth_status);
+    // mctruth_tree->Branch("x", &mctruth_x);
+    // mctruth_tree->Branch("y", &mctruth_y);
+    // mctruth_tree->Branch("z", &mctruth_z);
+    // mctruth_tree->Branch("px", &mctruth_Px);
+    // mctruth_tree->Branch("py", &mctruth_Py);
+    // mctruth_tree->Branch("pz", &mctruth_Pz);
+    // mctruth_tree->Branch("p", &mctruth_P);
+    // mctruth_tree->Branch("energy", &mctruth_en);
+    // mctruth_tree->Branch("kinetic_energy", &mctruth_ek);
+    // mctruth_tree->Branch("process", &mctruth_process);
 
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
     ev_buf.branch_on(mcneutrino_tree);
+    mcparticle_buf.branch_on(mcneutrino_tree);
 
-    mcneutrino_tree->Branch("block_id", &mctruth_id);
-    mcneutrino_tree->Branch("generator_name", &mctruth_gen_name);
-    mcneutrino_tree->Branch("nupdg", &mcneutrino_nupdg);
-    mcneutrino_tree->Branch("leptonpdg", &mcneutrino_leptonpdg);
-    mcneutrino_tree->Branch("ccnc", &mcneutrino_ccnc);
-    mcneutrino_tree->Branch("mode", &mcneutrino_mode);
-    mcneutrino_tree->Branch("interactionType", &mcneutrino_iteractionType);
-    mcneutrino_tree->Branch("target", &mcneutrino_target);
-    mcneutrino_tree->Branch("hitnuc", &mcneutrino_hitnuc);
-    mcneutrino_tree->Branch("hitquark", &mcneutrino_hitquark);
-    mcneutrino_tree->Branch("w", &mcneutrino_w);
-    mcneutrino_tree->Branch("x", &mcneutrino_x);
-    mcneutrino_tree->Branch("y", &mcneutrino_y);
-    mcneutrino_tree->Branch("qsqr", &mcneutrino_qsqr);
-    mcneutrino_tree->Branch("pt", &mcneutrino_pt);
-    mcneutrino_tree->Branch("theta", &mcneutrino_theta);
+    // mcneutrino_tree->Branch("block_id", &mctruth_id);
+    // mcneutrino_tree->Branch("generator_name", &mctruth_gen_name);
+    // mcneutrino_tree->Branch("nupdg", &mcneutrino_nupdg);
+    // mcneutrino_tree->Branch("leptonpdg", &mcneutrino_leptonpdg);
+    // mcneutrino_tree->Branch("ccnc", &mcneutrino_ccnc);
+    // mcneutrino_tree->Branch("mode", &mcneutrino_mode);
+    // mcneutrino_tree->Branch("interactionType", &mcneutrino_iteractionType);
+    // mcneutrino_tree->Branch("target", &mcneutrino_target);
+    // mcneutrino_tree->Branch("hitnuc", &mcneutrino_hitnuc);
+    // mcneutrino_tree->Branch("hitquark", &mcneutrino_hitquark);
+    // mcneutrino_tree->Branch("w", &mcneutrino_w);
+    // mcneutrino_tree->Branch("x", &mcneutrino_x);
+    // mcneutrino_tree->Branch("y", &mcneutrino_y);
+    // mcneutrino_tree->Branch("qsqr", &mcneutrino_qsqr);
+    // mcneutrino_tree->Branch("pt", &mcneutrino_pt);
+    // mcneutrino_tree->Branch("theta", &mcneutrino_theta);
   }
   if (dump_mcparticles) {
     mcparticle_tree = tfs->make<TTree>("mcparticles", "mcparticles");
     ev_buf.branch_on(mcparticle_tree);
-    mcparticle_tree->Branch("pdg", &mcparticle_pdg);
-    mcparticle_tree->Branch("generator_name", &mcparticle_gen_name);
-    mcparticle_tree->Branch("status_code", &mcparticle_status);
-    mcparticle_tree->Branch("g4_track_id", &mcparticle_trackid);
-    mcparticle_tree->Branch("mother", &mcparticle_mother);
-    mcparticle_tree->Branch("truth_block_id", &mcparticle_truthid);
-    mcparticle_tree->Branch("x", &mcparticle_x);
-    mcparticle_tree->Branch("y", &mcparticle_y);
-    mcparticle_tree->Branch("z", &mcparticle_z);
-    mcparticle_tree->Branch("t", &mcparticle_t);
-    mcparticle_tree->Branch("end_x", &mcparticle_end_x);
-    mcparticle_tree->Branch("end_y", &mcparticle_end_y);
-    mcparticle_tree->Branch("end_z", &mcparticle_end_z);
-    mcparticle_tree->Branch("end_t", &mcparticle_end_t);
-    mcparticle_tree->Branch("px", &mcparticle_Px);
-    mcparticle_tree->Branch("py", &mcparticle_Py);
-    mcparticle_tree->Branch("pz", &mcparticle_Pz);
-    mcparticle_tree->Branch("energy", &mcparticle_en);
-    mcparticle_tree->Branch("kinetic_energy", &mcparticle_ek);
-    mcparticle_tree->Branch("edep", &mcparticle_edep);
-    mcparticle_tree->Branch("numelectrons", &mcparticle_numelectrons);
-    mcparticle_tree->Branch("shower_edep", &mcparticle_shower_edep);
-    mcparticle_tree->Branch("shower_numelectrons", &mcparticle_shower_numelectrons);
-    mcparticle_tree->Branch("process", &mcparticle_process);
+    mcparticle_buf.branch_on(mcparticle_tree);
+    // mcparticle_tree->Branch("pdg", &mcparticle_pdg);
+    // mcparticle_tree->Branch("generator_name", &mcparticle_gen_name);
+    // mcparticle_tree->Branch("status_code", &mcparticle_status);
+    // mcparticle_tree->Branch("g4_track_id", &mcparticle_trackid);
+    // mcparticle_tree->Branch("mother", &mcparticle_mother);
+    // mcparticle_tree->Branch("truth_block_id", &mcparticle_truthid);
+    // mcparticle_tree->Branch("x", &mcparticle_x);
+    // mcparticle_tree->Branch("y", &mcparticle_y);
+    // mcparticle_tree->Branch("z", &mcparticle_z);
+    // mcparticle_tree->Branch("t", &mcparticle_t);
+    // mcparticle_tree->Branch("end_x", &mcparticle_end_x);
+    // mcparticle_tree->Branch("end_y", &mcparticle_end_y);
+    // mcparticle_tree->Branch("end_z", &mcparticle_end_z);
+    // mcparticle_tree->Branch("end_t", &mcparticle_end_t);
+    // mcparticle_tree->Branch("px", &mcparticle_Px);
+    // mcparticle_tree->Branch("py", &mcparticle_Py);
+    // mcparticle_tree->Branch("pz", &mcparticle_Pz);
+    // mcparticle_tree->Branch("energy", &mcparticle_en);
+    // mcparticle_tree->Branch("kinetic_energy", &mcparticle_ek);
+    // mcparticle_tree->Branch("edep", &mcparticle_edep);
+    // mcparticle_tree->Branch("numelectrons", &mcparticle_numelectrons);
+    // mcparticle_tree->Branch("shower_edep", &mcparticle_shower_edep);
+    // mcparticle_tree->Branch("shower_numelectrons", &mcparticle_shower_numelectrons);
+    // mcparticle_tree->Branch("process", &mcparticle_process);
   }
   if (dump_simides) {
     simide_tree = tfs->make<TTree>("simides", "simides");
@@ -451,14 +611,15 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_summary_info) {
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
     ev_buf.branch_on(summary_tree);
-    summary_tree->Branch("tot_visible_energy_rop0", &tot_visible_energy_rop0);
-    summary_tree->Branch("tot_visible_energy_rop1", &tot_visible_energy_rop1);
-    summary_tree->Branch("tot_visible_energy_rop2", &tot_visible_energy_rop2);
-    summary_tree->Branch("tot_visible_energy_rop3", &tot_visible_energy_rop3);
-    summary_tree->Branch("tot_numelectrons_rop0", &tot_numelectrons_rop0);
-    summary_tree->Branch("tot_numelectrons_rop1", &tot_numelectrons_rop1);
-    summary_tree->Branch("tot_numelectrons_rop2", &tot_numelectrons_rop2);
-    summary_tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
+    evsum_buf.branch_on(summary_tree);
+    // summary_tree->Branch("tot_visible_energy_rop0", &tot_visible_energy_rop0);
+    // summary_tree->Branch("tot_visible_energy_rop1", &tot_visible_energy_rop1);
+    // summary_tree->Branch("tot_visible_energy_rop2", &tot_visible_energy_rop2);
+    // summary_tree->Branch("tot_visible_energy_rop3", &tot_visible_energy_rop3);
+    // summary_tree->Branch("tot_numelectrons_rop0", &tot_numelectrons_rop0);
+    // summary_tree->Branch("tot_numelectrons_rop1", &tot_numelectrons_rop1);
+    // summary_tree->Branch("tot_numelectrons_rop2", &tot_numelectrons_rop2);
+    // summary_tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
   }
 
   // Save detector settings
@@ -486,8 +647,15 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   ev_buf.event = e.event();
 
   // reset visible energy counters
-  tot_visible_energy_rop0 = tot_visible_energy_rop1 = tot_visible_energy_rop2 = tot_visible_energy_rop3 = 0;
-  tot_numelectrons_rop0 = tot_numelectrons_rop1 = tot_numelectrons_rop2 = tot_numelectrons_rop3 = 0;
+  evsum_buf.clear();
+  // tot_visible_energy_rop0 = tot_visible_energy_rop1 = tot_visible_energy_rop2 = tot_visible_energy_rop3 = 0;
+  // tot_numelectrons_rop0 = tot_numelectrons_rop1 = tot_numelectrons_rop2 = tot_numelectrons_rop3 = 0;
+
+
+  size_t mctruths_count = 0;
+  size_t mcneutrinos_count = 0;
+  size_t mcparticles_count = 0;
+  size_t simides_count = 0;
 
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
@@ -505,7 +673,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       // Store generator name for TP backtracking
       truthBlockId_to_generator_name[truth_block_counter] = generator_name;
 
-      mctruth_id = truth_block_counter;
+      mctruth_buf.id = truth_block_counter;
       // NOTE: here we are making an assumption that the geant4 stage's process
       // name is largeant. This should be safe mostly.
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
@@ -519,52 +687,65 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         }
 
         if (truthblock.NeutrinoSet()) {
+
           const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
-          mcneutrino_nupdg = mcneutrino.Nu().PdgCode();
-          mcneutrino_leptonpdg = mcneutrino.Lepton().PdgCode();
-          mcneutrino_ccnc = mcneutrino.CCNC();
-          mcneutrino_mode = mcneutrino.Mode();
-          mcneutrino_iteractionType = mcneutrino.InteractionType();
-          mcneutrino_target = mcneutrino.Target();
-          mcneutrino_hitnuc = mcneutrino.HitNuc();
-          mcneutrino_hitquark = mcneutrino.HitQuark();
-          mcneutrino_w = mcneutrino.W();
-          mcneutrino_x = mcneutrino.X();
-          mcneutrino_y = mcneutrino.Y();
-          mcneutrino_qsqr = mcneutrino.QSqr();
-          mcneutrino_pt = mcneutrino.Pt();
-          mcneutrino_theta = mcneutrino.Theta();
+          
+          mcneutrino_buf.mctruth_id = truth_block_counter;
+          mcneutrino_buf.mctruth_gen_name = generator_name;
+          mcneutrino_buf.nupdg = mcneutrino.Nu().PdgCode();
+          mcneutrino_buf.leptonpdg = mcneutrino.Lepton().PdgCode();
+          mcneutrino_buf.ccnc = mcneutrino.CCNC();
+          mcneutrino_buf.mode = mcneutrino.Mode();
+          mcneutrino_buf.iteractionType = mcneutrino.InteractionType();
+          mcneutrino_buf.target = mcneutrino.Target();
+          mcneutrino_buf.hitnuc = mcneutrino.HitNuc();
+          mcneutrino_buf.hitquark = mcneutrino.HitQuark();
+          mcneutrino_buf.w = mcneutrino.W();
+          mcneutrino_buf.x = mcneutrino.X();
+          mcneutrino_buf.y = mcneutrino.Y();
+          mcneutrino_buf.qsqr = mcneutrino.QSqr();
+          mcneutrino_buf.pt = mcneutrino.Pt();
+          mcneutrino_buf.theta = mcneutrino.Theta();
           mcneutrino_tree->Fill();
+          ++mcneutrinos_count;
         }
 
         int nparticles = truthblock.NParticles();
 
+
         for (int ipart = 0; ipart < nparticles; ipart++) {
+
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
-          mctruth_pdg = part.PdgCode();
-          mctruth_gen_name = generator_name;
-          mctruth_status = part.StatusCode();
-          mctruth_process = part.Process();
-          mctruth_trackid = part.TrackId();
-          mctruth_x = part.Vx();
-          mctruth_y = part.Vy();
-          mctruth_z = part.Vz();
-          mctruth_Px = part.Px();
-          mctruth_Py = part.Py();
-          mctruth_Pz = part.Pz();
-          mctruth_P = part.P();
-          mctruth_en = part.E();
-          mctruth_ek = part.E() - part.Mass();
+          mctruth_buf.id = truth_block_counter;
+          mctruth_buf.pdg = part.PdgCode();
+          mctruth_buf.gen_name = generator_name;
+          mctruth_buf.status = part.StatusCode();
+          mctruth_buf.process = part.Process();
+          mctruth_buf.trackid = part.TrackId();
+          mctruth_buf.x = part.Vx();
+          mctruth_buf.y = part.Vy();
+          mctruth_buf.z = part.Vz();
+          mctruth_buf.t = part.T();
+          mctruth_buf.Px = part.Px();
+          mctruth_buf.Py = part.Py();
+          mctruth_buf.Pz = part.Pz();
+          mctruth_buf.P = part.P();
+          mctruth_buf.en = part.E();
+          mctruth_buf.ek = part.E() - part.Mass();
           mctruth_tree->Fill();
+          ++mctruths_count;
         }
         truth_block_counter++;
       }
     }
+
+    json j_mctruth_gen_map(truthBlockId_to_generator_name);
+    info_data["mcthruth_blockod_map"] = j_mctruth_gen_map;
+
   }
 
   if (dump_simides) {
     auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
-
     art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
 
     track_en_sums.clear();
@@ -596,22 +777,23 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           
           // populate the total visible energy counters by plane
           if (chinfo.rop_id == 0) {
-            tot_visible_energy_rop0 += ide.energy;
-            tot_numelectrons_rop0 += ide.numElectrons;
+            evsum_buf.tot_visible_energy_rop0 += ide.energy;
+            evsum_buf.tot_numelectrons_rop0 += ide.numElectrons;
           }
           else if (chinfo.rop_id == 1) {
-            tot_visible_energy_rop1 += ide.energy;
-            tot_numelectrons_rop1 += ide.numElectrons;
+            evsum_buf.tot_visible_energy_rop1 += ide.energy;
+            evsum_buf.tot_numelectrons_rop1 += ide.numElectrons;
           }
           else if (chinfo.rop_id == 2) {
-            tot_visible_energy_rop2 += ide.energy;
-            tot_numelectrons_rop2 += ide.numElectrons;
+            evsum_buf.tot_visible_energy_rop2 += ide.energy;
+            evsum_buf.tot_numelectrons_rop2 += ide.numElectrons;
           }
           else if (chinfo.rop_id == 3) {
-            tot_visible_energy_rop3 += ide.energy;
-            tot_numelectrons_rop3 += ide.numElectrons;
+            evsum_buf.tot_visible_energy_rop3 += ide.energy;
+            evsum_buf.tot_numelectrons_rop3 += ide.numElectrons;
           }
           simide_tree->Fill();
+          ++simides_count;
         }
       }
     }
@@ -627,33 +809,34 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string generator_name = mcparticleHandle.provenance()->inputTag().label();
 
       for (const simb::MCParticle &part : *mcparticleHandle) {
-        mcparticle_pdg = part.PdgCode();
-        mcparticle_gen_name = generator_name;
-        mcparticle_status = part.StatusCode();
-        mcparticle_trackid = part.TrackId();
-        mcparticle_mother = part.Mother();
-        mcparticle_truthid = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
-        mcparticle_process = part.Process();
-        mcparticle_x = part.Vx();
-        mcparticle_y = part.Vy();
-        mcparticle_z = part.Vz();
-        mcparticle_t = part.T();
-        mcparticle_end_x = part.EndX();
-        mcparticle_end_y = part.EndY();
-        mcparticle_end_z = part.EndZ();
-        mcparticle_end_t = part.EndT();
-        mcparticle_Px = part.Px();
-        mcparticle_Py = part.Py();
-        mcparticle_Pz = part.Pz();
-        mcparticle_en = part.E();
-        mcparticle_ek = part.E() - part.Mass();
-        mcparticle_edep = track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0;
-        mcparticle_numelectrons =
+        mcparticle_buf.pdg = part.PdgCode();
+        mcparticle_buf.gen_name = generator_name;
+        mcparticle_buf.status = part.StatusCode();
+        mcparticle_buf.trackid = part.TrackId();
+        mcparticle_buf.mother = part.Mother();
+        mcparticle_buf.truthid = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
+        mcparticle_buf.process = part.Process();
+        mcparticle_buf.x = part.Vx();
+        mcparticle_buf.y = part.Vy();
+        mcparticle_buf.z = part.Vz();
+        mcparticle_buf.t = part.T();
+        mcparticle_buf.end_x = part.EndX();
+        mcparticle_buf.end_y = part.EndY();
+        mcparticle_buf.end_z = part.EndZ();
+        mcparticle_buf.end_t = part.EndT();
+        mcparticle_buf.Px = part.Px();
+        mcparticle_buf.Py = part.Py();
+        mcparticle_buf.Pz = part.Pz();
+        mcparticle_buf.en = part.E();
+        mcparticle_buf.ek = part.E() - part.Mass();
+        mcparticle_buf.edep = track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0;
+        mcparticle_buf.numelectrons =
             track_electron_sums.count(part.TrackId()) ? track_electron_sums.at(part.TrackId()) : 0;
-        mcparticle_shower_edep = track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0;
-        mcparticle_shower_numelectrons =
+        mcparticle_buf.shower_edep = track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0;
+        mcparticle_buf.shower_numelectrons =
             track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0;
         mcparticle_tree->Fill();
+        ++mcparticles_count;
       }
     }
   }
@@ -699,6 +882,13 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         cur_tp_tree->Fill();
       }
     }
+
+
+    evsum_buf.mctruths_count = mctruths_count;
+    evsum_buf.mcparticles_count = mcparticles_count;
+    evsum_buf.mcneutrinos_count = mcneutrinos_count;
+    evsum_buf.simides_count = simides_count;
+
   }
 
   if (dump_ta) {

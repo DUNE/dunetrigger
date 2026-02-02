@@ -11,6 +11,9 @@
 #include "dunecore/ArtSupport/ArtServiceHelper.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "larcorealg/Geometry/Exceptions.h"
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 
 int main(int argc, char** argv) {
@@ -27,12 +30,13 @@ int main(int argc, char** argv) {
         {"1x8x14", "dunevd10kt_1x8x14_3view_30deg_geo"}
     };
 
-    std::string geo_id(
-        argv[1]);
+    std::string geo_id(argv[1]);
 
     if ( geo_shortcuts.count(geo_id) == 1) {
         geo_id = geo_shortcuts[geo_id];
     }
+
+    json j_geo;
 
     std::stringstream config;
 
@@ -58,6 +62,26 @@ int main(int argc, char** argv) {
     std::cout << " - y-range = [" << cryogeo.MinY() << ", " << cryogeo.MaxY() << "]" << std::endl;
     std::cout << " - z-range = [" << cryogeo.MinZ() << ", " << cryogeo.MaxZ() << "]" << std::endl;
 
+    j_geo["cryostat"] = {
+        {"origin", {
+            {"x", cryogeo.GetCenter().x()},
+            {"y", cryogeo.GetCenter().y()},
+            {"z", cryogeo.GetCenter().z()}
+        }},
+        {"x_range", {
+            {"min", cryogeo.MinX()},
+            {"max", cryogeo.MaxX()}
+        }},
+        {"y_range", {
+            {"min", cryogeo.MinY()},
+            {"max", cryogeo.MaxY()}
+        }},
+        {"z_range", {
+            {"min", cryogeo.MinZ()},
+            {"max", cryogeo.MaxZ()}
+        }}
+    };
+
     std::cout<<"Total number of TPCs "<<pgeo->NTPC()<<std::endl;
     for (geo::TPCGeo const& tpc: pgeo->Iterate<geo::TPCGeo>(geo::CryostatID{0})) {
         size_t const t = tpc.ID().TPC;
@@ -67,6 +91,26 @@ int main(int argc, char** argv) {
         std::cout << " - y-range = [" << tpc.MinY() << ", " << tpc.MaxY() << "]" << std::endl;
         std::cout << " - z-range = [" << tpc.MinZ() << ", " << tpc.MaxZ() << "]" << std::endl;
 
+
+        j_geo["tpcs"][t] = {
+            {"origin", {
+                {"x", tpc.GetCenter().x()},
+                {"y", tpc.GetCenter().y()},
+                {"z", tpc.GetCenter().z()}
+            }},
+            {"x_range", {
+                {"min", tpc.MinX()},
+                {"max", tpc.MaxX()}
+            }},
+            {"y_range", {
+                {"min", tpc.MinY()},
+                {"max", tpc.MaxY()}
+            }},
+            {"z_range", {
+                {"min", tpc.MinZ()},
+                {"max", tpc.MaxZ()}
+            }}
+        };
 
         std::vector<raw::ChannelID_t> channels;
         for (auto const& wire : wireReadout.Iterate<geo::WireID>(tpc.ID())) {
@@ -84,4 +128,13 @@ int main(int argc, char** argv) {
 
     std::cout << "MaxTPCSet " << wireReadout.MaxTPCsets() << std::endl;
 
+
+    std::cout << "-----------" << std::endl;
+    std::cout << j_geo << std::endl;
+
+
+
+    // write prettified JSON to another file
+    std::ofstream o("pretty.json");
+    o << std::setw(4) << j_geo << std::endl;
 }
