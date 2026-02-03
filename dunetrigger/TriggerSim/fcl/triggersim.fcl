@@ -40,8 +40,9 @@ producers_triggersim_simpleThr_simpleWin_simpleWin: {
 }
 
 producers_triggersim_pdsonly: {
-    tpmakerPDSSimpleThreshold: @local::tpmakerPDS_ADCSimpleThreshold
-    tpmakerPDSLessSimpleThreshold: @local::tpmakerPDS_ADCLessSimpleThreshold
+    tpmakerPDSSimpleThreshold: @local::tpmakerPDS_SimpleThreshold
+    tpmakerPDSLessSimpleThreshold: @local::tpmakerPDS_LessSimpleThreshold
+    tpmakerPDSMatchedFilter: @local::tpmakerPDS_MatchedFilter
 }
 
 # Run both AbsRS and SimpleThreshold TPG

@@ -38,7 +38,7 @@ tpmakerTPC_ABSRunningSum:
     }
  }
 
-tpmakerPDS_ADCSimpleThreshold:
+tpmakerPDS_SimpleThreshold:
   {
     module_type: TriggerPrimitiveMakerPDS
     opdetwaveform_tag: "opdigi10ppm"
@@ -51,7 +51,7 @@ tpmakerPDS_ADCSimpleThreshold:
       # fixed_pedestal: 100
     }
   }
-tpmakerPDS_ADCLessSimpleThreshold:
+tpmakerPDS_LessSimpleThreshold:
   {
     module_type: TriggerPrimitiveMakerPDS
     opdetwaveform_tag: "opdigi10ppm"
@@ -62,6 +62,22 @@ tpmakerPDS_ADCLessSimpleThreshold:
       threshold_arm: 1
       pedestal_window_length: 3
       # fixed_pedestal: 100
+      verbosity: 0
+    }
+  }
+
+tpmakerPDS_MatchedFilter:
+  {
+    module_type: TriggerPrimitiveMakerPDS
+    opdetwaveform_tag: "opdigi10ppm"
+    tpalg: {
+      tool_type: TPAlgPDSMatchedFilter
+      threshold: 0.5 # In units of PE
+      pedestal_window_length: 3
+      subsample_factor: 3
+      # From https://github.com/marroyav/daphne_mezz_xc_sim/blob/bfaa92d5e35fc10adc2b8e3a211d78914b6c1635/src/st_xc_sim.cpp#L15
+      # Flip and multiply by -1
+      template: [0, 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 6, 7, 6, 5, 5, 4, 4, 3, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, -1]
       verbosity: 0
     }
   }

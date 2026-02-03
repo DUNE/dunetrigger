@@ -9,6 +9,8 @@ services: {
 # Commented out are correct values, but old simulations are done with the default of 100.
 #physics.producers.tpmakerPDSLessSimpleThreshold.tpalg.fixed_pedestal: 500
 #physics.producers.tpmakerPDSSimpleThreshold.tpalg.fixed_pedestal: 500
-physics.makers: [ tpmakerPDSLessSimpleThreshold ]
+physics.makers: [ tpmakerPDSLessSimpleThreshold, tpmakerPDSMatchedFilter ]
 physics.producers.tpmakerPDSSimpleThreshold.opdetwaveform_tag: "opdigi"
 physics.producers.tpmakerPDSLessSimpleThreshold.opdetwaveform_tag: "opdigi"
+physics.producers.tpmakerPDSLessSimpleThreshold.tpalg.threshold_fire: 5
+physics.producers.tpmakerPDSMatchedFilter.opdetwaveform_tag: "opdigi"
