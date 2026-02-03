@@ -571,20 +571,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           ide_readout_plane_id = chinfo.rop_id;
           ide_readout_view = chinfo.view;
           ide_detector_element = chinfo.tpcset_id; // APA/CRP ID
-          // populate the total visible energy counters by plane
-          if (ide_readout_plane_id == 0) {
-            tot_visible_energy_rop0 += ide_energy;
-            tot_numelectrons_rop0 += ide_numElectrons;
-          } else if (ide_readout_plane_id == 1) {
-            tot_visible_energy_rop1 += ide_energy;
-            tot_numelectrons_rop1 += ide_numElectrons;
-          } else if (ide_readout_plane_id == 2) {
-            tot_visible_energy_rop2 += ide_energy;
-            tot_numelectrons_rop2 += ide_numElectrons;
-          } else if (ide_readout_plane_id == 3) {
-            tot_visible_energy_rop3 += ide_energy;
-            tot_numelectrons_rop3 += ide_numElectrons;
-          }
           simide_tree->Fill();
         }
       }
@@ -808,6 +794,35 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   }
 
   if (dump_summary_info) {
+    auto simchannels =
+        e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
+    for (const sim::SimChannel &sc : *simchannels) {
+      sim_channel_id = sc.Channel();
+      ChannelInfo chinfo = get_channel_info_for_channel(sim_channel_id);
+      int plane_id = chinfo.rop_id;
+      sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
+      for (const sim::TDCIDE &tdcide : tdcidemap) {
+        tdc = tdcide.first;
+        for (sim::IDE ide : tdcide.second) {
+          ide_numElectrons = ide.numElectrons;
+          ide_energy = ide.energy;
+          // populate the total visible energy counters by plane
+          if (plane_id == 0) {
+            tot_visible_energy_rop0 += ide_energy;
+            tot_numelectrons_rop0 += ide_numElectrons;
+          } else if (plane_id == 1) {
+            tot_visible_energy_rop1 += ide_energy;
+            tot_numelectrons_rop1 += ide_numElectrons;
+          } else if (plane_id == 2) {
+            tot_visible_energy_rop2 += ide_energy;
+            tot_numelectrons_rop2 += ide_numElectrons;
+          } else if (plane_id == 3) {
+            tot_visible_energy_rop3 += ide_energy;
+            tot_numelectrons_rop3 += ide_numElectrons;
+          }
+        }
+      }
+    }
     summary_tree->Fill();
   }
 }
