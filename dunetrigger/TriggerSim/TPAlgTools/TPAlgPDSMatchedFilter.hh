@@ -4,15 +4,11 @@
 #include "detdataformats/trigger/Types.hpp"
 #include "fhiclcpp/ParameterSet.h"
 
-#include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "larcore/CoreUtils/ServiceUtil.h"
-#include "larcore/Geometry/Geometry.h"
-#include "larcore/Geometry/WireReadout.h"
-
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTool.hh"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
 #include <inttypes.h>
+#include <numeric>
 
 namespace dunetrigger {
 
@@ -20,7 +16,7 @@ class TPAlgPDSMatchedFilter : public TPAlgPDSTool {
 
 public:
   explicit TPAlgPDSMatchedFilter(fhicl::ParameterSet const &ps)
-      : fVerbosity(ps.get<int>("verbosity", 0)),
+      : fVerbosity(static_cast<Verbosity>(ps.get<int>("verbosity", 0))),
         fPedWindowLength(ps.get<int>("pedestal_window_length", 20)),
         fFixedPedestal(ps.get<int>("fixed_pedestal", -99999)),
         fThreshold(ps.get<float>("threshold")),
@@ -69,7 +65,7 @@ public:
 
 protected:
   // configuration parameters
-  const int fVerbosity;
+  const Verbosity fVerbosity;
   const int fPedWindowLength;
   const int fFixedPedestal;
   const float fThreshold;

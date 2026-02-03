@@ -72,13 +72,17 @@ tpmakerPDS_MatchedFilter:
     opdetwaveform_tag: "opdigi10ppm"
     tpalg: {
       tool_type: TPAlgPDSMatchedFilter
+      verbosity: 0
       threshold: 0.5 # In units of PE
       pedestal_window_length: 3
       subsample_factor: 3
       # From https://github.com/marroyav/daphne_mezz_xc_sim/blob/bfaa92d5e35fc10adc2b8e3a211d78914b6c1635/src/st_xc_sim.cpp#L15
       # Flip and multiply by -1
       template: [0, 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 6, 7, 6, 5, 5, 4, 4, 3, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, -1]
-      verbosity: 0
+      # Number of samples to delay the waveform with respect to the XCorr.
+      window_delay: 16
+      # Number of samples to hold the trigger window open after XCorr drops below threshold.
+      window_extend: 48
     }
   }
 
