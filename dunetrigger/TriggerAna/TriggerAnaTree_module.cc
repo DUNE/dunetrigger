@@ -47,6 +47,36 @@ using dunedaq::trgdataformats::TriggerPrimitive;
 
 #define INVALID -99999
 
+nlohmann::json parse_to_json(const std::string &str) {
+  auto j = nlohmann::json::parse(str, nullptr, false);
+  if (j.is_discarded()) {
+    return str;
+  }
+  return j;
+}
+
+nlohmann::json fhicl_to_json(const fhicl::ParameterSet &pset) {
+  nlohmann::json j;
+  for (const std::string &key : pset.get_all_keys()) {
+    if (pset.is_key_to_atom(key)) {
+      std::string field_str = pset.get<std::string>(key);
+      j[key] = parse_to_json(field_str);
+    } else if (pset.is_key_to_sequence(key)) {
+      std::vector<std::string> field_vec =
+          pset.get<std::vector<std::string>>(key);
+      std::vector<json> json_vec;
+      for (const std::string &val : field_vec) {
+        json_vec.push_back(parse_to_json(val));
+      }
+      j[key] = json_vec;
+    } else if (pset.is_key_to_table(key)) {
+      fhicl::ParameterSet sub_pset = pset.get<fhicl::ParameterSet>(key);
+      j[key] = fhicl_to_json(sub_pset);
+    }
+  }
+  return j;
+}
+
 namespace dunetrigger {
 class TriggerAnaTree;
 
@@ -662,15 +692,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
       bool is_pds_tp = tp_tool_type.find("PDS") != std::string::npos;
       info_data["tpg"][tag]["tool"] = tp_tool_type;
-      for (const std::string &key : tp_params.get_all_keys()) {
-        std::string field_str = tp_params.get<std::string>(key);
-        auto field = nlohmann::json::parse(field_str, nullptr, false);
-        if (!field.is_discarded()) {
-          info_data["tpg"][tag]["config"][key] = field;
-          continue;
-        }
-        info_data["tpg"][tag]["config"][key] = field_str;
-      }
+      info_data["tpg"][tag]["config"] = fhicl_to_json(tp_params);
       std::string map_tag = "tp/" + tag;
 
       TriggerPrimitiveBuffer &curr_tp_buf = tp_bufs[map_tag];
