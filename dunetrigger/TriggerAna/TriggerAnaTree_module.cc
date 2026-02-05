@@ -188,14 +188,14 @@ struct TriggerPrimitiveBuffer {
 };
 
 struct SDPBuffer {
-  int opdetsum;
+  int opdetnum;
   double time;
   int trkId;
   float numPhotons;
   float energy;
   float x, y, z;
   void branch_on(TTree *tree) {
-    tree->Branch("opdetsum", &opdetsum);
+    tree->Branch("opdetnum", &opdetnum);
     tree->Branch("time", &time);
     tree->Branch("trkId", &trkId);
     tree->Branch("numPhotons", &numPhotons);
@@ -205,7 +205,7 @@ struct SDPBuffer {
     tree->Branch("z", &z);
   }
   void clear() {
-    opdetsum = INVALID;
+    opdetnum = INVALID;
     time = INVALID;
     trkId = INVALID;
     numPhotons = 0;
@@ -584,7 +584,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       auto const &records = *handle;
       for (sim::OpDetBacktrackerRecord const &record : records) {
         sdp_buf.clear();
-        sdp_buf.opdetsum = record.OpDetNum();
+        sdp_buf.opdetnum = record.OpDetNum();
         std::vector<sim::timePDclockSDP_t> const sdp_map =
             record.timePDclockSDPsMap();
         for (const auto &[time, sdps] : sdp_map) {

@@ -24,9 +24,9 @@ TPAlgPDSMatchedFilter::correlate(std::vector<short> const &adcs) {
   return xcorr;
 }
 
-std::vector<std::pair<timestamp_t, timestamp_t>>
+std::vector<TPWindow>
 TPAlgPDSMatchedFilter::find_tp_windows(std::vector<double> const &xcorr) {
-  std::vector<std::pair<timestamp_t, timestamp_t>> tp_windows;
+  std::vector<TPWindow> tp_windows;
   bool window_open = false;
   int extend_counter = 0;
   for (size_t i = 0; i < xcorr.size(); ++i) {
@@ -34,20 +34,21 @@ TPAlgPDSMatchedFilter::find_tp_windows(std::vector<double> const &xcorr) {
     if (xcorr[i] >= fThreshold) {
       if (!window_open) {
         // start a new window
-        tp_windows.emplace_back(current_time, current_time);
-        window_open = true;
-        extend_counter = 0;
-      } else {
-        // extend the current window
-        tp_windows.back().second = current_time;
-        extend_counter = 0;
+        tp_windows.emplace_back(current_time, current_time, 0.0);
       }
+      window_open = true;
+      std::get<1>(tp_windows.back()) = current_time;
+      std::get<2>(tp_windows.back()) =
+          std::max(std::get<2>(tp_windows.back()), xcorr[i]);
+      extend_counter = 0;
     } else {
       if (window_open) {
         if (extend_counter < fWindowExtend) {
           // extend the current window
-          tp_windows.back().second = current_time;
-          extend_counter++;
+          std::get<1>(tp_windows.back()) = current_time;
+          std::get<2>(tp_windows.back()) =
+              std::max(std::get<2>(tp_windows.back()), xcorr[i]);
+          extend_counter += fSubSampleFactor;
         } else {
           // close the current window
           window_open = false;
@@ -72,9 +73,8 @@ void TPAlgPDSMatchedFilter::process_waveform(
   }
   set_pedestal(adcs);
   std::vector<double> xcorr = correlate(adcs);
-  std::vector<std::pair<timestamp_t, timestamp_t>> tp_windows =
-      find_tp_windows(xcorr);
-  for (auto const &[start, end] : tp_windows) {
+  std::vector<TPWindow> tp_windows = find_tp_windows(xcorr);
+  for (auto const &[start, end, npes] : tp_windows) {
     TriggerPrimitive this_tp = initalize_tp();
     this_tp.time_start = start_time + start;
     this_tp.time_over_threshold = (end - start + 1);
@@ -90,6 +90,7 @@ void TPAlgPDSMatchedFilter::process_waveform(
     this_tp.time_start *= ADC_SAMPLING_RATE_IN_DTS;
     this_tp.time_peak *= ADC_SAMPLING_RATE_IN_DTS;
     this_tp.time_over_threshold *= ADC_SAMPLING_RATE_IN_DTS;
+    this_tp.adc_peak = static_cast<uint16_t>(npes * 10.0);
     tps_out.push_back(this_tp);
   }
 }
