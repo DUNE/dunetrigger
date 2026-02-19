@@ -130,13 +130,13 @@ struct MCTruthBuffer {
    * Buffer of MCTruth data members
    */
   
-  int pdg;
-  std::string process;
-  int status, id, trackid;
-  std::string gen_name;
-  double x, y, z, t;
-  double Px, Py, Pz, P;
-  double en, ek;
+  std::vector<int> pdg;
+  std::vector<std::string> process;
+  std::vector<int> status, id, trackid;
+  std::vector<std::string> gen_name;
+  std::vector<double> x, y, z, t;
+  std::vector<double> Px, Py, Pz, P;
+  std::vector<double> en, ek;
 
   void branch_on(TTree *tree) {
     tree->Branch("block_id", &id);
@@ -158,7 +158,22 @@ struct MCTruthBuffer {
   }
 
   void clear() {
-    // FIXME: implement
+    pdg.clear();
+    process.clear();
+    status.clear();
+    id.clear();
+    trackid.clear();
+    gen_name.clear();
+    x.clear();
+    y.clear();
+    z.clear();
+    t.clear();
+    Px.clear();
+    Py.clear();
+    Pz.clear();
+    P.clear();
+    en.clear();
+    ek.clear();
   }
 };
 
@@ -557,10 +572,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   ev_buf.event = e.event();
 
   // reset visible energy counters
+  mctruth_buf.clear();
   evsum_buf.clear();
-  // tot_visible_energy_rop0 = tot_visible_energy_rop1 = tot_visible_energy_rop2 = tot_visible_energy_rop3 = 0;
-  // tot_numelectrons_rop0 = tot_numelectrons_rop1 = tot_numelectrons_rop2 = tot_numelectrons_rop3 = 0;
-
 
   size_t mctruths_count = 0;
   size_t mcneutrinos_count = 0;
@@ -583,7 +596,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       // Store generator name for TP backtracking
       truthBlockId_to_generator_name[truth_block_counter] = generator_name;
 
-      mctruth_buf.id = truth_block_counter;
+      mctruth_buf.id.push_back(truth_block_counter);
       // NOTE: here we are making an assumption that the geant4 stage's process
       // name is largeant. This should be safe mostly.
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
@@ -626,22 +639,22 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         for (int ipart = 0; ipart < nparticles; ipart++) {
 
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
-          mctruth_buf.id = truth_block_counter;
-          mctruth_buf.pdg = part.PdgCode();
-          mctruth_buf.gen_name = generator_name;
-          mctruth_buf.status = part.StatusCode();
-          mctruth_buf.process = part.Process();
-          mctruth_buf.trackid = part.TrackId();
-          mctruth_buf.x = part.Vx();
-          mctruth_buf.y = part.Vy();
-          mctruth_buf.z = part.Vz();
-          mctruth_buf.t = part.T();
-          mctruth_buf.Px = part.Px();
-          mctruth_buf.Py = part.Py();
-          mctruth_buf.Pz = part.Pz();
-          mctruth_buf.P = part.P();
-          mctruth_buf.en = part.E();
-          mctruth_buf.ek = part.E() - part.Mass();
+          mctruth_buf.id.push_back(truth_block_counter);
+          mctruth_buf.pdg.push_back(part.PdgCode());
+          mctruth_buf.gen_name.push_back(generator_name);
+          mctruth_buf.status.push_back(part.StatusCode());
+          mctruth_buf.process.push_back(part.Process());
+          mctruth_buf.trackid.push_back(part.TrackId());
+          mctruth_buf.x.push_back(part.Vx());
+          mctruth_buf.y.push_back(part.Vy());
+          mctruth_buf.z.push_back(part.Vz());
+          mctruth_buf.t.push_back(part.T());
+          mctruth_buf.Px.push_back(part.Px());
+          mctruth_buf.Py.push_back(part.Py());
+          mctruth_buf.Pz.push_back(part.Pz());
+          mctruth_buf.P.push_back(part.P());
+          mctruth_buf.en.push_back(part.E());
+          mctruth_buf.ek.push_back(part.E() - part.Mass());
           mctruth_tree->Fill();
           ++mctruths_count;
         }
@@ -650,7 +663,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     }
 
     json j_mctruth_gen_map(truthBlockId_to_generator_name);
-    info_data["mcthruth_blockod_map"] = j_mctruth_gen_map;
+    info_data["mcthruth_blockid_map"] = j_mctruth_gen_map;
 
   }
 
@@ -1071,39 +1084,6 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
   bt_mctruth_gen_name = truth_id_to_gen.at(bt_mctruth_block_id);
 }
 
-// FIXME: Remove //
-// void dunetrigger::TriggerPrimitiveBuffer::branch_on(TTree *tree, bool backtracking) {
-//   tree->Branch("version", &this->version);
-//   tree->Branch("flag", &this->flag);
-//   tree->Branch("detid", &this->detid);
-//   tree->Branch("channel", &this->channel);
-//   tree->Branch("samples_over_threshold", &this->samples_over_threshold);
-//   tree->Branch("time_start", &this->time_start);
-//   tree->Branch("samples_to_peak", &this->samples_to_peak);
-//   tree->Branch("adc_integral", &this->adc_integral);
-//   tree->Branch("adc_peak", &this->adc_peak);
-
-//   tree->Branch("readout_plane_id", &this->chinfo.rop_id);
-//   tree->Branch("readout_view", &this->chinfo.view);
-//   tree->Branch("TPCSetID", &this->chinfo.tpcset_id);
-
-//   // Add backtracking only if requested
-//   if (backtracking) {
-//     tree->Branch("bt_primary_track_id", &this->bt_primary_track_id);
-//     tree->Branch("bt_primary_track_numelectron_frac", &this->bt_primary_track_numelectron_frac);
-//     tree->Branch("bt_primary_track_energy_frac", &this->bt_primary_track_energy_frac);
-//     tree->Branch("bt_edep", &this->bt_edep);
-//     tree->Branch("bt_numelectrons", &this->bt_numelectrons);
-//     tree->Branch("bt_x", &this->bt_x);
-//     tree->Branch("bt_y", &this->bt_y);
-//     tree->Branch("bt_z", &this->bt_z);
-//     tree->Branch("bt_primary_x", &this->bt_primary_x);
-//     tree->Branch("bt_primary_y", &this->bt_primary_y);
-//     tree->Branch("bt_primary_z", &this->bt_primary_z);
-//     tree->Branch("bt_truth_block_id", &this->bt_mctruth_block_id);
-//     tree->Branch("bt_generator_name", &this->bt_mctruth_gen_name);
-//   }
-// }
 
 std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const TriggerPrimitiveBuffer &tp,
                                                                         const std::string &tool_type) const {
