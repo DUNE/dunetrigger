@@ -111,7 +111,6 @@ struct EventSummaryBuffer {
     tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
   }
 
-
   void clear() {
     mctruths_count = -1;
     mcparticles_count = -1;
@@ -122,6 +121,11 @@ struct EventSummaryBuffer {
     tot_visible_energy_rop1 = -1;
     tot_visible_energy_rop2 = -1;
     tot_visible_energy_rop3 = -1;
+
+    tot_numelectrons_rop0 = -1;
+    tot_numelectrons_rop1 = -1;
+    tot_numelectrons_rop2 = -1;
+    tot_numelectrons_rop3 = -1;
   }
 };
 
@@ -180,11 +184,11 @@ struct MCTruthBuffer {
 
 struct MCNeutrinoBuffer {
 
-  std::string mctruth_gen_name;
-  int mctruth_id;
-  int nupdg, leptonpdg, ccnc, mode, iteractionType,
+  std::vector<std::string> mctruth_gen_name;
+  std::vector<int> mctruth_id;
+  std::vector<int> nupdg, leptonpdg, ccnc, mode, iteractionType,
       target, hitnuc, hitquark;
-  double w, x, y, qsqr, pt, theta;
+  std::vector<double> w, x, y, qsqr, pt, theta;
 
   void branch_on(TTree *tree) {
     tree->Branch("block_id", &mctruth_id);
@@ -204,6 +208,25 @@ struct MCNeutrinoBuffer {
     tree->Branch("pt", &pt);
     tree->Branch("theta", &theta);
   }
+
+  void clear() {
+    mctruth_gen_name.clear();
+    mctruth_id.clear();
+    nupdg.clear();
+    leptonpdg.clear();
+    ccnc.clear();
+    mode.clear();
+    iteractionType.clear();
+    target.clear();
+    hitnuc.clear();
+    hitquark.clear();
+    w.clear();
+    x.clear();
+    y.clear();
+    qsqr.clear();
+    pt.clear();
+    theta.clear();
+  }
 };
 
 
@@ -211,16 +234,16 @@ struct MCParticleBuffer {
   /**
    * Buffer of MCParticles data members
    */
-  int pdg;
-  std::string process;
-  int status, trackid, truthid, mother;
-  std::string gen_name;
-  double x, y, z, t;
-  double end_x, end_y, end_z, end_t;
-  double Px, Py, Pz;
-  double en, ek;
-  double edep, numelectrons;
-  double shower_edep, shower_numelectrons;
+  std::vector<int> pdg;
+  std::vector<std::string> process;
+  std::vector<int> status, trackid, truthid, mother;
+  std::vector<std::string> gen_name;
+  std::vector<double> x, y, z, t;
+  std::vector<double> end_x, end_y, end_z, end_t;
+  std::vector<double> Px, Py, Pz;
+  std::vector<double> en, ek;
+  std::vector<double> edep, numelectrons;
+  std::vector<double> shower_edep, shower_numelectrons;
 
   void branch_on(TTree *tree) {
     tree->Branch("pdg", &pdg);
@@ -250,7 +273,30 @@ struct MCParticleBuffer {
   }
 
   void clear() {
-    // FIXME: implement
+    pdg.clear();
+    process.clear();
+    status.clear();
+    trackid.clear();
+    truthid.clear();
+    mother.clear();
+    gen_name.clear();
+    x.clear();
+    y.clear();
+    z.clear();
+    t.clear();
+    end_x.clear();
+    end_y.clear();
+    end_z.clear();
+    end_t.clear();
+    Px.clear();
+    Py.clear();
+    Pz.clear();
+    en.clear();
+    ek.clear();
+    edep.clear();
+    numelectrons.clear();
+    shower_edep.clear();
+    shower_numelectrons.clear();
   }
 };
 
@@ -572,9 +618,11 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   ev_buf.event = e.event();
 
   // reset visible energy counters
-  mctruth_buf.clear();
   evsum_buf.clear();
-
+  mctruth_buf.clear();
+  mcneutrino_buf.clear();
+  mcparticle_buf.clear();
+  
   size_t mctruths_count = 0;
   size_t mcneutrinos_count = 0;
   size_t mcparticles_count = 0;
@@ -613,22 +661,22 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
           const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
           
-          mcneutrino_buf.mctruth_id = truth_block_counter;
-          mcneutrino_buf.mctruth_gen_name = generator_name;
-          mcneutrino_buf.nupdg = mcneutrino.Nu().PdgCode();
-          mcneutrino_buf.leptonpdg = mcneutrino.Lepton().PdgCode();
-          mcneutrino_buf.ccnc = mcneutrino.CCNC();
-          mcneutrino_buf.mode = mcneutrino.Mode();
-          mcneutrino_buf.iteractionType = mcneutrino.InteractionType();
-          mcneutrino_buf.target = mcneutrino.Target();
-          mcneutrino_buf.hitnuc = mcneutrino.HitNuc();
-          mcneutrino_buf.hitquark = mcneutrino.HitQuark();
-          mcneutrino_buf.w = mcneutrino.W();
-          mcneutrino_buf.x = mcneutrino.X();
-          mcneutrino_buf.y = mcneutrino.Y();
-          mcneutrino_buf.qsqr = mcneutrino.QSqr();
-          mcneutrino_buf.pt = mcneutrino.Pt();
-          mcneutrino_buf.theta = mcneutrino.Theta();
+          mcneutrino_buf.mctruth_id.push_back(truth_block_counter);
+          mcneutrino_buf.mctruth_gen_name.push_back(generator_name);
+          mcneutrino_buf.nupdg.push_back(mcneutrino.Nu().PdgCode());
+          mcneutrino_buf.leptonpdg.push_back(mcneutrino.Lepton().PdgCode());
+          mcneutrino_buf.ccnc.push_back(mcneutrino.CCNC());
+          mcneutrino_buf.mode.push_back(mcneutrino.Mode());
+          mcneutrino_buf.iteractionType.push_back(mcneutrino.InteractionType());
+          mcneutrino_buf.target.push_back(mcneutrino.Target());
+          mcneutrino_buf.hitnuc.push_back(mcneutrino.HitNuc());
+          mcneutrino_buf.hitquark.push_back(mcneutrino.HitQuark());
+          mcneutrino_buf.w.push_back(mcneutrino.W());
+          mcneutrino_buf.x.push_back(mcneutrino.X());
+          mcneutrino_buf.y.push_back(mcneutrino.Y());
+          mcneutrino_buf.qsqr.push_back(mcneutrino.QSqr());
+          mcneutrino_buf.pt.push_back(mcneutrino.Pt());
+          mcneutrino_buf.theta.push_back(mcneutrino.Theta());
           mcneutrino_tree->Fill();
           ++mcneutrinos_count;
         }
@@ -732,32 +780,34 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string generator_name = mcparticleHandle.provenance()->inputTag().label();
 
       for (const simb::MCParticle &part : *mcparticleHandle) {
-        mcparticle_buf.pdg = part.PdgCode();
-        mcparticle_buf.gen_name = generator_name;
-        mcparticle_buf.status = part.StatusCode();
-        mcparticle_buf.trackid = part.TrackId();
-        mcparticle_buf.mother = part.Mother();
-        mcparticle_buf.truthid = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
-        mcparticle_buf.process = part.Process();
-        mcparticle_buf.x = part.Vx();
-        mcparticle_buf.y = part.Vy();
-        mcparticle_buf.z = part.Vz();
-        mcparticle_buf.t = part.T();
-        mcparticle_buf.end_x = part.EndX();
-        mcparticle_buf.end_y = part.EndY();
-        mcparticle_buf.end_z = part.EndZ();
-        mcparticle_buf.end_t = part.EndT();
-        mcparticle_buf.Px = part.Px();
-        mcparticle_buf.Py = part.Py();
-        mcparticle_buf.Pz = part.Pz();
-        mcparticle_buf.en = part.E();
-        mcparticle_buf.ek = part.E() - part.Mass();
-        mcparticle_buf.edep = track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0;
-        mcparticle_buf.numelectrons =
-            track_electron_sums.count(part.TrackId()) ? track_electron_sums.at(part.TrackId()) : 0;
-        mcparticle_buf.shower_edep = track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0;
-        mcparticle_buf.shower_numelectrons =
-            track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0;
+        mcparticle_buf.pdg.push_back(part.PdgCode());
+        mcparticle_buf.gen_name.push_back(generator_name);
+        mcparticle_buf.status.push_back(part.StatusCode());
+        mcparticle_buf.trackid.push_back(part.TrackId());
+        mcparticle_buf.mother.push_back(part.Mother());
+        mcparticle_buf.truthid.push_back(dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1);
+        mcparticle_buf.process.push_back(part.Process());
+        mcparticle_buf.x.push_back(part.Vx());
+        mcparticle_buf.y.push_back(part.Vy());
+        mcparticle_buf.z.push_back(part.Vz());
+        mcparticle_buf.t.push_back(part.T());
+        mcparticle_buf.end_x.push_back(part.EndX());
+        mcparticle_buf.end_y.push_back(part.EndY());
+        mcparticle_buf.end_z.push_back(part.EndZ());
+        mcparticle_buf.end_t.push_back(part.EndT());
+        mcparticle_buf.Px.push_back(part.Px());
+        mcparticle_buf.Py.push_back(part.Py());
+        mcparticle_buf.Pz.push_back(part.Pz());
+        mcparticle_buf.en.push_back(part.E());
+        mcparticle_buf.ek.push_back(part.E() - part.Mass());
+        mcparticle_buf.edep.push_back(track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0);
+        mcparticle_buf.numelectrons.push_back(
+            track_electron_sums.count(part.TrackId()) ? track_electron_sums.at(part.TrackId()) : 0
+          );
+        mcparticle_buf.shower_edep.push_back(track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0);
+        mcparticle_buf.shower_numelectrons.push_back(
+            track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0
+          );
         mcparticle_tree->Fill();
         ++mcparticles_count;
       }
