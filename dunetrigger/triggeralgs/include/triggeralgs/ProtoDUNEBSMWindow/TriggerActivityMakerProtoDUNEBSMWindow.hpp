@@ -1,18 +1,20 @@
 /**
- * @file TriggerActivityMakerBSMWindow.hpp
+ * @file TriggerActivityMakerProtoDUNEBSMWindow.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2021.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#ifndef TRIGGERALGS_BSMWINDOW_TRIGGERACTIVITYMAKERBSMWINDOW_HPP_
-#define TRIGGERALGS_BSMWINDOW_TRIGGERACTIVITYMAKERBSMWINDOW_HPP_
+#ifndef TRIGGERALGS_PROTODUNEBSMWINDOW_TRIGGERACTIVITYMAKERBSMWINDOW_HPP_
+#define TRIGGERALGS_PROTODUNEBSMWINDOW_TRIGGERACTIVITYMAKERBSMWINDOW_HPP_
 
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityFactory.hpp"
 #include "dunetrigger/triggeralgs/include/triggeralgs/Types.hpp"
-#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/BSMWindow.hpp"
-#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/CompiledModelInterface.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/ProtoDUNEBSMWindow/ProtoDUNEBSMWindow.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/ProtoDUNEBSMWindow/CompiledModelInterface.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/ProtoDUNEBSMWindow/PDVDEffectiveChannelMap.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/ProtoDUNEBSMWindow/DetectorPlaneMap.hpp"
 #include "dunetrigger/channelmaps/OfflineTPCChannelMap.hpp"
 
 #include "art/Framework/Services/Registry/ServiceHandle.h"
@@ -24,7 +26,7 @@
 #include <algorithm>
 
 namespace triggeralgs {
-class TriggerActivityMakerBSMWindow : public TriggerActivityMaker
+class TriggerActivityMakerProtoDUNEBSMWindow : public TriggerActivityMaker
 {
 
 public:
@@ -32,7 +34,7 @@ public:
   
   void configure(const nlohmann::json &config);
 
-  ~TriggerActivityMakerBSMWindow() override;
+  ~TriggerActivityMakerProtoDUNEBSMWindow() override;
 
 private:
 
@@ -43,7 +45,7 @@ private:
   TriggerActivity construct_ta() const;
 
   // The current time window of TPs
-  BSMWindow m_current_window;
+  ProtoDUNEBSMWindow m_current_window;
 
   timestamp_t m_last_pred_time;
   uint64_t m_primitive_count = 0;
@@ -55,14 +57,14 @@ private:
   std::vector<float> flat_batched_inputs;
   // row-major input for Entry objects used for compiled model
   std::vector<Entry> flat_batched_Entries;
-  // Keep track of the number of windows in the current batch
-  int nbatch_iterator = 0;
 
   // Configurable parameters.
   uint32_t m_adc_threshold = 200000;
   float m_ratio_threshold = 0.65;
   float m_bdt_threshold = 0.99;
   timestamp_t m_window_length = 20000;
+  std::string m_channel_map_name = "PD2VDTPCChannelMap";
+  // End of configurable parameters
 
   // Define time binning
   timestamp_t m_bin_length = 4000;
@@ -72,9 +74,18 @@ private:
   int m_num_chanbins = 5;
 
   // Geometry information for binning
-  std::string m_channel_map_name = "VDColdboxChannelMap"; // Some default name (LArSoft handles this here)
-  std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap> channelMap = 
-    dunedaq::detchannelmaps::make_map(m_channel_map_name);
+  std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap> channelMap;
+  // First channel in each plane and number of channels
+  // in a plane not in channel map by default, so add
+  // a struct to access these values
+  DetectorPlaneMap m_det_plane_map;
+  // In PD-VD want to work with effective offline channel
+  // rather than the true offline channel. Have an object that helps
+  // to do this. It prevents gaps in channel vs time images
+  std::unique_ptr<PDVDEffectiveChannelMap> m_pdvd_eff_channel_mapper = nullptr;
+  // If in NP02 and using a PD-VD channel map, set this to true
+  bool m_pdvd_map = true;
+  // first and last channel on the plane
   channel_t m_first_channel;
   channel_t m_last_channel;
 
@@ -84,4 +95,4 @@ private:
 };
 } // namespace triggeralgs
 
-#endif // TRIGGERALGS_BSMWINDOW_TRIGGERACTIVITYMAKERBSMWINDOW_HPP_
+#endif // TRIGGERALGS_PROTODUNEBSMWINDOW_TRIGGERACTIVITYMAKERBSMWINDOW_HPP_

@@ -1,15 +1,15 @@
 /**
- * @file TriggerCandidateMakerBSMWindow.cpp
+ * @file TriggerCandidateMakerProtoDUNEBSMWindow.cpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2021.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/TriggerCandidateMakerBSMWindow.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/ProtoDUNEBSMWindow/TriggerCandidateMakerProtoDUNEBSMWindow.hpp"
 
 #include "TRACE/trace.h"
-#define TRACE_NAME "TriggerCandidateMakerBSMWindowPlugin"
+#define TRACE_NAME "TriggerCandidateMakerProtoDUNEBSMWindowPlugin"
 
 #include <vector>
 
@@ -18,7 +18,7 @@ using namespace triggeralgs;
 using Logging::TLVL_DEBUG_LOW;
 
 void 
-TriggerCandidateMakerBSMWindow::operator()(const TriggerActivity& activity, std::vector<TriggerCandidate>& cand)
+TriggerCandidateMakerProtoDUNEBSMWindow::operator()(const TriggerActivity& activity, std::vector<TriggerCandidate>& cand)
 { 
 
   // For now, if there is any single activity from any one detector element, emit
@@ -46,7 +46,7 @@ TriggerCandidateMakerBSMWindow::operator()(const TriggerActivity& activity, std:
 }
 
 void
-TriggerCandidateMakerBSMWindow::configure(const nlohmann::json &config)
+TriggerCandidateMakerProtoDUNEBSMWindow::configure(const nlohmann::json &config)
 {
   TriggerCandidateMaker::configure(config);
   /*
@@ -71,4 +71,4 @@ TriggerCandidateMakerBSMWindow::configure(const nlohmann::json &config)
   */
 }
 
-REGISTER_TRIGGER_CANDIDATE_MAKER(TRACE_NAME, TriggerCandidateMakerBSMWindow)
+REGISTER_TRIGGER_CANDIDATE_MAKER(TRACE_NAME, TriggerCandidateMakerProtoDUNEBSMWindow)

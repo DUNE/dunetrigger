@@ -33,9 +33,12 @@ basic_plugin(triggeralgs module
   src/TriggerDecisionMakerSupernova.cpp
   src/dbscan/dbscan.cpp
   src/dbscan/Hit.cpp
-  src/TriggerActivityMakerBSMWindow.cpp
-  src/TriggerCandidateMakerBSMWindow.cpp
-  src/BSMWindow/BSMWindow.cpp
-  src/BSMWindow/CompiledModelInterface.cpp
-  src/BSMWindow/treelite2dmodel.c
+  src/TriggerActivityMakerProtoDUNEBSMWindow.cpp
+  src/TriggerCandidateMakerProtoDUNEBSMWindow.cpp
+  src/ProtoDUNEBSMWindow/DetectorPlaneMap.cpp
+  src/ProtoDUNEBSMWindow/PDVDEffectiveChannelMap.cpp
+  src/ProtoDUNEBSMWindow/ProtoDUNEBSMWindow.cpp
+  src/ProtoDUNEBSMWindow/CompiledModelInterface.cpp
+  src/ProtoDUNEBSMWindow/treelitemodel.cpp
+  src/ProtoDUNEBSMWindow/models/treelitePDHDmodel.cpp
 )

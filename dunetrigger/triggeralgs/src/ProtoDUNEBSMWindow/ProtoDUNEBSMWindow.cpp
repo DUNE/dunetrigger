@@ -1,4 +1,4 @@
-#include "dunetrigger/triggeralgs/include/triggeralgs/BSMWindow/BSMWindow.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/ProtoDUNEBSMWindow/ProtoDUNEBSMWindow.hpp"
 
 #include <ostream>
 #include <vector>
@@ -6,24 +6,25 @@
 
 namespace triggeralgs {
       
-bool BSMWindow::is_empty() const{
+bool ProtoDUNEBSMWindow::is_empty() const{
   return tp_list.empty();
 };
 
-void BSMWindow::add(TriggerPrimitive const &input_tp){
+void ProtoDUNEBSMWindow::add(TriggerPrimitive const &input_tp){
   // Add the input TP's contribution to the total ADC and add it to
-  // the TP list.
+  // the TP list. Also keep running sum of all the samples over threshold
+  // and the peak ADC. These are used for samples/peak ratio cut
   adc_integral += input_tp.adc_integral;
   adc_peak_sum += input_tp.adc_peak;
   tot_sum += input_tp.time_over_threshold;
   tp_list.push_back(input_tp);
 };
 
-void BSMWindow::clear(){
+void ProtoDUNEBSMWindow::clear(){
   tp_list.clear();
 };
       
-void BSMWindow::move(TriggerPrimitive const &input_tp, timestamp_t const &window_length){
+void ProtoDUNEBSMWindow::move(TriggerPrimitive const &input_tp, timestamp_t const &window_length){
   // Find all of the TPs in the window that need to be removed
   // if the input_tp is to be added and the size of the window
   // is to be conserved.
@@ -49,7 +50,7 @@ void BSMWindow::move(TriggerPrimitive const &input_tp, timestamp_t const &window
   else reset(input_tp);
 };
 
-void BSMWindow::reset(TriggerPrimitive const &input_tp){
+void ProtoDUNEBSMWindow::reset(TriggerPrimitive const &input_tp){
   // Empty the TP list.
   tp_list.clear();
   // Set the start time of the window to be the start time of the 
@@ -61,31 +62,25 @@ void BSMWindow::reset(TriggerPrimitive const &input_tp){
   tp_list.push_back(input_tp);
 };
 
-void BSMWindow::bin_window(std::vector<float> &input, timestamp_t bin_width, int num_bins) {
-  std::fill(input.begin(), input.end(), 0.0f);
-
-  const float inv_bin_width = 1.0f / bin_width;
-
-  for (const TriggerPrimitive& tp : tp_list) {
-
-    size_t bin_index = static_cast<size_t>((tp.time_start - time_start) * inv_bin_width);
-    if (bin_index < static_cast<size_t>(num_bins)) {
-      input[bin_index] += tp.adc_integral;
-    }
-
-  }
-};
-
-void BSMWindow::bin_window(std::vector<float> &input, timestamp_t time_bin_width, channel_t chan_bin_width, 
-                           int num_time_bins, int num_chan_bins, channel_t first_channel) {
+void ProtoDUNEBSMWindow::bin_window(
+    std::vector<float> &input, timestamp_t time_bin_width, 
+    channel_t chan_bin_width, int num_time_bins, 
+    int num_chan_bins, channel_t first_channel,
+    std::unique_ptr<PDVDEffectiveChannelMap> const &effective_channel_mapper, 
+    bool use_pdvd_map) {
   std::fill(input.begin(), input.end(), 0.0f);
 
   const float inv_time_bin_width = 1.0f / time_bin_width;
   const float inv_chan_bin_width = 1.0f / chan_bin_width;
 
   for (const TriggerPrimitive& tp : tp_list) {
+    channel_t temp_tp_channel = tp.channel;
+    // If in PD-VD convert to effective channel here
+    if (effective_channel_mapper && use_pdvd_map) {
+      temp_tp_channel = effective_channel_mapper->remapCollectionPlaneChannel(temp_tp_channel);
+    }
     size_t time_bin = static_cast<size_t>((tp.time_start - time_start) * inv_time_bin_width);
-    size_t channel_bin = static_cast<size_t>((tp.channel - first_channel) * inv_chan_bin_width);
+    size_t channel_bin = static_cast<size_t>((temp_tp_channel - first_channel) * inv_chan_bin_width);
     if (time_bin < num_time_bins && channel_bin < num_chan_bins) {
       size_t index = channel_bin * num_time_bins + time_bin;
       input[index] += tp.adc_integral;
@@ -94,23 +89,23 @@ void BSMWindow::bin_window(std::vector<float> &input, timestamp_t time_bin_width
   input[num_time_bins * num_chan_bins] = adc_integral;
 };
 
-void BSMWindow::fill_entry_window(std::vector<Entry> &entry_input, std::vector<float> &input) {
+void ProtoDUNEBSMWindow::fill_entry_window(std::vector<Entry> &entry_input, std::vector<float> &input) {
   for (size_t i = 0; i < input.size(); i++) {
     entry_input[i].fvalue = input[i];
   }
 }
 
-float BSMWindow::mean_sadc() {
-  return static_cast<float>(adc_integral / tp_list.size());
+float ProtoDUNEBSMWindow::mean_sadc() {
+  return static_cast<float>(adc_integral / tp_list.size());;
 }
-float BSMWindow::mean_adc_peak() {
+float ProtoDUNEBSMWindow::mean_adc_peak() {
   return static_cast<float>(adc_peak_sum / tp_list.size());
 }
-float BSMWindow::mean_tot() {
+float ProtoDUNEBSMWindow::mean_tot() {
   return static_cast<float>(tot_sum / tp_list.size());
 }
 
-std::ostream& operator<<(std::ostream& os, const BSMWindow& window){
+std::ostream& operator<<(std::ostream& os, const ProtoDUNEBSMWindow& window){
   if(window.is_empty()) os << "Window is empty!\n";
   else{
     os << "Window start: " << window.time_start << ", end: " << window.tp_list.back().time_start;

@@ -1,20 +1,20 @@
 /**
- * @file TriggerCandidateMakerBSMWindow.hpp
+ * @file TriggerCandidateMakerProtoDUNEBSMWindow.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2021.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#ifndef TRIGGERALGS_BSMWINDOW_TRIGGERCANDIDATEMAKERBSMWINDOW_HPP_
-#define TRIGGERALGS_BSMWINDOW_TRIGGERCANDIDATEMAKERBSMWINDOW_HPP_
+#ifndef TRIGGERALGS_PROTODUNEBSMWINDOW_TRIGGERCANDIDATEMAKERBSMWINDOW_HPP_
+#define TRIGGERALGS_PROTODUNEBSMWINDOW_TRIGGERCANDIDATEMAKERBSMWINDOW_HPP_
 
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidateFactory.hpp"
 
 #include <vector>
 
 namespace triggeralgs {
-class TriggerCandidateMakerBSMWindow : public TriggerCandidateMaker
+class TriggerCandidateMakerProtoDUNEBSMWindow : public TriggerCandidateMaker
 {
 
 public:
@@ -33,4 +33,4 @@ private:
 
 } // namespace triggeralgs
 
-#endif // TRIGGERALGS_BSMWINDOW_TRIGGERCANDIDATEMAKERADCSIMPLEWINDOW_HPP_
+#endif // TRIGGERALGS_PROTODUNEBSMWINDOW_TRIGGERCANDIDATEMAKERADCSIMPLEWINDOW_HPP_
