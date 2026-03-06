@@ -57,26 +57,119 @@ struct TupleToVectorPtrs<std::tuple<Ts...>> {
     using type = std::tuple<std::vector<Ts>*...>;
 };
 
-// Build a runtime array of field name strings.
-// C++20 + Boost >= 1.80 : real field names via pfr::names_as_array.
-// C++17 fallback        : "field_0", "field_1", ...
-template<typename Struct, std::size_t... Is>
-std::array<std::string, sizeof...(Is)>
-make_field_names_impl(std::index_sequence<Is...>) {
-#if __cplusplus >= 202002L
-    constexpr auto pfr_names = boost::pfr::names_as_array<Struct>();
-    return { std::string(pfr_names[Is])... };
-#else
-    return { ("field_" + std::to_string(Is))... };
-#endif
-}
+} // namespace soa_detail
 
+// ---------------------------------------------------------------------------
+//  SoaFieldNames<Struct> — specialisable trait for field name registration.
+//
+//  C++20: names are always available automatically via Boost.PFR; no action
+//         needed from the user.
+//
+//  C++17: field name reflection does not exist in the language.  Users must
+//         explicitly specialise this trait for each struct, or use the
+//         convenience macro REGISTER_SOA_FIELD_NAMES.  If no specialisation
+//         is provided the fallback "field_0", "field_1", ... names are used
+//         and a compile-time warning is emitted via static_assert.
+//
+//  Usage (C++17, outside any namespace):
+//    REGISTER_SOA_FIELD_NAMES(Track, x, y, z, px, py, pz, chi2, n_hits, pdg_id, is_primary)
+// ---------------------------------------------------------------------------
+template<typename Struct>
+struct SoaFieldNames {
+    static constexpr bool registered = false;
+
+    static std::array<std::string, boost::pfr::tuple_size_v<Struct>> get() {
+        // Fallback: "field_0", "field_1", ...
+        return get_impl(std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
+    }
+private:
+    template<std::size_t... Is>
+    static std::array<std::string, sizeof...(Is)> get_impl(std::index_sequence<Is...>) {
+        return { ("field_" + std::to_string(Is))... };
+    }
+};
+
+// ---------------------------------------------------------------------------
+//  REGISTER_SOA_FIELD_NAMES(StructType, field1, field2, ...)
+//  Specialises SoaFieldNames for StructType with the given field names.
+//  Place at namespace scope (outside any class or function).
+//
+//  Uses Boost.Preprocessor to stringify each field name individually:
+//
+//    BOOST_PP_VARIADIC_TO_SEQ(x, y, z)  →  (x)(y)(z)      [a PP sequence]
+//    BOOST_PP_SEQ_ENUM(                  →  "x", "y", "z"  [comma-separated]
+//        BOOST_PP_SEQ_TRANSFORM(
+//            SOA_PP_STRINGIFY_OP, _, seq))
+//
+//  BOOST_PP_SEQ_TRANSFORM applies SOA_PP_STRINGIFY_OP(_, _, elem) to every
+//  element of the sequence, which expands to BOOST_PP_STRINGIZE(elem) i.e.
+//  the quoted token.  BOOST_PP_SEQ_ENUM then joins them with commas so they
+//  form a valid brace-initialiser for the const char* array.
+//
+//  Field limit: BOOST_PP_LIMIT_SEQ (default 256).
+// ---------------------------------------------------------------------------
+#include <boost/preprocessor/variadic/to_seq.hpp>
+#include <boost/preprocessor/seq/transform.hpp>
+#include <boost/preprocessor/seq/enum.hpp>
+#include <boost/preprocessor/stringize.hpp>
+
+// Callback for BOOST_PP_SEQ_TRANSFORM: (data, elem) → "elem"
+// The macro receives (r, data, elem); data is unused (_).
+#define SOA_PP_STRINGIFY_OP(r, _, elem) BOOST_PP_STRINGIZE(elem)
+
+// Produce a comma-separated list of quoted strings from a variadic list:
+//   SOA_PP_STRINGIFY_EACH(x, y, z)  →  "x", "y", "z"
+#define SOA_PP_STRINGIFY_EACH(...)                          \
+    BOOST_PP_SEQ_ENUM(                                      \
+        BOOST_PP_SEQ_TRANSFORM(                             \
+            SOA_PP_STRINGIFY_OP, _,                         \
+            BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+
+#define REGISTER_SOA_FIELD_NAMES(StructType, ...)                               \
+template<>                                                                       \
+struct SoaFieldNames<StructType> {                                               \
+    static constexpr bool registered = true;                                     \
+    static constexpr std::size_t kN = boost::pfr::tuple_size_v<StructType>;     \
+    static std::array<std::string, kN> get() {                                  \
+        static const char* const names[] = {                                    \
+            SOA_PP_STRINGIFY_EACH(__VA_ARGS__)                                   \
+        };                                                                       \
+        return get_impl(std::make_index_sequence<kN>{}, names);                  \
+    }                                                                            \
+private:                                                                         \
+    template<std::size_t... Is>                                                  \
+    static std::array<std::string, sizeof...(Is)>                               \
+    get_impl(std::index_sequence<Is...>, const char* const* n) {                \
+        return { std::string(n[Is])... };                                        \
+    }                                                                            \
+};
+
+namespace soa_detail {
+
+// Dispatch: C++20 uses PFR directly; C++17 goes through the trait.
 template<typename Struct>
 std::array<std::string, boost::pfr::tuple_size_v<Struct>>
 get_field_names() {
-    return make_field_names_impl<Struct>(
+#if __cplusplus >= 202002L
+    constexpr auto pfr_names = boost::pfr::names_as_array<Struct>();
+    return get_names_impl<Struct>(pfr_names,
         std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
+#else
+    static_assert(SoaFieldNames<Struct>::registered,
+        "SoABuffer (C++17): field names not registered for this struct. "
+        "Use REGISTER_SOA_FIELD_NAMES(StructType, field1, field2, ...) "
+        "at namespace scope, or compile with -std=c++20.");
+    return SoaFieldNames<Struct>::get();
+#endif
 }
+
+#if __cplusplus >= 202002L
+template<typename Struct, typename NamesArray, std::size_t... Is>
+std::array<std::string, sizeof...(Is)>
+get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
+    return { std::string(pfr_names[Is])... };
+}
+#endif
 
 } // namespace soa_detail
 
