@@ -571,7 +571,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
 
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
     ev_buf.branch_on(mcneutrino_tree);
-    mcparticle_buf.branch_on(mcneutrino_tree);
+    mcneutrino_buf.branch_on(mcneutrino_tree);
 
   }
 
@@ -677,7 +677,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           mcneutrino_buf.qsqr.push_back(mcneutrino.QSqr());
           mcneutrino_buf.pt.push_back(mcneutrino.Pt());
           mcneutrino_buf.theta.push_back(mcneutrino.Theta());
-          mcneutrino_tree->Fill();
           ++mcneutrinos_count;
         }
 
@@ -703,12 +702,14 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           mctruth_buf.P.push_back(part.P());
           mctruth_buf.en.push_back(part.E());
           mctruth_buf.ek.push_back(part.E() - part.Mass());
-          mctruth_tree->Fill();
           ++mctruths_count;
         }
         truth_block_counter++;
       }
     }
+
+    mcneutrino_tree->Fill();
+    mctruth_tree->Fill();
 
     json j_mctruth_gen_map(truthBlockId_to_generator_name);
     info_data["mcthruth_blockid_map"] = j_mctruth_gen_map;
@@ -808,10 +809,10 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         mcparticle_buf.shower_numelectrons.push_back(
             track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0
           );
-        mcparticle_tree->Fill();
         ++mcparticles_count;
       }
     }
+    mcparticle_tree->Fill();
   }
 
   if (dump_tp) {
