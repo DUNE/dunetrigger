@@ -38,6 +38,10 @@ struct Cluster {
     int    n_cells;  // number of calorimeter cells
 };
 
+// Register field names for C++17 mode (no-op in C++20, names come from PFR).
+REGISTER_SOA_FIELD_NAMES(Track,   x, y, z, px, py, pz, chi2, n_hits, pdg_id, is_primary)
+REGISTER_SOA_FIELD_NAMES(Cluster, energy, eta, phi, n_cells)
+
 // =============================================================================
 //  Helpers
 // =============================================================================
