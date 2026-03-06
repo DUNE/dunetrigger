@@ -511,7 +511,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
 
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
     ev_buf.branch_on(mcneutrino_tree);
-    mcparticle_buf.branch_on(mcneutrino_tree);
+    mcneutrino_tree.branch_on(mcneutrino_tree);
 
   }
 
