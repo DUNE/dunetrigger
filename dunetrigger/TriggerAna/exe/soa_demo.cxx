@@ -46,37 +46,36 @@ REGISTER_SOA_FIELD_NAMES(Cluster, energy, eta, phi, n_cells)
 //  Helpers
 // =============================================================================
 
-/// Simulate one event: fill track and cluster buffers
-void simulate_event(SoABuffer<Track>&   tracks,
-                    SoABuffer<Cluster>& clusters,
-                    TRandom3&           rng,
-                    int                 event_id)
+/// Simulate one event: fill track and cluster writers
+void simulate_event(SoAWriter<Track>&   tracks,
+                    SoAWriter<Cluster>& clusters,
+                    TRandom3&           rng)
 {
     const int n_tracks   = rng.Integer(10) + 2;
     const int n_clusters = rng.Integer(6)  + 1;
 
     for (int t = 0; t < n_tracks; ++t) {
-        Track tr;
-        tr.x          = (float)rng.Gaus(0, 0.05f);
-        tr.y          = (float)rng.Gaus(0, 0.05f);
-        tr.z          = (float)rng.Gaus(0, 5.0f);
-        tr.px         = (float)rng.Gaus(0, 1.0f);
-        tr.py         = (float)rng.Gaus(0, 1.0f);
-        tr.pz         = (float)rng.Gaus(0, 10.f);
-        tr.chi2       = (float)rng.Exp(1.0);
-        tr.n_hits     = (int)(rng.Integer(12) + 3);
-        tr.pdg_id     = (rng.Rndm() > 0.5) ? 211 : -211;
-        tr.is_primary = (rng.Rndm() > 0.3);
-        tracks.push_back(tr);
+        // Set fields on the public staging row, then commit
+        tracks.row.x          = (float)rng.Gaus(0, 0.05f);
+        tracks.row.y          = (float)rng.Gaus(0, 0.05f);
+        tracks.row.z          = (float)rng.Gaus(0, 5.0f);
+        tracks.row.px         = (float)rng.Gaus(0, 1.0f);
+        tracks.row.py         = (float)rng.Gaus(0, 1.0f);
+        tracks.row.pz         = (float)rng.Gaus(0, 10.f);
+        tracks.row.chi2       = (float)rng.Exp(1.0);
+        tracks.row.n_hits     = (int)(rng.Integer(12) + 3);
+        tracks.row.pdg_id     = (rng.Rndm() > 0.5) ? 211 : -211;
+        tracks.row.is_primary = (rng.Rndm() > 0.3);
+        tracks.push_back();   // commit row → SoA buffer, row is NOT reset automatically
     }
 
     for (int c = 0; c < n_clusters; ++c) {
-        Cluster cl;
-        cl.energy  = (float)rng.Exp(5.0);
-        cl.eta     = (float)rng.Uniform(-2.5, 2.5);
-        cl.phi     = (float)rng.Uniform(-M_PI, M_PI);
-        cl.n_cells = (int)(rng.Integer(20) + 1);
-        clusters.push_back(cl);
+        clusters.reset_row();  // explicit reset to avoid stale field values
+        clusters.row.energy  = (float)rng.Exp(5.0);
+        clusters.row.eta     = (float)rng.Uniform(-2.5, 2.5);
+        clusters.row.phi     = (float)rng.Uniform(-M_PI, M_PI);
+        clusters.row.n_cells = (int)(rng.Integer(20) + 1);
+        clusters.push_back();
     }
 }
 
@@ -87,13 +86,10 @@ void write_demo(const char* filename) {
     std::cout << "\n=== WRITE ===\n";
 
     // -------------------------------------------------------------------------
-    // 1. Create buffers (once, outside the event loop)
+    // 1. Create writers (once, outside the event loop)
     // -------------------------------------------------------------------------
-    SoABuffer<Track>   track_buf;
-    SoABuffer<Cluster> cluster_buf;
-
-    track_buf  .reserve(64);   // optional performance hint
-    cluster_buf.reserve(16);
+    SoAWriter<Track>   track_writer(64);  // reserves 64 slots in the buffer
+    SoAWriter<Cluster> cluster_writer(16);
 
     // -------------------------------------------------------------------------
     // 2. Create ROOT file + tree, register all branches automatically
@@ -101,14 +97,11 @@ void write_demo(const char* filename) {
     TFile file(filename, "RECREATE");
     TTree tree("events", "Simulated events");
 
-    // Each field of Track  gets a branch named "trk_<fieldname>"
-    // Each field of Cluster gets a branch named "cls_<fieldname>"
-    track_buf  .make_branches(&tree, "trk_");
-    cluster_buf.make_branches(&tree, "cls_");
+    track_writer  .make_branches(tree, "trk_");
+    cluster_writer.make_branches(tree, "cls_");
 
-    // Print what was registered
-    track_buf  .print_summary();
-    cluster_buf.print_summary();
+    track_writer  .print_summary();
+    cluster_writer.print_summary();
 
     // -------------------------------------------------------------------------
     // 3. Event loop
@@ -117,24 +110,21 @@ void write_demo(const char* filename) {
     constexpr int N_EVENTS = 100;
 
     for (int ev = 0; ev < N_EVENTS; ++ev) {
-        // --- clear buffers at the start of each event ---
-        track_buf  .clear();
-        cluster_buf.clear();
+        // clear() empties the SoA buffer AND zero-initialises the staging row
+        track_writer  .clear();
+        cluster_writer.clear();
 
-        // --- fill with simulated data ---
-        simulate_event(track_buf, cluster_buf, rng, ev);
+        simulate_event(track_writer, cluster_writer, rng);
 
-        // --- fill the tree (buffers are still owned by SoABuffer) ---
         tree.Fill();
 
         if (ev < 3) {
             std::cout << "  Event " << ev
-                      << "  tracks="   << track_buf.size()
-                      << "  clusters=" << cluster_buf.size() << '\n';
+                      << "  tracks="   << track_writer.size()
+                      << "  clusters=" << cluster_writer.size() << '\n';
 
-            // Reconstruct first track as AoS struct for illustration
-            if (track_buf.size() > 0) {
-                Track t0 = track_buf.get(0);
+            if (track_writer.size() > 0) {
+                Track t0 = track_writer.buffer().get(0);
                 std::cout << "    track[0]: px=" << t0.px
                           << " py=" << t0.py
                           << " pdg=" << t0.pdg_id << '\n';
@@ -165,8 +155,8 @@ void read_demo(const char* filename) {
     assert(tree && "Tree not found!");
 
     // Re-point branch addresses to our new buffer instances
-    track_buf  .set_branch_addresses(tree, "trk_");
-    cluster_buf.set_branch_addresses(tree, "cls_");
+    track_buf  .set_branch_addresses(*tree, "trk_");
+    cluster_buf.set_branch_addresses(*tree, "cls_");
 
     const Long64_t n_entries = tree->GetEntries();
     std::cout << "Reading " << n_entries << " events\n";
