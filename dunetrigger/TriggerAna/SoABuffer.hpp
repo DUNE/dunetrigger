@@ -438,6 +438,8 @@ public:
     /// Access the staging row fields via `writer->field`.
     Struct* operator->() noexcept { return &row_; }
     const Struct* operator->() const noexcept { return &row_; }
+    Struct& row() noexcept { return row_; }
+    const Struct& row() const noexcept { return row_; }
 
     // ------------------------------------------------------------------
     // Construction
