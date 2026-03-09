@@ -206,6 +206,23 @@ struct MCParticleRow {
   MCParticleRow() = default;
 };
 
+struct SimIDERow {
+  unsigned int channel = 0;
+  int timestamp = -1;
+  float numelectrons = 0.f;
+  float energy = 0.f;
+  float x = 0.f;
+  float y = 0.f;
+  float z = 0.f;
+  int trackID = -1;
+  float origTrackID = 0.f;
+  float readout_plane_id = 0.f;
+  float readout_view = 0.f;
+  float detector_element = 0.f;
+
+  SimIDERow() = default;
+};
+
 
 // --------------------------------------------
 
@@ -547,6 +564,20 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::MCParticleRow,
                          shower_numelectrons,
                          process)
 
+REGISTER_SOA_FIELD_NAMES(dunetrigger::SimIDERow,
+                         channel,
+                         timestamp,
+                         numelectrons,
+                         energy,
+                         x,
+                         y,
+                         z,
+                         trackID,
+                         origTrackID,
+                         readout_plane_id,
+                         readout_view,
+                         detector_element)
+
 
 
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
@@ -597,6 +628,12 @@ private:
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
+
+  bool dump_summary_info;
+  // visible energy for the event
+  TTree *summary_tree;
+  EventSummaryBuffer evsum_buf;
+
   // MCTruth
   bool dump_mctruths;
   TTree *mctruth_tree;
@@ -617,13 +654,9 @@ private:
   bool dump_mcparticles;
   TTree *mcparticle_tree;
   MCParticleBuffer mcparticle_buf;
+
   TTree* mcparticle_tree_2g;
   SoAWriter<MCParticleRow> mcparticle_writer;
-
-  bool dump_summary_info;
-  // visible energy for the event
-  TTree *summary_tree;
-  EventSummaryBuffer evsum_buf;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
@@ -631,6 +664,8 @@ private:
   std::string simchannel_tag;
   TTree *simide_tree;
   SimIDEBuffer simide_buf;
+  TTree* simide_tree_2g;
+  SoAWriter<SimIDERow> simide_writer;
   
   // JSON metadata
   json info_data;
@@ -646,9 +681,9 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     ta_tag_regex(p.get<std::string>("ta_tag_regex", ".*")),
     tc_tag_regex(p.get<std::string>("tc_tag_regex", ".*")),
     tp_backtracking(p.get<bool>("tp_backtracking", false)),
-    dump_mctruth(p.get<bool>("dump_mctruth", true)),
-    dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
     dump_summary_info(p.get<bool>("dump_summary_info", true)),
+    dump_mctruths(p.get<bool>("dump_mctruths", true)),
+    dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
     dump_simides(p.get<bool>("dump_simides", true)),
     simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 // More initializers here.
@@ -695,6 +730,9 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_tree = tfs->make<TTree>("simides", "simides");
     ev_buf.branch_on(simide_tree);
     simide_buf.branch_on(simide_tree);
+
+    simide_tree_2g = tfs->make<TTree>("simides_2g", "simides");
+    simide_writer.make_branches(*simide_tree_2g);
   }
 
   if (dump_summary_info) {
@@ -735,7 +773,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
 
   mctruth_writer.clear();
+  mcneutrino_writer.clear();
   mcparticle_writer.clear();
+  simide_writer.clear();
 
   size_t mctruths_count = 0;
   size_t mcneutrinos_count = 0;
@@ -915,11 +955,25 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
           track_en_sums[ide.trackID] += ide.energy;
           track_electron_sums[ide.trackID] += ide.numElectrons;
+          
           // higher level geometric info for IDEs
           ChannelInfo chinfo = get_channel_info_for_channel(geom, simide_buf.sim_channel_id);
           simide_buf.readout_plane_id = chinfo.rop_id;
           simide_buf.readout_view = chinfo.view;
           simide_buf.detector_element = chinfo.tpcset_id; // APA/CRP ID
+
+          simide_writer->channel = sc.Channel();
+          simide_writer->timestamp = tdcide.first;
+          simide_writer->numelectrons = ide.numElectrons;
+          simide_writer->energy = ide.energy;
+          simide_writer->x = ide.x;
+          simide_writer->y = ide.y;
+          simide_writer->z = ide.z;
+          simide_writer->trackID = ide.trackID;
+          simide_writer->origTrackID = ide.origTrackID;
+          simide_writer->readout_plane_id = chinfo.rop_id;
+          simide_writer->readout_view = chinfo.view;
+          simide_writer->detector_element = chinfo.tpcset_id;
           
           // populate the total visible energy counters by plane
           if (chinfo.rop_id == 0) {
@@ -939,10 +993,12 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
             evsum_buf.tot_numelectrons_rop3 += ide.numElectrons;
           }
           simide_tree->Fill();
+          simide_writer.push_back();
           ++simides_count;
         }
       }
     }
+    simide_tree_2g->Fill();
   }
 
   if (dump_mcparticles) {
