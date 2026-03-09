@@ -176,6 +176,9 @@ public:
     /// The live struct — ROOT branches point directly into its fields.
     Struct data{};
 
+    Struct* operator->() noexcept { return &data; }
+    const Struct* operator->() const noexcept { return &data; }
+
     // ------------------------------------------------------------------
     // Construction
     // ------------------------------------------------------------------
