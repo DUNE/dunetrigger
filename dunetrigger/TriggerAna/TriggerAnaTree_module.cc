@@ -1539,16 +1539,19 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed_2g(std::string tag, boo
     TTree* tree = tp_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
 
-    // Initialize TP buffer
+    // Initialize TP writer
     SoAWriter<TriggerPrimitiveRow>& tpw = tp_writers[map_tag];
 
     ev_sbuf.make_branches(*tree);
     tpw.make_branches(*tree);
+
     if (tp_backtracking) {
 
+      // Initialize TP backtracking writer
       SoAWriter<TriggerPrimitiveBacktrackingRow>& tpbtw = tpbt_writers[map_tag];
       tpbtw.make_branches(*tree);
     }
+    // FIXME: reintroduce TAnumber in the new schema
     // if (assn)
     //   tree->Branch("TAnumber", &fAssnIdx);
   }
