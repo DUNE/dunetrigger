@@ -6,6 +6,7 @@
 // =============================================================================
 
 #include "../SoABuffer.hpp"
+#include "../ScalarBuffer.hpp"
 
 #include <TFile.h>
 #include <TTree.h>
@@ -42,6 +43,18 @@ struct Cluster {
 REGISTER_SOA_FIELD_NAMES(Track,   x, y, z, px, py, pz, chi2, n_hits, pdg_id, is_primary)
 REGISTER_SOA_FIELD_NAMES(Cluster, energy, eta, phi, n_cells)
 
+// Per-event scalar struct — one instance saved per TTree::Fill()
+struct EventHeader {
+    int    run;
+    int    event_id;
+    int    n_tracks;
+    int    n_clusters;
+    float  beam_energy;  // [GeV]
+    bool   is_mc;
+};
+
+REGISTER_SCALAR_FIELD_NAMES(EventHeader, run, event_id, n_tracks, n_clusters, beam_energy, is_mc)
+
 // =============================================================================
 //  Helpers
 // =============================================================================
@@ -55,27 +68,26 @@ void simulate_event(SoAWriter<Track>&   tracks,
     const int n_clusters = rng.Integer(6)  + 1;
 
     for (int t = 0; t < n_tracks; ++t) {
-        // Set fields on the public staging row, then commit
-        tracks.row.x          = (float)rng.Gaus(0, 0.05f);
-        tracks.row.y          = (float)rng.Gaus(0, 0.05f);
-        tracks.row.z          = (float)rng.Gaus(0, 5.0f);
-        tracks.row.px         = (float)rng.Gaus(0, 1.0f);
-        tracks.row.py         = (float)rng.Gaus(0, 1.0f);
-        tracks.row.pz         = (float)rng.Gaus(0, 10.f);
-        tracks.row.chi2       = (float)rng.Exp(1.0);
-        tracks.row.n_hits     = (int)(rng.Integer(12) + 3);
-        tracks.row.pdg_id     = (rng.Rndm() > 0.5) ? 211 : -211;
-        tracks.row.is_primary = (rng.Rndm() > 0.3);
-        tracks.push_back();   // commit row → SoA buffer, row is NOT reset automatically
+        // Set fields on the staging row, then commit and reset.
+        tracks->x          = (float)rng.Gaus(0, 0.05f);
+        tracks->y          = (float)rng.Gaus(0, 0.05f);
+        tracks->z          = (float)rng.Gaus(0, 5.0f);
+        tracks->px         = (float)rng.Gaus(0, 1.0f);
+        tracks->py         = (float)rng.Gaus(0, 1.0f);
+        tracks->pz         = (float)rng.Gaus(0, 10.f);
+        tracks->chi2       = (float)rng.Exp(1.0);
+        tracks->n_hits     = (int)(rng.Integer(12) + 3);
+        tracks->pdg_id     = (rng.Rndm() > 0.5) ? 211 : -211;
+        tracks->is_primary = (rng.Rndm() > 0.3);
+        tracks.commit_and_reset();
     }
 
     for (int c = 0; c < n_clusters; ++c) {
-        clusters.reset_row();  // explicit reset to avoid stale field values
-        clusters.row.energy  = (float)rng.Exp(5.0);
-        clusters.row.eta     = (float)rng.Uniform(-2.5, 2.5);
-        clusters.row.phi     = (float)rng.Uniform(-M_PI, M_PI);
-        clusters.row.n_cells = (int)(rng.Integer(20) + 1);
-        clusters.push_back();
+        clusters->energy  = (float)rng.Exp(5.0);
+        clusters->eta     = (float)rng.Uniform(-2.5, 2.5);
+        clusters->phi     = (float)rng.Uniform(-M_PI, M_PI);
+        clusters->n_cells = (int)(rng.Integer(20) + 1);
+        clusters.commit_and_reset();
     }
 }
 
@@ -208,14 +220,82 @@ void column_access_demo() {
 }
 
 // =============================================================================
+//  Scalar demo — one EventHeader per event alongside the SoA collections
+// =============================================================================
+void scalar_demo(const char* filename) {
+    std::cout << "\n=== SCALAR WRITE ===\n";
+
+    ScalarBuffer<EventHeader> hdr;
+    SoAWriter<Track>          track_writer(64);
+    SoAWriter<Cluster>        cluster_writer(16);
+
+    hdr.print_summary();
+
+    TFile file(filename, "RECREATE");
+    TTree tree("events", "Events with scalar header + SoA collections");
+
+    // Scalar branches: "hdr_run/I", "hdr_event_id/I", ...
+    hdr.make_branches(tree, "hdr_");
+    // Vector branches: "trk_x", "trk_px", ...
+    track_writer  .make_branches(tree, "trk_");
+    cluster_writer.make_branches(tree, "cls_");
+
+    TRandom3 rng(99);
+    constexpr int N = 50;
+
+    for (int ev = 0; ev < N; ++ev) {
+        track_writer  .clear();
+        cluster_writer.clear();
+
+        simulate_event(track_writer, cluster_writer, rng);
+
+        // Fill scalar header for this event
+        hdr.data.run         = 1;
+        hdr.data.event_id    = ev;
+        hdr.data.n_tracks    = static_cast<int>(track_writer.size());
+        hdr.data.n_clusters  = static_cast<int>(cluster_writer.size());
+        hdr.data.beam_energy = 14000.f;
+        hdr.data.is_mc       = true;
+
+        tree.Fill();
+    }
+
+    file.Write();
+    file.Close();
+    std::cout << "Wrote " << N << " events to " << filename << '\n';
+
+    // --- read back ---
+    std::cout << "\n=== SCALAR READ BACK ===\n";
+
+    ScalarBuffer<EventHeader> hdr_in;
+    TFile rfile(filename, "READ");
+    TTree* rtree = nullptr;
+    rfile.GetObject("events", rtree);
+    assert(rtree && "Tree not found!");
+
+    hdr_in.set_branch_addresses(*rtree, "hdr_");
+
+    for (Long64_t ev = 0; ev < rtree->GetEntries(); ++ev) {
+        rtree->GetEntry(ev);
+        if (ev < 3)
+            std::cout << "  ev=" << hdr_in.data.event_id
+                      << "  n_tracks=" << hdr_in.data.n_tracks
+                      << "  n_clusters=" << hdr_in.data.n_clusters << '\n';
+    }
+    rfile.Close();
+}
+
+// =============================================================================
 //  main
 // =============================================================================
 int main() {
-    const char* fname = "soa_demo.root";
+    const char* fname        = "soa_demo.root";
+    const char* scalar_fname = "scalar_demo.root";
 
     write_demo(fname);
     read_demo(fname);
     column_access_demo();
+    scalar_demo(scalar_fname);
 
     return 0;
 }

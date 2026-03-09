@@ -41,6 +41,9 @@
 #include <TTree.h>
 
 
+#include "SoABuffer.hpp"
+#include "ScalarBuffer.hpp"
+
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -124,6 +127,87 @@ struct EventSummaryBuffer {
     tot_visible_energy_rop3 = -1;
   }
 };
+
+struct MCTruthRow {
+  /**
+   * Buffer of MCTruth data members
+   */
+  
+  int pdg = -1;
+  std::string process = "undef";
+  int status_code = -1;
+  int block_id = -1;
+  int truth_track_id = -1;
+  std::string generator_name = "undef";
+  double x = 0.;
+  double y = 0.;
+  double z = 0.;
+  double t = 0.;
+  double px = 0.;
+  double py = 0.;
+  double pz = 0.;
+  double p = 0.;
+  double energy = 0.;
+  double kinetic_energy = 0.;
+
+  MCTruthRow() = default;
+
+};
+
+struct MCNeutrinoRow {
+
+  int block_id = -1;
+  std::string generator_name = "undef";
+  int nupdg = -1;
+  int leptonpdg = -1;
+  int ccnc = -1;
+  int mode = -1;
+  int interactionType = -1;
+  int target = -1;
+  int hitnuc = -1;
+  int hitquark = -1;
+  double w = 0.;
+  double x = 0.;
+  double y = 0.;
+  double qsqr = 0.;
+  double pt = 0.;
+  double theta = 0.;
+
+  MCNeutrinoRow() = default;
+
+};
+
+struct MCParticleRow {
+  int pdg = -1;
+  std::string generator_name = "undef";
+  int status_code = -1;
+  int g4_track_id = -1;
+  int mother = -1;
+  int truth_block_id = -1;
+  double x = 0.;
+  double y = 0.;
+  double z = 0.;
+  double t = 0.;
+  double end_x = 0.;
+  double end_y = 0.;
+  double end_z = 0.;
+  double end_t = 0.;
+  double px = 0.;
+  double py = 0.;
+  double pz = 0.;
+  double energy = 0.;
+  double kinetic_energy = 0.;
+  double edep = 0.;
+  double numelectrons = 0.;
+  double shower_edep = 0.;
+  double shower_numelectrons = 0.;
+  std::string process = "undef";
+
+  MCParticleRow() = default;
+};
+
+
+// --------------------------------------------
 
 struct MCTruthBuffer {
   /**
@@ -401,6 +485,68 @@ struct TriggerPrimitiveBuffer {
 
 } // namespace dunetrigger
 
+REGISTER_SOA_FIELD_NAMES(dunetrigger::MCTruthRow,
+                         pdg,
+                         process,
+                         status_code,
+                         block_id,
+                         truth_track_id,
+                         generator_name,
+                         x,
+                         y,
+                         z,
+                         t,
+                         px,
+                         py,
+                         pz,
+                         p,
+                         energy,
+                         kinetic_energy)
+
+REGISTER_SOA_FIELD_NAMES(dunetrigger::MCNeutrinoRow,
+                         block_id,
+                         generator_name,
+                         nupdg,
+                         leptonpdg,
+                         ccnc,
+                         mode,
+                         interactionType,
+                         target,
+                         hitnuc,
+                         hitquark,
+                         w,
+                         x,
+                         y,
+                         qsqr,
+                         pt,
+                         theta)
+
+REGISTER_SOA_FIELD_NAMES(dunetrigger::MCParticleRow,
+                         pdg,
+                         generator_name,
+                         status_code,
+                         g4_track_id,
+                         mother,
+                         truth_block_id,
+                         x,
+                         y,
+                         z,
+                         t,
+                         end_x,
+                         end_y,
+                         end_z,
+                         end_t,
+                         px,
+                         py,
+                         pz,
+                         energy,
+                         kinetic_energy,
+                         edep,
+                         numelectrons,
+                         shower_edep,
+                         shower_numelectrons,
+                         process)
+
 
 
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
@@ -451,12 +597,22 @@ private:
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
+  // MCTruth
   bool dump_mctruths;
   TTree *mctruth_tree;
   MCTruthBuffer mctruth_buf;
 
+  // New SoA pattern
+  TTree* mctruth_tree_2g;
+  SoAWriter<MCTruthRow> mctruth_writer;
+  
+
   TTree *mcneutrino_tree;
   MCNeutrinoBuffer mcneutrino_buf;
+
+  // New SoA pattern
+  TTree* mcneutrino_tree_2g;
+  SoAWriter<MCNeutrinoRow> mcneutrino_writer;
 
   bool dump_mcparticles;
   TTree *mcparticle_tree;
@@ -509,9 +665,18 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     ev_buf.branch_on(mctruth_tree);
     mctruth_buf.branch_on(mctruth_tree);
 
+
+    // FIXME:
+    ev_buf.branch_on(mctruth_tree);
+    mctruth_tree_2g = tfs->make<TTree>("mctruths_2g", "mctruths");
+    mctruth_writer.make_branches(*mctruth_tree_2g);
+
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
     ev_buf.branch_on(mcneutrino_tree);
     mcneutrino_buf.branch_on(mcneutrino_tree);
+
+    mcneutrino_tree_2g = tfs->make<TTree>("mcneutrinos_2g", "mcneutrinos");
+    mcneutrino_writer.make_branches(*mcneutrino_tree_2g);
 
   }
 
@@ -563,6 +728,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   // tot_numelectrons_rop0 = tot_numelectrons_rop1 = tot_numelectrons_rop2 = tot_numelectrons_rop3 = 0;
 
 
+
+  mctruth_writer.clear();
+
   size_t mctruths_count = 0;
   size_t mcneutrinos_count = 0;
   size_t mcparticles_count = 0;
@@ -578,13 +746,25 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     trkId_to_truthBlockId.clear();
     truthBlockId_to_generator_name.clear();
 
+    size_t mctruth_collection_size{0};
+    for (auto const &mctruthHandle : mctruthHandles) {
+      for (size_t i = 0; i < mctruthHandle->size(); i++) {
+        const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
+        mctruth_collection_size += truthblock.NParticles();
+      }
+    }
+
+
+    std::cout << "Found " << mctruth_collection_size << " mctruth entries" << std::endl;
+    mctruth_writer.buffer().reserve(mctruth_collection_size);
+
     for (auto const &mctruthHandle : mctruthHandles) {
       // Extract the generator name from the truth handle input label
       std::string generator_name = mctruthHandle.provenance()->inputTag().label();
       // Store generator name for TP backtracking
       truthBlockId_to_generator_name[truth_block_counter] = generator_name;
 
-      mctruth_buf.id = truth_block_counter;
+      // mctruth_buf.id = truth_block_counter;
       // NOTE: here we are making an assumption that the geant4 stage's process
       // name is largeant. This should be safe mostly.
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
@@ -615,13 +795,38 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           mcneutrino_buf.pt = mcneutrino.Pt();
           mcneutrino_buf.theta = mcneutrino.Theta();
           mcneutrino_tree->Fill();
+
+          mcneutrino_writer->block_id = truth_block_counter;
+          mcneutrino_writer->generator_name = generator_name;
+          mcneutrino_writer->nupdg = mcneutrino.Nu().PdgCode();
+          mcneutrino_writer->leptonpdg = mcneutrino.Lepton().PdgCode();
+          mcneutrino_writer->ccnc = mcneutrino.CCNC();
+          mcneutrino_writer->mode = mcneutrino.Mode();
+          mcneutrino_writer->interactionType = mcneutrino.InteractionType();
+          mcneutrino_writer->target = mcneutrino.Target();
+          mcneutrino_writer->hitnuc = mcneutrino.HitNuc();
+          mcneutrino_writer->hitquark = mcneutrino.HitQuark();
+          mcneutrino_writer->w = mcneutrino.W();
+          mcneutrino_writer->x = mcneutrino.X();
+          mcneutrino_writer->y = mcneutrino.Y();
+          mcneutrino_writer->qsqr = mcneutrino.QSqr();
+          mcneutrino_writer->pt = mcneutrino.Pt();
+          mcneutrino_writer->theta = mcneutrino.Theta();
+          mcneutrino_writer.push_back();
+
+
           ++mcneutrinos_count;
         }
 
         int nparticles = truthblock.NParticles();
 
+        std::cout << "Processing " << generator_name << " size: " << nparticles << std::endl;
 
         for (int ipart = 0; ipart < nparticles; ipart++) {
+
+          if ((mctruths_count % 100) == 0 ) {
+            std::cout << "-->> " << mctruths_count << std::endl;
+          }
 
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
           mctruth_buf.id = truth_block_counter;
@@ -641,11 +846,38 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           mctruth_buf.en = part.E();
           mctruth_buf.ek = part.E() - part.Mass();
           mctruth_tree->Fill();
+
+          mctruth_writer->block_id = truth_block_counter;
+          mctruth_writer->pdg = part.PdgCode();
+          mctruth_writer->generator_name = generator_name;
+          mctruth_writer->status_code = part.StatusCode();
+          mctruth_writer->process = part.Process();
+          mctruth_writer->truth_track_id = part.TrackId();
+          mctruth_writer->x = part.Vx();
+          mctruth_writer->y = part.Vy();
+          mctruth_writer->z = part.Vz();
+          mctruth_writer->t = part.T();
+          mctruth_writer->px = part.Px();
+          mctruth_writer->py = part.Py();
+          mctruth_writer->pz = part.Pz();
+          mctruth_writer->p = part.P();
+          mctruth_writer->energy = part.E();
+          mctruth_writer->kinetic_energy = part.E() - part.Mass();
+
+          mctruth_writer.push_back();
+
           ++mctruths_count;
         }
         truth_block_counter++;
       }
     }
+
+    mcneutrino_tree_2g->Fill();
+
+    std::cout << "Collected " << mctruth_writer.row_count() << " mctruth rows" << std::endl;
+    std::cout << "Filling mctruth_tree_2g" << std::endl;
+    mctruth_tree_2g->Fill();
+    std::cout << "Filling completed" << std::endl;
 
     json j_mctruth_gen_map(truthBlockId_to_generator_name);
     info_data["mcthruth_blockod_map"] = j_mctruth_gen_map;
