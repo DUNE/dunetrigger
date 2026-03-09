@@ -617,6 +617,8 @@ private:
   bool dump_mcparticles;
   TTree *mcparticle_tree;
   MCParticleBuffer mcparticle_buf;
+  TTree* mcparticle_tree_2g;
+  SoAWriter<MCParticleRow> mcparticle_writer;
 
   bool dump_summary_info;
   // visible energy for the event
@@ -683,6 +685,9 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     mcparticle_tree = tfs->make<TTree>("mcparticles", "mcparticles");
     ev_buf.branch_on(mcparticle_tree);
     mcparticle_buf.branch_on(mcparticle_tree);
+
+    mcparticle_tree_2g = tfs->make<TTree>("mcparticles_2g", "mcparticles");
+    mcparticle_writer.make_branches(*mcparticle_tree_2g);
   }
 
   if (dump_simides) {
@@ -729,6 +734,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
 
   mctruth_writer.clear();
+  mcparticle_writer.clear();
 
   size_t mctruths_count = 0;
   size_t mcneutrinos_count = 0;
@@ -978,9 +984,38 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         mcparticle_buf.shower_numelectrons =
             track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0;
         mcparticle_tree->Fill();
+
+        mcparticle_writer->pdg = part.PdgCode();
+        mcparticle_writer->generator_name = generator_name;
+        mcparticle_writer->status_code = part.StatusCode();
+        mcparticle_writer->g4_track_id = part.TrackId();
+        mcparticle_writer->mother = part.Mother();
+        mcparticle_writer->truth_block_id = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
+        mcparticle_writer->x = part.Vx();
+        mcparticle_writer->y = part.Vy();
+        mcparticle_writer->z = part.Vz();
+        mcparticle_writer->t = part.T();
+        mcparticle_writer->end_x = part.EndX();
+        mcparticle_writer->end_y = part.EndY();
+        mcparticle_writer->end_z = part.EndZ();
+        mcparticle_writer->end_t = part.EndT();
+        mcparticle_writer->px = part.Px();
+        mcparticle_writer->py = part.Py();
+        mcparticle_writer->pz = part.Pz();
+        mcparticle_writer->energy = part.E();
+        mcparticle_writer->kinetic_energy = part.E() - part.Mass();
+        mcparticle_writer->edep = track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0;
+        mcparticle_writer->numelectrons =
+            track_electron_sums.count(part.TrackId()) ? track_electron_sums.at(part.TrackId()) : 0;
+        mcparticle_writer->shower_edep = track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0;
+        mcparticle_writer->shower_numelectrons =
+            track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0;
+        mcparticle_writer->process = part.Process();
+        mcparticle_writer.push_back();
         ++mcparticles_count;
       }
     }
+    mcparticle_tree_2g->Fill();
   }
 
   if (dump_tp) {
