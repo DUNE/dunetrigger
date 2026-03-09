@@ -1365,26 +1365,24 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
       TTree *cur_tp_tree_2g = tree_map[map_tag_2g];
 
-      SoAWriter<TriggerPrimitiveRow> &curr_tp_writer = tp_writers[map_tag_2g];
-
-      SoAWriter<TriggerPrimitiveBacktrackingRow>* curr_tpbt_writer_ptr = nullptr;
-      if (tp_backtracking) {
-        curr_tpbt_writer_ptr = &(tpbt_writers[map_tag_2g]);
-      } 
+      auto* curr_tp_writer = &tp_writers[map_tag];
+      auto* curr_tpbt_writer = (tp_backtracking ? &tpbt_writers[map_tag] : nullptr);
 
       for (const TriggerPrimitive &tp : *tpHandle) {
-        curr_tp_writer->from_tp(tp);
+        auto& tp_writer = *curr_tp_writer;
+        tp_writer->from_tp(tp);
         auto chinfo = get_channel_info_for_channel(geom, tp.channel);
-        curr_tp_writer->readout_plane_id = chinfo.rop_id;
-        curr_tp_writer->readout_view = chinfo.view;
-        curr_tp_writer->TPCSetID = chinfo.tpcset_id;
+        tp_writer->readout_plane_id = chinfo.rop_id;
+        tp_writer->readout_view = chinfo.view;
+        tp_writer->TPCSetID = chinfo.tpcset_id;
+        tp_writer.push_back();
 
-        if (tp_backtracking) {
-          std::vector<sim::IDE> matched_ides = match_simides_to_tps(curr_tp_writer.row(), tp_tool_type);
-          curr_tpbt_writer_ptr->row().populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
+        if (curr_tpbt_writer) {
+          auto& tpbt_writer = *curr_tpbt_writer;
+          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row(), tp_tool_type);
+          tpbt_writer.row().populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
+          tpbt_writer.push_back();
         }
-        curr_tp_writer.push_back();
-        curr_tpbt_writer_ptr->push_back();
       }
 
       cur_tp_tree_2g->Fill();
