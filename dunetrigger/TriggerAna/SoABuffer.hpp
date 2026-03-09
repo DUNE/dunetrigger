@@ -2,7 +2,7 @@
 #define SOA_BUFFER_HPP
 // =============================================================================
 //  SoABuffer.hpp
-//  Automatic Structure-of-Arrays buffer from any C++ POD struct,
+//  Automatic Structure-of-Arrays buffer from a C++ struct,
 //  with ROOT TTree branch registration and clear support.
 //
 //  Requirements:
@@ -134,10 +134,12 @@ struct SoaFieldNames<StructType> {                                              
         static const char* const names[] = {                                    \
             SOA_PP_STRINGIFY_EACH(__VA_ARGS__)                                   \
         };                                                                       \
-        constexpr std::size_t kNamesN = sizeof(names) / sizeof(names[0]);       \
-        static_assert(kNamesN == kN,                                             \
-            "REGISTER_SOA_FIELD_NAMES: number of provided field names must "     \
-            "match the number of fields in StructType");                        \
+        constexpr std::size_t kProvided =                                        \
+            sizeof(names) / sizeof(names[0]);                                    \
+        static_assert(kProvided == kN,                                           \
+            "REGISTER_SOA_FIELD_NAMES: name count does not match "              \
+            "the number of fields in " #StructType ". "                         \
+            "Check that every field has exactly one name.");                     \
         return get_impl(std::make_index_sequence<kN>{}, names);                  \
     }                                                                            \
 private:                                                                         \
@@ -150,13 +152,15 @@ private:                                                                        
 
 namespace soa_detail {
 
+// Dispatch: C++20 uses PFR directly; C++17 goes through the trait.
 #if __cplusplus >= 202002L
+// Forward declaration — defined below get_field_names to avoid lookup issues
+// across compilers.
 template<typename Struct, typename NamesArray, std::size_t... Is>
 std::array<std::string, sizeof...(Is)>
 get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>);
 #endif
 
-// Dispatch: C++20 uses PFR directly; C++17 goes through the trait.
 template<typename Struct>
 std::array<std::string, boost::pfr::tuple_size_v<Struct>>
 get_field_names() {
@@ -197,13 +201,16 @@ get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
 // ---------------------------------------------------------------------------
 template<typename Struct>
 class SoABuffer {
-    static_assert(std::is_trivially_copyable_v<Struct>,
-                  "SoABuffer requires a POD / trivially-copyable struct");
+    static_assert(std::is_default_constructible_v<Struct>,
+                  "SoABuffer requires a default-constructible struct");
+    static_assert(std::is_copy_constructible_v<Struct>,
+                  "SoABuffer requires a copy-constructible struct");
+    static_assert(boost::pfr::tuple_size_v<Struct> > 0,
+                  "SoABuffer does not support empty structs");
 
 public:
     // Number of fields in Struct
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
-    static_assert(kNFields > 0, "SoABuffer does not support empty structs");
 
     // Tuple-of-vectors type that mirrors the struct layout
     using FieldTuple  = decltype(boost::pfr::structure_to_tuple(std::declval<Struct>()));
@@ -247,8 +254,12 @@ public:
         push_impl(s, std::make_index_sequence<kNFields>{});
     }
 
-    /// Reconstruct a struct from row i
+    /// Reconstruct a struct from row i. Throws std::out_of_range if i >= size().
     Struct get(std::size_t i) const {
+        if (i >= size())
+            throw std::out_of_range(
+                "SoABuffer::get: index " + std::to_string(i) +
+                " out of range (size=" + std::to_string(size()) + ")");
         return get_impl(i, std::make_index_sequence<kNFields>{});
     }
 
@@ -313,18 +324,6 @@ private:
     ArraysTuple arrays_;
     PtrsTuple   ptrs_;   // each element points at the corresponding vector in arrays_
 
-    template<typename BranchAddrPtr>
-    static void set_one_address_checked(TTree* tree,
-                                        const std::string& branch_name,
-                                        BranchAddrPtr addr) {
-        const int status = tree->SetBranchAddress(branch_name.c_str(), addr);
-        if (status < 0) {
-            throw std::runtime_error(
-                "SoABuffer::set_branch_addresses: failed to bind branch '" +
-                branch_name + "' (ROOT status " + std::to_string(status) + ")");
-        }
-    }
-
     template<std::size_t... Is>
     PtrsTuple make_ptrs(std::index_sequence<Is...>) {
         return PtrsTuple{ &std::get<Is>(arrays_)... };
@@ -374,16 +373,27 @@ private:
     // ---- set_branch_addresses --------------------------------------------
     // SetBranchAddress for STL-vector branches requires T** (pointer-to-pointer).
     // ptrs_[I] is a std::vector<T>* pointing at arrays_[I]; we pass &ptrs_[I].
+    // Return value is checked: ROOT returns <0 on failure (name/type mismatch).
     template<std::size_t... Is>
     void set_addresses_impl(TTree* tree,
                             const std::string& prefix,
                             std::index_sequence<Is...>) {
         auto names = soa_detail::get_field_names<Struct>();
-        (set_one_address_checked(
-            tree,
-            prefix + names[Is],
-            &std::get<Is>(ptrs_)            // T** — what ROOT requires for vector branches
+        (check_set_address(
+            tree->SetBranchAddress(
+                (prefix + names[Is]).c_str(),
+                &std::get<Is>(ptrs_)        // T** — what ROOT requires for vector branches
+            ),
+            prefix + names[Is]
         ), ...);
+    }
+
+    static void check_set_address(Int_t status, const std::string& branch_name) {
+        // ROOT returns kMissingBranch (-5) or other negative codes on failure
+        if (status < 0)
+            throw std::runtime_error(
+                "SoABuffer::set_branch_addresses: failed to bind branch \"" +
+                branch_name + "\" (ROOT error code " + std::to_string(status) + ")");
     }
 
     // ---- print -----------------------------------------------------------
@@ -399,15 +409,15 @@ private:
 // ---------------------------------------------------------------------------
 //  SoAWriter<Struct>
 //  ---
-//  Convenience wrapper around SoABuffer<Struct> that owns a public T instance
-//  acting as a row staging area.  Typical usage:
+//  Convenience wrapper around SoABuffer<Struct> with an internal staging row.
+//  Typical usage:
 //
 //    SoAWriter<Track> writer;
 //    writer.make_branches(tree, "trk_");
 //
 //    for (auto& raw : source) {
-//        writer.row.x      = raw.x;      // fill public staging row
-//        writer.row.px     = raw.px;
+//        writer->x         = raw.x;      // fill staging row
+//        writer->px        = raw.px;
 //        writer.push_back();             // commit row → SoA buffer
 //    }
 //    tree.Fill();
@@ -415,17 +425,19 @@ private:
 //
 //  Methods:
 //    push_back()          – append current value of `row` into the SoA buffer
+//    commit_and_reset()   – append current `row`, then reset it
 //    clear()              – clear the SoA buffer AND zero-initialise `row`
 //    reset_row()          – zero-initialise `row` only (buffer unchanged)
-//    buffer()             – access the underlying SoABuffer (e.g. for size())
+//    buffer()             – access the underlying SoABuffer (e.g. for size(),
+//                           get(i), set_branch_addresses for read-back)
 //    make_branches(...)   – forwarded to SoABuffer
-//    set_branch_addresses(...) – forwarded to SoABuffer
 // ---------------------------------------------------------------------------
 template<typename Struct>
 class SoAWriter {
 public:
-    /// Public staging row — set fields here before calling push_back().
-    Struct row{};
+    /// Access the staging row fields via `writer->field`.
+    Struct* operator->() noexcept { return &row_; }
+    const Struct* operator->() const noexcept { return &row_; }
 
     // ------------------------------------------------------------------
     // Construction
@@ -442,7 +454,13 @@ public:
 
     /// Copy the current value of `row` into the SoA buffer.
     void push_back() {
-        buffer_.push_back(row);
+        buffer_.push_back(row_);
+    }
+
+    /// Copy current row into the buffer and reset staging row.
+    void commit_and_reset() {
+        push_back();
+        reset_row();
     }
 
     /// Empty the SoA buffer and zero-initialise the staging row.
@@ -453,18 +471,21 @@ public:
 
     /// Zero-initialise the staging row without touching the buffer.
     void reset_row() {
-        row = Struct{};
+        row_ = Struct{};
     }
 
     // ------------------------------------------------------------------
     // Buffer access
     // ------------------------------------------------------------------
 
-    SoABuffer<Struct>& buffer() { return buffer_; }
-    const SoABuffer<Struct>& buffer() const { return buffer_; }
+    [[nodiscard]] SoABuffer<Struct>& buffer() noexcept { return buffer_; }
+    [[nodiscard]] const SoABuffer<Struct>& buffer() const noexcept { return buffer_; }
+
+    /// Current SoA buffer row count (number of committed rows).
+    [[nodiscard]] std::size_t row_count() const noexcept { return buffer_.size(); }
 
     /// Shorthand for the number of committed rows.
-    std::size_t size() const { return buffer_.size(); }
+    [[nodiscard]] std::size_t size() const noexcept { return buffer_.size(); }
 
     // ------------------------------------------------------------------
     // ROOT TTree forwarding
@@ -479,6 +500,7 @@ public:
     }
 
 private:
+    Struct row_{};
     SoABuffer<Struct> buffer_;
 };
 
