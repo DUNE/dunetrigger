@@ -196,18 +196,7 @@ struct TriggerPrimitiveRow {
   int readout_view = 0;
   unsigned int TPCSetID = 0;
 
-  void from_tp(const TriggerPrimitive &tp) {
-    version = 2; // temp, since variables below are converted to v2 version while the TP version in TriggerSim is still 1.
-                 // Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
-    flag = 0;
-    detid = tp.detid;
-    channel = tp.channel;
-    samples_over_threshold = tp.time_over_threshold / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-    time_start = tp.time_start;
-    samples_to_peak = (tp.time_peak - tp.time_start) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-    adc_integral = tp.adc_integral;
-    adc_peak = tp.adc_peak;
-  }
+  void from_tp(const TriggerPrimitive &tp);
 
   TriggerPrimitiveRow() = default;
 };
@@ -229,79 +218,7 @@ struct TriggerPrimitiveBacktrackingRow {
 
   void populate_backtracking_info(const std::vector<sim::IDE> &ides,
                                   const std::unordered_map<int, int> &trkid_to_truth_block,
-                                  std::unordered_map<int, std::string> &truth_id_to_gen) {
-    bt_primary_track_id = INVALID;
-    bt_primary_track_numelectron_frac = INVALID;
-    bt_primary_track_energy_frac = INVALID;
-    bt_edep = 0.;
-    bt_numelectrons = 0.;
-    bt_x = INVALID;
-    bt_y = INVALID;
-    bt_z = INVALID;
-    bt_primary_x = INVALID;
-    bt_primary_y = INVALID;
-    bt_primary_z = INVALID;
-    bt_truth_block_id = INVALID;
-    bt_generator_name.clear();
-
-    if (ides.empty()) {
-      return;
-    }
-
-    std::vector<sim::IDE> bt_ides;
-    bt_ides.reserve(ides.capacity());
-    std::copy_if(ides.begin(),
-                 ides.end(),
-                 std::back_inserter(bt_ides),
-                 [](const sim::IDE &ide) { return ide.trackID != 0; });
-
-    art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-    art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
-
-    std::map<int, double> track_numelectrons;
-    std::map<int, double> track_energies;
-
-    if (bt_ides.empty()) {
-      std::cout << "Empty IDEs set!" << std::endl;
-      return;
-    }
-
-    for (const sim::IDE &ide : bt_ides) {
-      int mc_track_id = pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId();
-      track_numelectrons[mc_track_id] += ide.numElectrons;
-      track_energies[mc_track_id] += ide.energy;
-      bt_numelectrons += ide.numElectrons;
-      bt_edep += ide.energy;
-    }
-
-    bt_primary_track_id =
-        std::max_element(track_numelectrons.begin(), track_numelectrons.end(), [](const auto &a, const auto &b) {
-          return a.second < b.second;
-        })->first;
-
-    std::vector<sim::IDE> primary_ides;
-    for (const sim::IDE &ide : bt_ides) {
-      if (pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId() == bt_primary_track_id) {
-        primary_ides.push_back(ide);
-      }
-    }
-
-    bt_primary_track_numelectron_frac = track_numelectrons[bt_primary_track_id] / bt_numelectrons;
-    bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
-
-    std::vector<double> bt_position = bt_serv->SimIDEsToXYZ(ides);
-    std::vector<double> primary_bt_position = bt_serv->SimIDEsToXYZ(primary_ides);
-
-    bt_x = bt_position[0];
-    bt_y = bt_position[1];
-    bt_z = bt_position[2];
-    bt_primary_x = primary_bt_position[0];
-    bt_primary_y = primary_bt_position[1];
-    bt_primary_z = primary_bt_position[2];
-
-    bt_truth_block_id = trkid_to_truth_block.at(bt_primary_track_id);
-    bt_generator_name = truth_id_to_gen.at(bt_truth_block_id);
-  }
+                                  std::unordered_map<int, std::string> &truth_id_to_gen);
 
   TriggerPrimitiveBacktrackingRow() = default;
 };
@@ -313,18 +230,96 @@ struct TriggerPrimitiveAssociationRow {
   TriggerPrimitiveAssociationRow() = default;
 };
 
+void dunetrigger::TriggerPrimitiveRow::from_tp(const TriggerPrimitive &tp) {
+  version = 2; // temp, since variables below are converted to v2 version while the TP version in TriggerSim is still 1.
+               // Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
+  flag = 0;
+  detid = tp.detid;
+  channel = tp.channel;
+  samples_over_threshold = tp.time_over_threshold / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  time_start = tp.time_start;
+  samples_to_peak = (tp.time_peak - tp.time_start) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  adc_integral = tp.adc_integral;
+  adc_peak = tp.adc_peak;
+}
 
-    // FIXME: implement
+void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
+    const std::vector<sim::IDE> &ides,
+    const std::unordered_map<int, int> &trkid_to_truth_block,
+    std::unordered_map<int, std::string> &truth_id_to_gen) {
+  bt_primary_track_id = INVALID;
+  bt_primary_track_numelectron_frac = INVALID;
+  bt_primary_track_energy_frac = INVALID;
+  bt_edep = 0.;
+  bt_numelectrons = 0.;
+  bt_x = INVALID;
+  bt_y = INVALID;
+  bt_z = INVALID;
+  bt_primary_x = INVALID;
+  bt_primary_y = INVALID;
+  bt_primary_z = INVALID;
+  bt_truth_block_id = INVALID;
+  bt_generator_name.clear();
 
+  if (ides.empty()) {
+    return;
+  }
 
-    // FIXME: implement
+  std::vector<sim::IDE> bt_ides;
+  bt_ides.reserve(ides.capacity());
+  std::copy_if(ides.begin(),
+               ides.end(),
+               std::back_inserter(bt_ides),
+               [](const sim::IDE &ide) { return ide.trackID != 0; });
 
-  // int particle_pdg;
-  // int parent_pdg;
-    // tree->Branch("pdg_id", &particle_pdg);
-    // tree->Branch("parent_pdg_id", &parent_pdg);
-    // particle_pdg = INVALID;
-    // parent_pdg = INVALID;
+  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
+  art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
+
+  std::map<int, double> track_numelectrons;
+  std::map<int, double> track_energies;
+
+  if (bt_ides.empty()) {
+    std::cout << "Empty IDEs set!" << std::endl;
+    return;
+  }
+
+  for (const sim::IDE &ide : bt_ides) {
+    int mc_track_id = pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId();
+    track_numelectrons[mc_track_id] += ide.numElectrons;
+    track_energies[mc_track_id] += ide.energy;
+    bt_numelectrons += ide.numElectrons;
+    bt_edep += ide.energy;
+  }
+
+  bt_primary_track_id =
+      std::max_element(track_numelectrons.begin(), track_numelectrons.end(), [](const auto &a, const auto &b) {
+        return a.second < b.second;
+      })->first;
+
+  std::vector<sim::IDE> primary_ides;
+  for (const sim::IDE &ide : bt_ides) {
+    if (pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId() == bt_primary_track_id) {
+      primary_ides.push_back(ide);
+    }
+  }
+
+  bt_primary_track_numelectron_frac = track_numelectrons[bt_primary_track_id] / bt_numelectrons;
+  bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
+
+  std::vector<double> bt_position = bt_serv->SimIDEsToXYZ(ides);
+  std::vector<double> primary_bt_position = bt_serv->SimIDEsToXYZ(primary_ides);
+
+  bt_x = bt_position[0];
+  bt_y = bt_position[1];
+  bt_z = bt_position[2];
+  bt_primary_x = primary_bt_position[0];
+  bt_primary_y = primary_bt_position[1];
+  bt_primary_z = primary_bt_position[2];
+
+  bt_truth_block_id = trkid_to_truth_block.at(bt_primary_track_id);
+  bt_generator_name = truth_id_to_gen.at(bt_truth_block_id);
+}
+
 } // namespace dunetrigger
 
 REGISTER_SOA_FIELD_NAMES(dunetrigger::MCTruthRow,
@@ -1115,11 +1110,6 @@ dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_chann
   result.view = geom->View(rop);
   return result;
 }
-
-               // Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
-  // Reset backtracker members
-  // Backtracked ides - consider only ides with valid track ID.
-
 
 std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const TriggerPrimitiveRow &tp,
                                                                         const std::string &tool_type) const {
