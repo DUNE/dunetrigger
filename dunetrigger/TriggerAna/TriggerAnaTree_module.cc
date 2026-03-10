@@ -87,77 +87,6 @@ struct EventSummaryData {
 };
 
 
-
-
-// LEGACY: // Standard structure for all trees
-// LEGACY: struct EventMetaDataBuffer {
-// LEGACY:   // buffer data members
-// LEGACY:   int event;
-// LEGACY:   int run;
-// LEGACY:   int subrun;
-// LEGACY: 
-// LEGACY:   void branch_on(TTree *tree) {
-// LEGACY:     tree->Branch("event", &event, "event/i");
-// LEGACY:     tree->Branch("run", &run, "run/i");
-// LEGACY:     tree->Branch("subrun", &subrun, "subrun/i");
-// LEGACY:   }
-// LEGACY: 
-// LEGACY:   void clear() {
-// LEGACY:     event = -1;
-// LEGACY:     run = -1;
-// LEGACY:     subrun = -1;
-// LEGACY:   }
-// LEGACY: };
-
-// LEGACY: struct EventSummaryBuffer {
-// LEGACY:   /**
-// LEGACY:    * Buffer of EventSummary data members
-// LEGACY:    */
-// LEGACY: 
-// LEGACY:   int mctruths_count;
-// LEGACY:   int mcparticles_count;
-// LEGACY:   int mcneutrinos_count;
-// LEGACY:   int simides_count;
-// LEGACY:   double tot_visible_energy_rop0, tot_visible_energy_rop1, tot_visible_energy_rop2, tot_visible_energy_rop3; // total visible energy per readout plane ID
-// LEGACY:   double tot_numelectrons_rop0, tot_numelectrons_rop1, tot_numelectrons_rop2, tot_numelectrons_rop3;
-// LEGACY: 
-// LEGACY:   void branch_on(TTree *tree) {
-// LEGACY:     // TODO: add num of tps for all collections?
-// LEGACY:
-// LEGACY:     
-// LEGACY:     tree->Branch("mctruths_count", &mctruths_count);
-// LEGACY:     tree->Branch("mcparticles_count", &mcparticles_count);
-// LEGACY:     tree->Branch("mcneutrinos_count", &mcneutrinos_count);
-// LEGACY:     tree->Branch("simides_count", &simides_count);
-// LEGACY: 
-// LEGACY:     tree->Branch("tot_visible_energy_rop0", &tot_visible_energy_rop0);
-// LEGACY:     tree->Branch("tot_visible_energy_rop1", &tot_visible_energy_rop1);
-// LEGACY:     tree->Branch("tot_visible_energy_rop2", &tot_visible_energy_rop2);
-// LEGACY:     tree->Branch("tot_visible_energy_rop3", &tot_visible_energy_rop3);
-// LEGACY:     tree->Branch("tot_numelectrons_rop0", &tot_numelectrons_rop0);
-// LEGACY:     tree->Branch("tot_numelectrons_rop1", &tot_numelectrons_rop1);
-// LEGACY:     tree->Branch("tot_numelectrons_rop2", &tot_numelectrons_rop2);
-// LEGACY:     tree->Branch("tot_numelectrons_rop3", &tot_numelectrons_rop3);
-// LEGACY:   }
-// LEGACY: 
-// LEGACY: 
-// LEGACY:   void clear() {
-// LEGACY:     mctruths_count = -1;
-// LEGACY:     mcparticles_count = -1;
-// LEGACY:     mcneutrinos_count = -1;
-// LEGACY:     simides_count = -1;
-// LEGACY: 
-// LEGACY:     tot_visible_energy_rop0 = 0;
-// LEGACY:     tot_visible_energy_rop1 = 0;
-// LEGACY:     tot_visible_energy_rop2 = 0;
-// LEGACY:     tot_visible_energy_rop3 = 0;
-// LEGACY:     tot_numelectrons_rop0 = 0;
-// LEGACY:     tot_numelectrons_rop1 = 0;
-// LEGACY:     tot_numelectrons_rop2 = 0;
-// LEGACY:     tot_numelectrons_rop3 = 0;
-// LEGACY:   }
-// LEGACY: };
-
 struct MCTruthRow {
   /**
    * Buffer of MCTruth data members
@@ -384,282 +313,18 @@ struct TriggerPrimitiveAssociationRow {
   TriggerPrimitiveAssociationRow() = default;
 };
 
-// LEGACY: // --------------------------------------------
 
-// LEGACY: struct MCTruthBuffer {
-// LEGACY:   /**
-// LEGACY:    * Buffer of MCTruth data members
-// LEGACY:    */
-// LEGACY:   
-// LEGACY:   int pdg;
-// LEGACY:   std::string process;
-// LEGACY:   int status, id, trackid;
-// LEGACY:   std::string gen_name;
-// LEGACY:   double x, y, z, t;
-// LEGACY:   double Px, Py, Pz, P;
-// LEGACY:   double en, ek;
-// LEGACY: 
-// LEGACY:   void branch_on(TTree *tree) {
-// LEGACY:     tree->Branch("block_id", &id);
-// LEGACY:     tree->Branch("truth_track_id", &trackid);
-// LEGACY:     tree->Branch("pdg", &pdg);
-// LEGACY:     tree->Branch("generator_name", &gen_name);
-// LEGACY:     tree->Branch("status_code", &status);
-// LEGACY:     tree->Branch("x", &x);
-// LEGACY:     tree->Branch("y", &y);
-// LEGACY:     tree->Branch("z", &z);
-// LEGACY:     tree->Branch("t", &t);
-// LEGACY:     tree->Branch("px", &Px);
-// LEGACY:     tree->Branch("py", &Py);
-// LEGACY:     tree->Branch("pz", &Pz);
-// LEGACY:     tree->Branch("p", &P);
-// LEGACY:     tree->Branch("energy", &en);
-// LEGACY:     tree->Branch("kinetic_energy", &ek);
-// LEGACY:     tree->Branch("process", &process);
-// LEGACY:   }
-// LEGACY: 
-// LEGACY:   void clear() {
     // FIXME: implement
-// LEGACY:   }
-// LEGACY: };
-// LEGACY: 
 
-// LEGACY: struct MCNeutrinoBuffer {
-// LEGACY: 
-// LEGACY:   std::string mctruth_gen_name;
-// LEGACY:   int mctruth_id;
-// LEGACY:   int nupdg, leptonpdg, ccnc, mode, iteractionType,
-// LEGACY:       target, hitnuc, hitquark;
-// LEGACY:   double w, x, y, qsqr, pt, theta;
-// LEGACY: 
-// LEGACY:   void branch_on(TTree *tree) {
-// LEGACY:     tree->Branch("block_id", &mctruth_id);
-// LEGACY:     tree->Branch("generator_name", &mctruth_gen_name);
-// LEGACY:     tree->Branch("nupdg", &nupdg);
-// LEGACY:     tree->Branch("leptonpdg", &leptonpdg);
-// LEGACY:     tree->Branch("ccnc", &ccnc);
-// LEGACY:     tree->Branch("mode", &mode);
-// LEGACY:     tree->Branch("interactionType", &iteractionType);
-// LEGACY:     tree->Branch("target", &target);
-// LEGACY:     tree->Branch("hitnuc", &hitnuc);
-// LEGACY:     tree->Branch("hitquark", &hitquark);
-// LEGACY:     tree->Branch("w", &w);
-// LEGACY:     tree->Branch("x", &x);
-// LEGACY:     tree->Branch("y", &y);
-// LEGACY:     tree->Branch("qsqr", &qsqr);
-// LEGACY:     tree->Branch("pt", &pt);
-// LEGACY:     tree->Branch("theta", &theta);
-// LEGACY:   }
-// LEGACY: };
-// LEGACY: 
 
-// LEGACY: struct MCParticleBuffer {
-// LEGACY:   /**
-// LEGACY:    * Buffer of MCParticles data members
-// LEGACY:    */
-// LEGACY:   int pdg;
-// LEGACY:   std::string process;
-// LEGACY:   int status, trackid, truthid, mother;
-// LEGACY:   std::string gen_name;
-// LEGACY:   double x, y, z, t;
-// LEGACY:   double end_x, end_y, end_z, end_t;
-// LEGACY:   double Px, Py, Pz;
-// LEGACY:   double en, ek;
-// LEGACY:   double edep, numelectrons;
-// LEGACY:   double shower_edep, shower_numelectrons;
-// LEGACY: 
-// LEGACY:   void branch_on(TTree *tree) {
-// LEGACY:     tree->Branch("pdg", &pdg);
-// LEGACY:     tree->Branch("generator_name", &gen_name);
-// LEGACY:     tree->Branch("status_code", &status);
-// LEGACY:     tree->Branch("g4_track_id", &trackid);
-// LEGACY:     tree->Branch("mother", &mother);
-// LEGACY:     tree->Branch("truth_block_id", &truthid);
-// LEGACY:     tree->Branch("x", &x);
-// LEGACY:     tree->Branch("y", &y);
-// LEGACY:     tree->Branch("z", &z);
-// LEGACY:     tree->Branch("t", &t);
-// LEGACY:     tree->Branch("end_x", &end_x);
-// LEGACY:     tree->Branch("end_y", &end_y);
-// LEGACY:     tree->Branch("end_z", &end_z);
-// LEGACY:     tree->Branch("end_t", &end_t);
-// LEGACY:     tree->Branch("px", &Px);
-// LEGACY:     tree->Branch("py", &Py);
-// LEGACY:     tree->Branch("pz", &Pz);
-// LEGACY:     tree->Branch("energy", &en);
-// LEGACY:     tree->Branch("kinetic_energy", &ek);
-// LEGACY:     tree->Branch("edep", &edep);
-// LEGACY:     tree->Branch("numelectrons", &numelectrons);
-// LEGACY:     tree->Branch("shower_edep", &shower_edep);
-// LEGACY:     tree->Branch("shower_numelectrons", &shower_numelectrons);
-// LEGACY:     tree->Branch("process", &process);
-// LEGACY:   }
-// LEGACY: 
-// LEGACY:   void clear() {
     // FIXME: implement
-// LEGACY:   }
-// LEGACY: };
-// LEGACY: 
 
-// LEGACY: struct SimIDEBuffer {
-// LEGACY:   /**
-// LEGACY:    * Buffer of SimIDEBuffer data members
-// LEGACY:    */
-// LEGACY: 
-// LEGACY:   unsigned int sim_channel_id;
-// LEGACY:   int tdc;
-// LEGACY:   float numElectrons;
-// LEGACY:   float energy;
-// LEGACY:   float x;
-// LEGACY:   float y;
-// LEGACY:   float z;
-// LEGACY:   int trkId;
-// LEGACY:   float origTrkId;
-// LEGACY:   float readout_plane_id;
-// LEGACY:   float readout_view;
-// LEGACY:   float detector_element;
   // int particle_pdg;
   // int parent_pdg;
-// LEGACY: 
-// LEGACY:   void branch_on(TTree *tree) {
-// LEGACY:     tree->Branch("channel", &sim_channel_id);
-// LEGACY:     tree->Branch("timestamp", &tdc);
-// LEGACY:     tree->Branch("numelectrons", &numElectrons);
-// LEGACY:     tree->Branch("energy", &energy);
-// LEGACY:     tree->Branch("x", &x);
-// LEGACY:     tree->Branch("y", &y);
-// LEGACY:     tree->Branch("z", &z);
-// LEGACY:     tree->Branch("trackID", &trkId);
-// LEGACY:     tree->Branch("origTrackID", &origTrkId);
-// LEGACY: 
-// LEGACY:     tree->Branch("readout_plane_id", &readout_plane_id);
-// LEGACY:     tree->Branch("readout_view", &readout_view);
-// LEGACY:     tree->Branch("detector_element", &detector_element);
-// LEGACY: 
     // tree->Branch("pdg_id", &particle_pdg);
     // tree->Branch("parent_pdg_id", &parent_pdg);
-// LEGACY:   }
-// LEGACY: 
-// LEGACY:   void clear() {
-// LEGACY:     sim_channel_id = INVALID;
-// LEGACY:     tdc = INVALID;
-// LEGACY:     numElectrons = INVALID;
-// LEGACY:     energy = INVALID;
-// LEGACY:     x = INVALID;
-// LEGACY:     y = INVALID;
-// LEGACY:     z = INVALID;
-// LEGACY:     trkId = INVALID;
-// LEGACY:     origTrkId = INVALID;
-// LEGACY:     readout_plane_id = INVALID;
-// LEGACY:     readout_view = INVALID;
-// LEGACY:     detector_element = INVALID;
     // particle_pdg = INVALID;
     // parent_pdg = INVALID;
-// LEGACY:   }
-// LEGACY: 
-// LEGACY: };
-// LEGACY: 
-// LEGACY: // Adapts similar storage optimization techniques as TPv2, but expanding all
-// LEGACY: // bitfields.
-// LEGACY: struct TriggerPrimitiveBuffer {
-// LEGACY:   uint8_t version;
-// LEGACY:   uint8_t flag;
-// LEGACY:   uint8_t detid;
-// LEGACY: 
-// LEGACY:   uint32_t channel;
-// LEGACY:   uint16_t samples_over_threshold;
-// LEGACY:   uint64_t time_start;
-// LEGACY:   uint16_t samples_to_peak;
-// LEGACY:   uint32_t adc_integral;
-// LEGACY:   uint16_t adc_peak;
-// LEGACY: 
-// LEGACY:   int bt_primary_track_id;
-// LEGACY:   int bt_num_tracks;
-// LEGACY:   double bt_primary_track_numelectron_frac;
-// LEGACY:   double bt_primary_track_energy_frac;
-// LEGACY:   double bt_edep;
-// LEGACY:   double bt_numelectrons;
-// LEGACY:   double bt_x, bt_y, bt_z;
-// LEGACY:   double bt_primary_x, bt_primary_y, bt_primary_z;
-// LEGACY:   int bt_mctruth_block_id;
-// LEGACY:   std::string bt_mctruth_gen_name;
-// LEGACY: 
-// LEGACY:   // Adding chinfo here -- no need to track it separately
-// LEGACY:   ChannelInfo chinfo;
-// LEGACY:
-// LEGACY:   // Populate the buffer from a TP object
-// LEGACY:   void from_tp(const TriggerPrimitive &tp);
-// LEGACY:
-// LEGACY:   // Populate backtracking information matched ides
-// LEGACY:   void populate_backtracking_info(const std::vector<sim::IDE> &ides,
-// LEGACY:                                   const std::unordered_map<int, int> &trkid_to_truth_block,
-// LEGACY:                                   std::unordered_map<int, std::string> &truth_id_to_gen);
-// LEGACY: 
-// LEGACY:   void branch_on(TTree *tree, bool backtracking) {
-// LEGACY:     tree->Branch("version", &this->version);
-// LEGACY:     tree->Branch("flag", &this->flag);
-// LEGACY:     tree->Branch("detid", &this->detid);
-// LEGACY:     tree->Branch("channel", &this->channel);
-// LEGACY:     tree->Branch("samples_over_threshold", &this->samples_over_threshold);
-// LEGACY:     tree->Branch("time_start", &this->time_start);
-// LEGACY:     tree->Branch("samples_to_peak", &this->samples_to_peak);
-// LEGACY:     tree->Branch("adc_integral", &this->adc_integral);
-// LEGACY:     tree->Branch("adc_peak", &this->adc_peak);
-// LEGACY: 
-// LEGACY:     tree->Branch("readout_plane_id", &this->chinfo.rop_id);
-// LEGACY:     tree->Branch("readout_view", &this->chinfo.view);
-// LEGACY:     tree->Branch("TPCSetID", &this->chinfo.tpcset_id);
-// LEGACY: 
-// LEGACY:     // Add backtracking only if requested
-// LEGACY:     if (backtracking) {
-// LEGACY:       tree->Branch("bt_primary_track_id", &this->bt_primary_track_id);
-// LEGACY:       tree->Branch("bt_primary_track_numelectron_frac", &this->bt_primary_track_numelectron_frac);
-// LEGACY:       tree->Branch("bt_primary_track_energy_frac", &this->bt_primary_track_energy_frac);
-// LEGACY:       tree->Branch("bt_edep", &this->bt_edep);
-// LEGACY:       tree->Branch("bt_numelectrons", &this->bt_numelectrons);
-// LEGACY:       tree->Branch("bt_x", &this->bt_x);
-// LEGACY:       tree->Branch("bt_y", &this->bt_y);
-// LEGACY:       tree->Branch("bt_z", &this->bt_z);
-// LEGACY:       tree->Branch("bt_primary_x", &this->bt_primary_x);
-// LEGACY:       tree->Branch("bt_primary_y", &this->bt_primary_y);
-// LEGACY:       tree->Branch("bt_primary_z", &this->bt_primary_z);
-// LEGACY:       tree->Branch("bt_truth_block_id", &this->bt_mctruth_block_id);
-// LEGACY:       tree->Branch("bt_generator_name", &this->bt_mctruth_gen_name);
-// LEGACY:     }
-// LEGACY:   }
-// LEGACY: 
-// LEGACY:   // Reset the buffer
-// LEGACY:   void reset() {
-// LEGACY: 
-// LEGACY:     version = 0;
-// LEGACY:     flag = 0x0;
-// LEGACY:     detid = 0;
-// LEGACY: 
-// LEGACY:     channel = 0;
-// LEGACY:     samples_over_threshold = 0;
-// LEGACY:     time_start = 0;
-// LEGACY:     samples_to_peak = 0;
-// LEGACY:     adc_integral = 0;
-// LEGACY:     adc_peak = 0;
-// LEGACY: 
-// LEGACY:     // Reset backtracker members
-// LEGACY:     bt_primary_track_id = INVALID;
-// LEGACY:     bt_num_tracks = INVALID;
-// LEGACY:     bt_primary_track_numelectron_frac = INVALID;
-// LEGACY:     bt_primary_track_energy_frac = INVALID;
-// LEGACY:     bt_edep = 0;
-// LEGACY:     bt_numelectrons = 0;
-// LEGACY:     bt_x = INVALID;
-// LEGACY:     bt_y = INVALID;
-// LEGACY:     bt_z = INVALID;
-// LEGACY:     bt_primary_x = INVALID;
-// LEGACY:     bt_primary_y = INVALID;
-// LEGACY:     bt_primary_z = INVALID;
-// LEGACY:     bt_mctruth_block_id = INVALID;
-// LEGACY:     bt_mctruth_gen_name.clear();
-// LEGACY:   };
-// LEGACY: };
-// LEGACY: 
 } // namespace dunetrigger
 
 REGISTER_SOA_FIELD_NAMES(dunetrigger::MCTruthRow,
@@ -790,7 +455,6 @@ REGISTER_SCALAR_FIELD_NAMES(dunetrigger::EventSummaryData,
                             tot_numelectrons_rop3)
 
 
-
 class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
 public:
   explicit TriggerAnaTree(fhicl::ParameterSet const &p);
@@ -818,7 +482,6 @@ private:
   art::ServiceHandle<art::TFileService> tfs;
   std::map<std::string, TTree *> tree_map;
   // buffers for writing to ROOT Trees
-  // LEGACY: EventMetaDataBuffer ev_buf_leg;
 
   ScalarBuffer<EventMetaData> ev_sbuf;
 
@@ -826,7 +489,6 @@ private:
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
-  // LEGACY: std::map<std::string, TriggerPrimitiveBuffer> tp_bufs_leg;
   std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
 
   std::map<std::string, ChannelInfo> tp_channel_info_bufs;
@@ -841,12 +503,10 @@ private:
 
   bool tp_backtracking;
 
-  // LEGACY: void make_tp_tree_if_needed_leg(std::string tag, bool assn = false);
   void make_tp_tree_if_needed(std::string tag, bool assn = false);
   void make_ta_tree_if_needed(std::string tag, bool assn = false);
   void make_tc_tree_if_needed(std::string tag);
 
-  // LEGACY: std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveBuffer &tp, const std::string &tool_type) const;
   std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveRow &tp, const std::string &tool_type) const;
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
@@ -854,8 +514,6 @@ private:
 
   bool dump_summary_info;
   // visible energy for the event
-  // LEGACY: TTree *summary_tree_leg;
-  // LEGACY: EventSummaryBuffer evsum_buf_leg;
 
   TTree *summary_tree;
   ScalarBuffer<EventSummaryData> evsummary_buf;
@@ -863,22 +521,15 @@ private:
 
   // MCTruth
   bool dump_mctruths;
-  // LEGACY: TTree *mctruth_tree_leg;
-  // LEGACY: MCTruthBuffer mctruth_buf_leg;
 
   TTree* mctruth_tree;
   SoAWriter<MCTruthRow> mctruth_writer;
   
 
-  // LEGACY: TTree *mcneutrino_tree_leg;
-  // LEGACY: MCNeutrinoBuffer mcneutrino_buf_leg;
-
   TTree* mcneutrino_tree;
   SoAWriter<MCNeutrinoRow> mcneutrino_writer;
 
   bool dump_mcparticles;
-  // LEGACY: TTree *mcparticle_tree_leg;
-  // LEGACY: MCParticleBuffer mcparticle_buf_leg;
 
   TTree* mcparticle_tree;
   SoAWriter<MCParticleRow> mcparticle_writer;
@@ -887,8 +538,6 @@ private:
 
   bool dump_simides;
   std::string simchannel_tag;
-  // LEGACY: TTree *simide_tree_leg;
-  // LEGACY: SimIDEBuffer simide_buf_leg;
   TTree* simide_tree;
   SoAWriter<SimIDERow> simide_writer;
   
@@ -923,17 +572,11 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
 
 void dunetrigger::TriggerAnaTree::beginJob() {
   if (dump_mctruths) {
-    // LEGACY: mctruth_tree_leg = tfs->make<TTree>("mctruths", "mctruths");
-    // LEGACY: ev_buf_leg.branch_on(mctruth_tree_leg);
-    // LEGACY: mctruth_buf_leg.branch_on(mctruth_tree_leg);
 
     mctruth_tree = tfs->make<TTree>("mctruths", "mctruths");
     ev_sbuf.make_branches(*mctruth_tree);
     mctruth_writer.make_branches(*mctruth_tree);
 
-    // LEGACY: mcneutrino_tree_leg = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
-    // LEGACY: ev_buf_leg.branch_on(mcneutrino_tree_leg);
-    // LEGACY: mcneutrino_buf_leg.branch_on(mcneutrino_tree_leg);
 
     mcneutrino_tree = tfs->make<TTree>("mcneutrinos", "mcneutrinos");
     ev_sbuf.make_branches(*mcneutrino_tree);
@@ -942,9 +585,6 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
 
   if (dump_mcparticles) {
-    // LEGACY: mcparticle_tree_leg = tfs->make<TTree>("mcparticles", "mcparticles");
-    // LEGACY: ev_buf_leg.branch_on(mcparticle_tree_leg);
-    // LEGACY: mcparticle_buf_leg.branch_on(mcparticle_tree_leg);
 
     mcparticle_tree = tfs->make<TTree>("mcparticles", "mcparticles");
     ev_sbuf.make_branches(*mcparticle_tree);    
@@ -952,9 +592,6 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
 
   if (dump_simides) {
-    // LEGACY: simide_tree_leg = tfs->make<TTree>("simides", "simides");
-    // LEGACY: ev_buf_leg.branch_on(simide_tree_leg);
-    // LEGACY: simide_buf_leg.branch_on(simide_tree_leg);
 
     simide_tree = tfs->make<TTree>("simides", "simides");
     ev_sbuf.make_branches(*simide_tree);    
@@ -962,9 +599,6 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   }
 
   if (dump_summary_info) {
-    // LEGACY: summary_tree_leg = tfs->make<TTree>("event_summary", "event_summary");
-    // LEGACY: ev_buf_leg.branch_on(summary_tree_leg);
-    // LEGACY: evsum_buf_leg.branch_on(summary_tree_leg);
 
     summary_tree = tfs->make<TTree>("event_summary", "event_summary");
     ev_sbuf.make_branches(*summary_tree);
@@ -992,16 +626,11 @@ void dunetrigger::TriggerAnaTree::beginJob() {
 void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   
 
-  // LEGACY: ev_buf_leg.run = e.run();
-  // LEGACY: ev_buf_leg.subrun = e.subRun();
-  // LEGACY: ev_buf_leg.event = e.event();
-
   ev_sbuf.reset();
   ev_sbuf->run = e.run();
   ev_sbuf->subrun = e.subRun();
   ev_sbuf->event = e.event();
 
-  // LEGACY: evsum_buf_leg.clear();
   evsummary_buf.reset();
   mctruth_writer.clear();
   mcneutrino_writer.clear();
@@ -1060,23 +689,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
           const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
           
-          // LEGACY: mcneutrino_buf_leg.mctruth_id = truth_block_counter;
-          // LEGACY: mcneutrino_buf_leg.mctruth_gen_name = generator_name;
-          // LEGACY: mcneutrino_buf_leg.nupdg = mcneutrino.Nu().PdgCode();
-          // LEGACY: mcneutrino_buf_leg.leptonpdg = mcneutrino.Lepton().PdgCode();
-          // LEGACY: mcneutrino_buf_leg.ccnc = mcneutrino.CCNC();
-          // LEGACY: mcneutrino_buf_leg.mode = mcneutrino.Mode();
-          // LEGACY: mcneutrino_buf_leg.iteractionType = mcneutrino.InteractionType();
-          // LEGACY: mcneutrino_buf_leg.target = mcneutrino.Target();
-          // LEGACY: mcneutrino_buf_leg.hitnuc = mcneutrino.HitNuc();
-          // LEGACY: mcneutrino_buf_leg.hitquark = mcneutrino.HitQuark();
-          // LEGACY: mcneutrino_buf_leg.w = mcneutrino.W();
-          // LEGACY: mcneutrino_buf_leg.x = mcneutrino.X();
-          // LEGACY: mcneutrino_buf_leg.y = mcneutrino.Y();
-          // LEGACY: mcneutrino_buf_leg.qsqr = mcneutrino.QSqr();
-          // LEGACY: mcneutrino_buf_leg.pt = mcneutrino.Pt();
-          // LEGACY: mcneutrino_buf_leg.theta = mcneutrino.Theta();
-          // LEGACY: mcneutrino_tree_leg->Fill();
 
           mcneutrino_writer->block_id = truth_block_counter;
           mcneutrino_writer->generator_name = generator_name;
@@ -1111,23 +723,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           // }
 
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
-          // LEGACY: mctruth_buf_leg.id = truth_block_counter;
-          // LEGACY: mctruth_buf_leg.pdg = part.PdgCode();
-          // LEGACY: mctruth_buf_leg.gen_name = generator_name;
-          // LEGACY: mctruth_buf_leg.status = part.StatusCode();
-          // LEGACY: mctruth_buf_leg.process = part.Process();
-          // LEGACY: mctruth_buf_leg.trackid = part.TrackId();
-          // LEGACY: mctruth_buf_leg.x = part.Vx();
-          // LEGACY: mctruth_buf_leg.y = part.Vy();
-          // LEGACY: mctruth_buf_leg.z = part.Vz();
-          // LEGACY: mctruth_buf_leg.t = part.T();
-          // LEGACY: mctruth_buf_leg.Px = part.Px();
-          // LEGACY: mctruth_buf_leg.Py = part.Py();
-          // LEGACY: mctruth_buf_leg.Pz = part.Pz();
-          // LEGACY: mctruth_buf_leg.P = part.P();
-          // LEGACY: mctruth_buf_leg.en = part.E();
-          // LEGACY: mctruth_buf_leg.ek = part.E() - part.Mass();
-          // LEGACY: mctruth_tree_leg->Fill();
 
           mctruth_writer->block_id = truth_block_counter;
           mctruth_writer->pdg = part.PdgCode();
@@ -1173,28 +768,16 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     track_en_sums.clear();
     track_electron_sums.clear();
     for (const sim::SimChannel &sc : *simchannels) {
-      // LEGACY: simide_buf_leg.sim_channel_id = sc.Channel();
 
       sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
       for (const sim::TDCIDE &tdcide : tdcidemap) {
-        // LEGACY: simide_buf_leg.tdc = tdcide.first;
         for (const sim::IDE& ide : tdcide.second) {
 
-          // LEGACY: simide_buf_leg.numElectrons = ide.numElectrons;
-          // LEGACY: simide_buf_leg.energy = ide.energy;
-          // LEGACY: simide_buf_leg.x = ide.x;
-          // LEGACY: simide_buf_leg.y = ide.y;
-          // LEGACY: simide_buf_leg.z = ide.z;
-          // LEGACY: simide_buf_leg.trkId = ide.trackID;
-          // LEGACY: simide_buf_leg.origTrkId = ide.origTrackID;
 
           track_en_sums[ide.trackID] += ide.energy;
           track_electron_sums[ide.trackID] += ide.numElectrons;
 
           ChannelInfo chinfo = get_channel_info_for_channel(geom, sc.Channel());
-          // LEGACY: simide_buf_leg.readout_plane_id = chinfo.rop_id;
-          // LEGACY: simide_buf_leg.readout_view = chinfo.view;
-          // LEGACY: simide_buf_leg.detector_element = chinfo.tpcset_id;
 
           simide_writer->channel = sc.Channel();
           simide_writer->timestamp = tdcide.first;
@@ -1211,30 +794,21 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           
           // populate the total visible energy counters by plane
           if (chinfo.rop_id == 0) {
-            // LEGACY: evsum_buf_leg.tot_visible_energy_rop0 += ide.energy;
-            // LEGACY: evsum_buf_leg.tot_numelectrons_rop0 += ide.numElectrons;
             evsummary_buf->tot_visible_energy_rop0 += ide.energy;
             evsummary_buf->tot_numelectrons_rop0 += ide.numElectrons;
           }
           else if (chinfo.rop_id == 1) {
-            // LEGACY: evsum_buf_leg.tot_visible_energy_rop1 += ide.energy;
-            // LEGACY: evsum_buf_leg.tot_numelectrons_rop1 += ide.numElectrons;
             evsummary_buf->tot_visible_energy_rop1 += ide.energy;
             evsummary_buf->tot_numelectrons_rop1 += ide.numElectrons;
           }
           else if (chinfo.rop_id == 2) {
-            // LEGACY: evsum_buf_leg.tot_visible_energy_rop2 += ide.energy;
-            // LEGACY: evsum_buf_leg.tot_numelectrons_rop2 += ide.numElectrons;
             evsummary_buf->tot_visible_energy_rop2 += ide.energy;
             evsummary_buf->tot_numelectrons_rop2 += ide.numElectrons;
           }
           else if (chinfo.rop_id == 3) {
-            // LEGACY: evsum_buf_leg.tot_visible_energy_rop3 += ide.energy;
-            // LEGACY: evsum_buf_leg.tot_numelectrons_rop3 += ide.numElectrons;
             evsummary_buf->tot_visible_energy_rop3 += ide.energy;
             evsummary_buf->tot_numelectrons_rop3 += ide.numElectrons;
           }
-          // LEGACY: simide_tree_leg->Fill();
           simide_writer.push_back();
           ++simides_count;
         }
@@ -1253,33 +827,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string generator_name = mcparticleHandle.provenance()->inputTag().label();
 
       for (const simb::MCParticle &part : *mcparticleHandle) {
-        // LEGACY: mcparticle_buf_leg.pdg = part.PdgCode();
-        // LEGACY: mcparticle_buf_leg.gen_name = generator_name;
-        // LEGACY: mcparticle_buf_leg.status = part.StatusCode();
-        // LEGACY: mcparticle_buf_leg.trackid = part.TrackId();
-        // LEGACY: mcparticle_buf_leg.mother = part.Mother();
-        // LEGACY: mcparticle_buf_leg.truthid = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
-        // LEGACY: mcparticle_buf_leg.process = part.Process();
-        // LEGACY: mcparticle_buf_leg.x = part.Vx();
-        // LEGACY: mcparticle_buf_leg.y = part.Vy();
-        // LEGACY: mcparticle_buf_leg.z = part.Vz();
-        // LEGACY: mcparticle_buf_leg.t = part.T();
-        // LEGACY: mcparticle_buf_leg.end_x = part.EndX();
-        // LEGACY: mcparticle_buf_leg.end_y = part.EndY();
-        // LEGACY: mcparticle_buf_leg.end_z = part.EndZ();
-        // LEGACY: mcparticle_buf_leg.end_t = part.EndT();
-        // LEGACY: mcparticle_buf_leg.Px = part.Px();
-        // LEGACY: mcparticle_buf_leg.Py = part.Py();
-        // LEGACY: mcparticle_buf_leg.Pz = part.Pz();
-        // LEGACY: mcparticle_buf_leg.en = part.E();
-        // LEGACY: mcparticle_buf_leg.ek = part.E() - part.Mass();
-        // LEGACY: mcparticle_buf_leg.edep = track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0;
-        // LEGACY: mcparticle_buf_leg.numelectrons =
-        // LEGACY:     track_electron_sums.count(part.TrackId()) ? track_electron_sums.at(part.TrackId()) : 0;
-        // LEGACY: mcparticle_buf_leg.shower_edep = track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0;
-        // LEGACY: mcparticle_buf_leg.shower_numelectrons =
-        // LEGACY:     track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0;
-        // LEGACY: mcparticle_tree_leg->Fill();
 
         mcparticle_writer->pdg = part.PdgCode();
         mcparticle_writer->generator_name = generator_name;
@@ -1339,19 +886,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
       }
 
-      // LEGACY: std::string map_tag = "tp/" + tag;
-      // LEGACY: TriggerPrimitiveBuffer &curr_tp_buf = tp_bufs_leg[map_tag];
-      // LEGACY: make_tp_tree_if_needed_leg(tag);
-      // LEGACY: TTree *cur_tp_tree = tree_map[map_tag];
-      // LEGACY: for (const TriggerPrimitive &tp : *tpHandle) {
-      // LEGACY:   curr_tp_buf.from_tp(tp);
-      // LEGACY:   curr_tp_buf.chinfo = get_channel_info_for_channel(geom, tp.channel);
-      // LEGACY:   if (tp_backtracking) {
-      // LEGACY:     std::vector<sim::IDE> matched_ides = match_simides_to_tps(curr_tp_buf, tp_tool_type);
-      // LEGACY:     curr_tp_buf.populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
-      // LEGACY:   }
-      // LEGACY:   cur_tp_tree->Fill();
-      // LEGACY: }
 
       std::string map_tag = "tp/" + tag;
 
@@ -1379,13 +913,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       tp_tree->Fill();
     }
 
-
-
-
-    // LEGACY: evsum_buf_leg.mctruths_count = mctruths_count;
-    // LEGACY: evsum_buf_leg.mcparticles_count = mcparticles_count;
-    // LEGACY: evsum_buf_leg.mcneutrinos_count = mcneutrinos_count;
-    // LEGACY: evsum_buf_leg.simides_count = simides_count;
 
     evsummary_buf->mctruths_count = mctruths_count;
     evsummary_buf->mcparticles_count = mcparticles_count;
@@ -1415,18 +942,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
           art::InputTag ta_input_tag = taHandle.provenance()->inputTag();
           std::string tpInTaTag =
               art::InputTag(ta_input_tag.label(), ta_input_tag.instance() + "inTAs", ta_input_tag.process()).encode();
-          // LEGACY: std::string map_tpInTaTag = "tp/" + tpInTaTag;
-          // LEGACY: make_tp_tree_if_needed_leg(tpInTaTag, true);
           fAssnIdx = i;
           std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
-          // LEGACY: TriggerPrimitiveBuffer &curr_tp_buf = tp_bufs_leg[map_tpInTaTag];
-          // LEGACY: TTree *cur_tp_tree = tree_map[map_tpInTaTag];
 
-          // LEGACY: for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
-          // LEGACY:   curr_tp_buf.from_tp(*tp);
-          // LEGACY:   curr_tp_buf.chinfo = get_channel_info_for_channel(geom, tp->channel);
-          // LEGACY:   cur_tp_tree->Fill();
-          // LEGACY: }
 
           std::string map_tpInTaTag = "tp/" + tpInTaTag;
           make_tp_tree_if_needed(tpInTaTag, true);
@@ -1488,7 +1006,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   }
 
   if (dump_summary_info) {
-    // LEGACY: summary_tree_leg->Fill();
     summary_tree->Fill();
   }
 
@@ -1501,22 +1018,6 @@ void dunetrigger::TriggerAnaTree::endJob() {
   auto n = tfs->make<TNamed>("info", info_data.dump().c_str());
   n->Write();
 }
-
-// LEGACY: void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed_leg(std::string tag, bool assn) {
-// LEGACY:   std::string map_tag = "tp/" + tag;
-// LEGACY:   if (!tree_map.count(map_tag)) {
-// LEGACY:     art::TFileDirectory tp_dir = tfs->mkdir("TriggerPrimitives", "Trigger Primitive Trees");
-// LEGACY:     std::cout << "Creating new TTree for " << tag << std::endl;
-// LEGACY:     std::string tree_name = tag;
-// LEGACY:     std::replace(tree_name.begin(), tree_name.end(), ':', '_');
-// LEGACY:     TTree *tree = tp_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
-// LEGACY:     tree_map[map_tag] = tree;
-// LEGACY:     TriggerPrimitiveBuffer &tp = tp_bufs_leg[map_tag];
-// LEGACY:     ev_buf_leg.branch_on(tree);
-// LEGACY:     tp.branch_on(tree, tp_backtracking);
-// LEGACY:     if (assn) tree->Branch("TAnumber", &fAssnIdx);
-// LEGACY:   }
-// LEGACY: }
 
 
 void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool assn) {
@@ -1562,7 +1063,6 @@ void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool a
     TTree *tree = ta_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
     TriggerActivityData &ta = ta_bufs[map_tag];
-    // LEGACY: ev_buf_leg.branch_on(tree);
 
     tree->Branch("version", &ta.version);
     tree->Branch("time_start", &ta.time_start);
@@ -1595,7 +1095,6 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
     TTree *tree = tc_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
     TriggerCandidateData &tc = tc_bufs[map_tag];
-    // LEGACY: ev_buf_leg.branch_on(tree);
 
     tree->Branch("version", &tc.version);
     tree->Branch("time_start", &tc.time_start);
@@ -1617,120 +1116,10 @@ dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_chann
   return result;
 }
 
-// LEGACY: void dunetrigger::TriggerPrimitiveBuffer::from_tp(const TriggerPrimitive &tp) {
-// LEGACY:   version = 2; // temp, since variables below are converted to v2 version while the TP version in TriggerSim is still 1.
                // Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
-// LEGACY:   flag = 0;
-// LEGACY:   detid = tp.detid;
-// LEGACY:   channel = tp.channel;
-// LEGACY:   samples_over_threshold = (tp.time_over_threshold) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-// LEGACY:   time_start = tp.time_start;
-// LEGACY:   samples_to_peak = (tp.time_peak - tp.time_start) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-// LEGACY:   adc_integral = tp.adc_integral;
-// LEGACY:   adc_peak = tp.adc_peak;
-// LEGACY: }
-// LEGACY: 
-// LEGACY: void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info(
-// LEGACY:     const std::vector<sim::IDE> &ides, 
-// LEGACY:     const std::unordered_map<int, int> &trkid_to_truth_block,
-// LEGACY:     std::unordered_map<int, std::string> &truth_id_to_gen) {
-// LEGACY: 
   // Reset backtracker members
-// LEGACY:   bt_primary_track_id = INVALID;
-// LEGACY:   bt_primary_track_numelectron_frac = INVALID;
-// LEGACY:   bt_primary_track_energy_frac = INVALID;
-// LEGACY:   bt_edep = 0;
-// LEGACY:   bt_numelectrons = 0;
-// LEGACY:   bt_x = INVALID;
-// LEGACY:   bt_y = INVALID;
-// LEGACY:   bt_z = INVALID;
-// LEGACY:   bt_primary_x = INVALID;
-// LEGACY:   bt_primary_y = INVALID;
-// LEGACY:   bt_primary_z = INVALID;
-// LEGACY:   bt_mctruth_block_id = INVALID;
-// LEGACY:   bt_mctruth_gen_name.clear();
-// LEGACY: 
-// LEGACY:   if (ides.size() == 0) {
-// LEGACY:     return;
-// LEGACY:   }
-// LEGACY:   
   // Backtracked ides - consider only ides with valid track ID.
-// LEGACY:   std::vector<sim::IDE> bt_ides;
-// LEGACY:   bt_ides.reserve(ides.capacity());
-// LEGACY:   std::copy_if (ides.begin(), ides.end(), std::back_inserter(bt_ides), [](const sim::IDE& ide){return ide.trackID != 0;} );
-// LEGACY: 
-// LEGACY:   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-// LEGACY:   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
-// LEGACY: 
-// LEGACY:   std::map<int, double> track_numelectrons;
-// LEGACY:   std::map<int, double> track_energies;
-// LEGACY: 
-// LEGACY:   if (bt_ides.empty() ) {
-// LEGACY:     std::cout << "Empty IDEs set!" << std::endl;
-// LEGACY:     return;
-// LEGACY:   }
-// LEGACY: 
-// LEGACY:   for (const sim::IDE &ide : bt_ides) {
-// LEGACY:     int mc_track_id = pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId();
-// LEGACY:     track_numelectrons[mc_track_id] += ide.numElectrons;
-// LEGACY:     bt_numelectrons += ide.numElectrons;
-// LEGACY:     bt_edep += ide.energy;
-// LEGACY:   }
-// LEGACY:   bt_primary_track_id =
-// LEGACY:       std::max_element(track_numelectrons.begin(), track_numelectrons.end(), [](const auto &a, const auto &b) {
-// LEGACY:         return a.second < b.second;
-// LEGACY:       })->first;
-// LEGACY: 
-// LEGACY:   std::vector<sim::IDE> primary_ides;
-// LEGACY:   for (const sim::IDE &ide : bt_ides) {
-// LEGACY:     if (pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId() == bt_primary_track_id) {
-// LEGACY:       primary_ides.push_back(ide);
-// LEGACY:     }
-// LEGACY:   }
-// LEGACY: 
-// LEGACY:   bt_num_tracks = track_numelectrons.size();
-// LEGACY:   bt_primary_track_numelectron_frac = track_numelectrons[bt_primary_track_id] / bt_numelectrons;
-// LEGACY:   bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
-// LEGACY: 
-// LEGACY:   std::vector<double> bt_position = bt_serv->SimIDEsToXYZ(ides);
-// LEGACY:   std::vector<double> primary_bt_position = bt_serv->SimIDEsToXYZ(primary_ides);
-// LEGACY: 
-// LEGACY:   bt_x = bt_position[0];
-// LEGACY:   bt_y = bt_position[1];
-// LEGACY:   bt_z = bt_position[2];
-// LEGACY:   bt_primary_x = primary_bt_position[0];
-// LEGACY:   bt_primary_y = primary_bt_position[1];
-// LEGACY:   bt_primary_z = primary_bt_position[2];
-// LEGACY: 
-// LEGACY:   bt_mctruth_block_id = trkid_to_truth_block.at(bt_primary_track_id);
-// LEGACY:   bt_mctruth_gen_name = truth_id_to_gen.at(bt_mctruth_block_id);
-// LEGACY: }
 
-
-// LEGACY: std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const TriggerPrimitiveBuffer &tp,
-// LEGACY:                                                                         const std::string &tool_type) const {
-// LEGACY:   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-// LEGACY:   auto it = bt_view_offsets.find(tool_type);
-// LEGACY:   if (it == bt_view_offsets.end()) {
-// LEGACY:     std::cout << "No offsets found for tool type " << tool_type << ", using 0,0,0" << std::endl;
-// LEGACY:   }
-// LEGACY:   const std::array<int, 3> &offsets = it != bt_view_offsets.end() ? it->second : std::array<int, 3>{0, 0, 0};
-// LEGACY:   int offset = 0;
-// LEGACY:   switch (tp.chinfo.view) {
-// LEGACY:     case geo::kU: offset = offsets[0]; break;
-// LEGACY:     case geo::kV: offset = offsets[1]; break;
-// LEGACY:     case geo::kW: offset = offsets[2]; break;
-// LEGACY:     default: break;
-// LEGACY:   }
-// LEGACY:   int sample_start = tp.time_start / TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-// LEGACY:   int sample_end = sample_start + tp.samples_over_threshold;
-// LEGACY:   sample_start += offset; sample_end += offset;
-// LEGACY:   sample_start = std::max(0, sample_start); sample_end = std::max(0, sample_end);
-// LEGACY:   if (sample_start > sample_end) { throw std::runtime_error("Invalid sample range"); }
-// LEGACY:   art::Ptr<sim::SimChannel> sim_channel = bt_serv->FindSimChannel(tp.channel);
-// LEGACY:   std::vector<sim::IDE> matched_ides = sim_channel->TrackIDsAndEnergies(sample_start, sample_end);
-// LEGACY:   return matched_ides;
-// LEGACY: }
 
 std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const TriggerPrimitiveRow &tp,
                                                                         const std::string &tool_type) const {
