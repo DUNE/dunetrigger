@@ -486,7 +486,6 @@ private:
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
   std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
 
-  std::map<std::string, ChannelInfo> tp_channel_info_bufs;
   std::map<std::string, TriggerActivityData> ta_bufs;
   std::map<std::string, TriggerCandidateData> tc_bufs;
   std::map<int, double> track_en_sums;
@@ -631,6 +630,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   mcneutrino_writer.clear();
   mcparticle_writer.clear();
   simide_writer.clear();
+  track_en_sums.clear();
+  track_electron_sums.clear();
 
   // Clear all TP writers
   for( auto& [tag, tpw] : tp_writers) {
@@ -661,7 +662,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     }
 
 
-    std::cout << "Found " << mctruth_collection_size << " mctruth entries" << std::endl;
     mctruth_writer.buffer().reserve(mctruth_collection_size);
 
     for (auto const &mctruthHandle : mctruthHandles) {
@@ -709,13 +709,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
         int nparticles = truthblock.NParticles();
 
-        std::cout << "Processing " << generator_name << " size: " << nparticles << std::endl;
 
         for (int ipart = 0; ipart < nparticles; ipart++) {
-
-          // if ((mctruths_count % 100) == 0 ) {
-          //   std::cout << "-->> " << mctruths_count << std::endl;
-          // }
 
           const simb::MCParticle &part = truthblock.GetParticle(ipart);
 
@@ -746,13 +741,10 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
     mcneutrino_tree->Fill();
 
-    std::cout << "Collected " << mctruth_writer.row_count() << " mctruth rows" << std::endl;
-    std::cout << "Filling mctruth_tree" << std::endl;
     mctruth_tree->Fill();
-    std::cout << "Filling completed" << std::endl;
 
     json j_mctruth_gen_map(truthBlockId_to_generator_name);
-    info_data["mcthruth_blockod_map"] = j_mctruth_gen_map;
+    info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
 
   }
 
@@ -760,8 +752,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
     art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
 
-    track_en_sums.clear();
-    track_electron_sums.clear();
+
     for (const sim::SimChannel &sc : *simchannels) {
 
       sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
@@ -908,13 +899,12 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       tp_tree->Fill();
     }
 
-
-    evsummary_buf->mctruths_count = mctruths_count;
-    evsummary_buf->mcparticles_count = mcparticles_count;
-    evsummary_buf->mcneutrinos_count = mcneutrinos_count;
-    evsummary_buf->simides_count = simides_count;
-
   }
+
+  evsummary_buf->mctruths_count = mctruths_count;
+  evsummary_buf->mcparticles_count = mcparticles_count;
+  evsummary_buf->mcneutrinos_count = mcneutrinos_count;
+  evsummary_buf->simides_count = simides_count;
 
   if (dump_ta) {
     std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
