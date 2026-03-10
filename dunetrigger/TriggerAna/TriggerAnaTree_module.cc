@@ -1365,8 +1365,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
       TTree *cur_tp_tree_2g = tree_map[map_tag_2g];
 
-      auto* curr_tp_writer = &tp_writers[map_tag];
-      auto* curr_tpbt_writer = (tp_backtracking ? &tpbt_writers[map_tag] : nullptr);
+      auto* curr_tp_writer = &tp_writers[map_tag_2g];
+      auto* curr_tpbt_writer = (tp_backtracking ? &tpbt_writers[map_tag_2g] : nullptr);
 
       for (const TriggerPrimitive &tp : *tpHandle) {
         auto& tp_writer = *curr_tp_writer;
