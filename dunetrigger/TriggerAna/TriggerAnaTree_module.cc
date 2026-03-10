@@ -377,6 +377,12 @@ struct TriggerPrimitiveBacktrackingRow {
   TriggerPrimitiveBacktrackingRow() = default;
 };
 
+struct TriggerPrimitiveAssociationRow {
+
+  int ta_number = -1;
+
+  TriggerPrimitiveAssociationRow() = default;
+};
 
 // --------------------------------------------
 
@@ -761,6 +767,9 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveBacktrackingRow,
                          bt_truth_block_id,
                          bt_generator_name)
 
+REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveAssociationRow,
+                         ta_number)
+
 REGISTER_SCALAR_FIELD_NAMES(dunetrigger::EventMetaData,
                             event,
                             run,
@@ -800,6 +809,12 @@ public:
   void endJob() override;
 
 private:
+
+  using TriggerPrimitiveWriter = SoAWriter<TriggerPrimitiveRow>;
+  using TriggerPrimitiveBacktrackingWriter = SoAWriter<TriggerPrimitiveBacktrackingRow>;
+  using TriggerPrimitiveAssociationWriter = SoAWriter<TriggerPrimitiveAssociationRow>;
+
+
   art::ServiceHandle<art::TFileService> tfs;
   std::map<std::string, TTree *> tree_map;
   // buffers for writing to ROOT Trees
@@ -812,8 +827,7 @@ private:
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
   std::map<std::string, TriggerPrimitiveBuffer> tp_bufs;
-  std::map<std::string, SoAWriter<TriggerPrimitiveRow>> tp_writers;
-  std::map<std::string, SoAWriter<TriggerPrimitiveBacktrackingRow>> tpbt_writers;
+  std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
 
   std::map<std::string, ChannelInfo> tp_channel_info_bufs;
   std::map<std::string, TriggerActivityData> ta_bufs;
@@ -1000,12 +1014,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   mcparticle_writer.clear();
   simide_writer.clear();
 
+  // Clear all TP writers
   for( auto& [tag, tpw] : tp_writers) {
-    tpw.clear();
-  }
-
-  for( auto& [tag, tpw] : tpbt_writers) {
-    tpw.clear();
+    std::apply([](auto&... w) { (w.clear(), ...); }, tpw);
   }
 
   size_t mctruths_count = 0;
@@ -1340,6 +1351,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
       }
 
+      // Legacy code
       std::string map_tag = "tp/" + tag;
 
       TriggerPrimitiveBuffer &curr_tp_buf = tp_bufs[map_tag];
@@ -1365,11 +1377,10 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
       TTree *cur_tp_tree_2g = tree_map[map_tag_2g];
 
-      auto* curr_tp_writer = &tp_writers[map_tag_2g];
-      auto* curr_tpbt_writer = (tp_backtracking ? &tpbt_writers[map_tag_2g] : nullptr);
+      auto& [tp_writer, tpbt_writer, tpass_writer] = tp_writers[map_tag_2g];
+
 
       for (const TriggerPrimitive &tp : *tpHandle) {
-        auto& tp_writer = *curr_tp_writer;
         tp_writer->from_tp(tp);
         auto chinfo = get_channel_info_for_channel(geom, tp.channel);
         tp_writer->readout_plane_id = chinfo.rop_id;
@@ -1377,10 +1388,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         tp_writer->TPCSetID = chinfo.tpcset_id;
         tp_writer.push_back();
 
-        if (curr_tpbt_writer) {
-          auto& tpbt_writer = *curr_tpbt_writer;
+        if (tpbt_writer) {
           std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row(), tp_tool_type);
-          tpbt_writer.row().populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
+          tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
           tpbt_writer.push_back();
         }
       }
@@ -1537,21 +1547,18 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed_2g(std::string tag, boo
     TTree* tree = tp_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
 
-    // Initialize TP writer
-    SoAWriter<TriggerPrimitiveRow>& tpw = tp_writers[map_tag];
 
     ev_sbuf.make_branches(*tree);
+
+    auto& [tpw, tpbtw, tpassw] = tp_writers[map_tag];
+    tpbtw.enable(tp_backtracking);
+    tpassw.enable(assn);
     tpw.make_branches(*tree);
+    tpbtw.make_branches(*tree);   // no-op if disabled
+    tpassw.make_branches(*tree);
 
-    if (tp_backtracking) {
-
-      // Initialize TP backtracking writer
-      SoAWriter<TriggerPrimitiveBacktrackingRow>& tpbtw = tpbt_writers[map_tag];
-      tpbtw.make_branches(*tree);
-    }
-    // FIXME: reintroduce TAnumber in the new schema
-    // if (assn)
-    //   tree->Branch("TAnumber", &fAssnIdx);
+    // }
+    // auto& [curr_tp_writer, curr_tpbt_writer] = it->second;
   }
 }
 
