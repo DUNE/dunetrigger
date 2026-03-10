@@ -436,6 +436,7 @@ template<typename Struct>
 class SoAWriter {
 public:
     /// Access the staging row fields via `writer->field`.
+    /// Always available regardless of enabled state.
     Struct* operator->() noexcept { return &row_; }
     const Struct* operator->() const noexcept { return &row_; }
     Struct& row() noexcept { return row_; }
@@ -451,24 +452,37 @@ public:
     }
 
     // ------------------------------------------------------------------
+    // Enable / disable
+    // ------------------------------------------------------------------
+
+    /// Activate or deactivate this writer (default: enabled).
+    /// When disabled, make_branches, push_back, commit_and_reset, and
+    /// clear are all no-ops.  Must be called before make_branches.
+    void enable(bool e = true) noexcept { enabled_ = e; }
+
+    /// Returns true when this writer is active.
+    [[nodiscard]] explicit operator bool() const noexcept { return enabled_; }
+
+    // ------------------------------------------------------------------
     // Core operations
     // ------------------------------------------------------------------
 
     /// Copy the current value of `row` into the SoA buffer.
+    /// No-op when disabled.
     void push_back() {
-        buffer_.push_back(row_);
+        if (enabled_) buffer_.push_back(row_);
     }
 
     /// Copy current row into the buffer and reset staging row.
+    /// No-op when disabled.
     void commit_and_reset() {
-        push_back();
-        reset_row();
+        if (enabled_) { buffer_.push_back(row_); reset_row(); }
     }
 
     /// Empty the SoA buffer and zero-initialise the staging row.
+    /// No-op when disabled.
     void clear() {
-        buffer_.clear();
-        reset_row();
+        if (enabled_) { buffer_.clear(); reset_row(); }
     }
 
     /// Zero-initialise the staging row without touching the buffer.
@@ -493,8 +507,9 @@ public:
     // ROOT TTree forwarding
     // ------------------------------------------------------------------
 
+    /// Register branches on the tree.  No-op when disabled.
     void make_branches(TTree& tree, const std::string& prefix = "") {
-        buffer_.make_branches(tree, prefix);
+        if (enabled_) buffer_.make_branches(tree, prefix);
     }
 
     void print_summary(std::ostream& os = std::cout) const {
@@ -502,6 +517,7 @@ public:
     }
 
 private:
+    bool enabled_ = true;
     Struct row_{};
     SoABuffer<Struct> buffer_;
 };
