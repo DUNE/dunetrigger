@@ -6,7 +6,7 @@ namespace dunetrigger {
 using namespace dunedaq::trgdataformats;
 
 std::vector<double>
-TPAlgPDSMatchedFilter::correlate(std::vector<short> const &adcs) {
+TPAlgPDSMatchedFilter::correlate(std::vector<double> const &adcs) {
   size_t n_samples = adcs.size() / fSubSampleFactor;
   size_t n_taps = fTemplate.size();
   size_t n_out = n_samples - n_taps + 1;
@@ -15,8 +15,7 @@ TPAlgPDSMatchedFilter::correlate(std::vector<short> const &adcs) {
   for (size_t i = 0; i < n_out; i++) {
     double sum = 0.0;
     for (size_t j = 0; j < n_taps; ++j) {
-      double adc_val =
-          static_cast<double>(adcs.at(fSubSampleFactor * (i + j))) - fPedestal;
+      double adc_val = adcs.at(fSubSampleFactor * (i + j));
       sum += adc_val * static_cast<double>(fTemplate[j]);
     }
     xcorr[i] = sum * fXCorrNormFactor;
@@ -72,21 +71,26 @@ void TPAlgPDSMatchedFilter::process_waveform(
               << std::endl;
   }
   set_pedestal(adcs);
-  std::vector<double> xcorr = correlate(adcs);
+  std::vector<double> ped_subtracted(adcs.size(), 0.0);
+  for (size_t i = 0; i < adcs.size(); ++i) {
+    ped_subtracted[i] = static_cast<double>(adcs.at(i)) - fPedestal;
+  }
+  std::vector<double> xcorr = correlate(ped_subtracted);
   std::vector<TPWindow> tp_windows = find_tp_windows(xcorr);
   for (auto const &[start, end, npes] : tp_windows) {
     TriggerPrimitive this_tp = initalize_tp();
     this_tp.time_start = start_time + start;
     this_tp.time_over_threshold = (end - start + 1);
-    this_tp.adc_integral = 0;
     this_tp.adc_peak = 0;
+    double integral = 0.0;
     for (timestamp_t t = start; t <= end; ++t) {
-      this_tp.adc_integral += adcs.at(t);
-      if (adcs.at(t) > this_tp.adc_peak) {
-        this_tp.adc_peak = adcs.at(t);
+      integral += ped_subtracted.at(t);
+      if (ped_subtracted.at(t) > this_tp.adc_peak) {
+        this_tp.adc_peak = ped_subtracted.at(t);
         this_tp.time_peak = start_time + t;
       }
     }
+    this_tp.adc_integral = static_cast<uint32_t>(integral);
     this_tp.time_start *= ADC_SAMPLING_RATE_IN_DTS;
     this_tp.time_peak *= ADC_SAMPLING_RATE_IN_DTS;
     this_tp.time_over_threshold *= ADC_SAMPLING_RATE_IN_DTS;

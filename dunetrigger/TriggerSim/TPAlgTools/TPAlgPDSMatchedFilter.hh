@@ -43,7 +43,7 @@ public:
     }
   }
 
-  std::vector<double> correlate(std::vector<short> const &adcs);
+  std::vector<double> correlate(std::vector<double> const &adcs);
   std::vector<TPWindow>
   find_tp_windows(std::vector<double> const &xcorr);
 
