@@ -322,6 +322,11 @@ void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
 
 } // namespace dunetrigger
 
+
+//
+// C++17 SOA and Scalar fields registration
+// To be removed when LArSoft switches to C++20 standard.
+//
 REGISTER_SOA_FIELD_NAMES(dunetrigger::MCTruthRow,
                          pdg,
                          process,
