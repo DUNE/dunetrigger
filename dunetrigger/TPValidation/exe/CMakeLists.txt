@@ -1,0 +1,11 @@
+cet_make_exec(geo_inspector
+  SOURCE
+    geo_inspector.cxx
+  LIBRARIES
+    dunecore::ArtSupport
+    dunecore::Geometry
+    larcorealg::Geometry
+    larcore::headers
+    larcore::Geometry_Geometry_service
+    ROOT::Tree
+)
