@@ -57,7 +57,16 @@ private:
 //  REGISTER_FIELD_NAMES(StructType, field1, field2, ...)
 //  Specialises FieldNames<StructType>.  Place at namespace scope after the
 //  struct definition.  Enforces that the name count matches the field count.
+//  In C++20 mode field names are derived automatically via Boost.PFR and
+//  this macro is ignored; a compiler warning is emitted to alert the user.
 // ---------------------------------------------------------------------------
+#if __cplusplus >= 202002L
+#define REGISTER_FIELD_NAMES(StructType, ...)                                  \
+    static_assert(sizeof(StructType) == 0,                                     \
+        "REGISTER_FIELD_NAMES is not needed in C++20 mode: "                   \
+        "field names are derived automatically via boost::pfr::names_as_array. "\
+        "Remove this macro call.");
+#else
 #define REGISTER_FIELD_NAMES(StructType, ...)                                   \
 template<>                                                                       \
 struct FieldNames<StructType> {                                                  \
@@ -80,6 +89,7 @@ private:                                                                        
         return { std::string(n[Is])... };                                        \
     }                                                                            \
 };
+#endif // __cplusplus >= 202002L
 
 // ---------------------------------------------------------------------------
 //  trg_detail::get_field_names<Struct>()
