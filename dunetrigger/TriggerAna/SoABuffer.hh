@@ -1,5 +1,5 @@
-#ifndef SOA_BUFFER_HPP
-#define SOA_BUFFER_HPP
+#ifndef SOA_BUFFER_HH
+#define SOA_BUFFER_HH
 // =============================================================================
 //  SoABuffer.hpp
 //  Automatic Structure-of-Arrays buffer from a C++ struct,
@@ -21,7 +21,7 @@
 //    g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
 // =============================================================================
 
-#include "FieldNames.hpp"
+#include "FieldNames.hh"
 
 #include <boost/pfr.hpp>
 #include <TTree.h>
@@ -303,4 +303,4 @@ private:
     }
 };
 
-#endif // SOA_BUFFER_HPP
+#endif // SOA_BUFFER_HH

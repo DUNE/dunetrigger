@@ -1,5 +1,5 @@
-#ifndef SCALAR_BUFFER_HPP
-#define SCALAR_BUFFER_HPP
+#ifndef SCALAR_BUFFER_HH
+#define SCALAR_BUFFER_HH
 // =============================================================================
 //  ScalarBuffer.hpp
 //  Saves one POD struct per ROOT event as scalar branches (no std::vector).
@@ -23,7 +23,7 @@
 //    g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o demo
 // =============================================================================
 
-#include "FieldNames.hpp"
+#include "FieldNames.hh"
 
 #include <boost/pfr.hpp>
 #include <TTree.h>
@@ -144,4 +144,4 @@ private:
     bool enabled_ = true;
 };
 
-#endif // SCALAR_BUFFER_HPP
+#endif // SCALAR_BUFFER_HH

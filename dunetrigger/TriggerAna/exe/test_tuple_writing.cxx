@@ -5,8 +5,8 @@
 //    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
 // =============================================================================
 
-#include "../SoABuffer.hpp"
-#include "../ScalarBuffer.hpp"
+#include "../SoABuffer.hh"
+#include "../ScalarBuffer.hh"
 
 #include <TFile.h>
 #include <TTree.h>

@@ -1,5 +1,5 @@
-#ifndef TRG_FIELD_NAMES_HPP
-#define TRG_FIELD_NAMES_HPP
+#ifndef TRG_FIELD_NAMES_HH
+#define TRG_FIELD_NAMES_HH
 // =============================================================================
 //  FieldNames.hpp
 //  Shared field-name reflection used by SoABuffer and ScalarBuffer.
@@ -122,4 +122,4 @@ get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
 
 } // namespace trg_detail
 
-#endif // TRG_FIELD_NAMES_HPP
+#endif // TRG_FIELD_NAMES_HH

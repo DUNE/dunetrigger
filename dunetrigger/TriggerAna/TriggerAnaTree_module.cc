@@ -41,8 +41,8 @@
 #include <TTree.h>
 
 
-#include "SoABuffer.hpp"
-#include "ScalarBuffer.hpp"
+#include "SoABuffer.hh"
+#include "ScalarBuffer.hh"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
