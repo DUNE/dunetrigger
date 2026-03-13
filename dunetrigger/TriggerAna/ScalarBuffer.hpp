@@ -43,10 +43,12 @@
 //  directly into its fields.  One Fill() per event.
 //
 //  Methods:
-//    make_branches(TTree&, prefix)       -- register scalar branches (write)
+//    make_branches(TTree&, prefix)       -- register scalar branches (gated)
 //    set_branch_addresses(TTree&, prefix)-- attach to existing branches (read)
 //    data                               -- public Struct instance (read/write)
 //    reset()                            -- zero-initialise data
+//    enable(bool) / is_enabled()        -- enable/disable write operations
+//    operator bool()                    -- true when enabled
 //    print_summary(os)                  -- list field names and addresses
 // ---------------------------------------------------------------------------
 template<typename Struct>
@@ -69,6 +71,18 @@ public:
     ScalarBuffer() = default;
 
     // ------------------------------------------------------------------
+    // Enable / disable
+    // ------------------------------------------------------------------
+
+    /// Activate or deactivate write operations (default: enabled).
+    /// When disabled, make_branches is a no-op.
+    /// Must be called before make_branches.
+    void enable(bool e = true) noexcept { enabled_ = e; }
+
+    [[nodiscard]] bool is_enabled() const noexcept { return enabled_; }
+    [[nodiscard]] explicit operator bool() const noexcept { return enabled_; }
+
+    // ------------------------------------------------------------------
     // Reset
     // ------------------------------------------------------------------
 
@@ -79,10 +93,11 @@ public:
     // ROOT TTree interface -- write
     // ------------------------------------------------------------------
 
-    /// Register one scalar branch per field.
+    /// Register one scalar branch per field.  No-op when disabled.
     /// Branch leaf descriptor is derived automatically from the field type.
     /// prefix + field_name is used as the branch name.
     void make_branches(TTree& tree, const std::string& prefix = "") {
+        if (!enabled_) return;
         auto names = trg_detail::get_field_names<Struct>();
         std::size_t i = 0;
         std::apply([&](auto&... fields) {
@@ -125,6 +140,8 @@ public:
         }, boost::pfr::structure_tie(data));
     }
 
+private:
+    bool enabled_ = true;
 };
 
 #endif // SCALAR_BUFFER_HPP
