@@ -1,10 +1,11 @@
-cet_make_exec(soa_demo
+cet_test(test_tuple_writing
   SOURCE
-    soa_demo.cxx
+    test_tuple_writing.cxx
   LIBRARIES
     larcore::headers
     Boost::headers
     ROOT::Tree
+  NO_AUTO
 )
 
 install_source()
