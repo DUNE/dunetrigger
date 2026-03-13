@@ -14,15 +14,16 @@
 //
 //  Field-name reflection:
 //    C++20 : real field names via boost::pfr::names_as_array (automatic).
-//    C++17 : use REGISTER_SCALAR_FIELD_NAMES(StructType, field1, field2, ...)
-//            at namespace scope -- shares the same Boost.PP machinery as
-//            REGISTER_SOA_FIELD_NAMES in SoABuffer.hpp.
+//    C++17 : use REGISTER_FIELD_NAMES(StructType, field1, field2, ...)
+//            at namespace scope (provided by FieldNames.hpp).
 //
 //  Compile (C++17):
 //    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o demo
 //  Compile (C++20, real field names):
 //    g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o demo
 // =============================================================================
+
+#include "FieldNames.hpp"
 
 #include <boost/pfr.hpp>
 #include <TTree.h>
@@ -34,11 +35,6 @@
 #include <type_traits>
 #include <utility>
 #include <stdexcept>
-
-#include <boost/preprocessor/variadic/to_seq.hpp>
-#include <boost/preprocessor/seq/transform.hpp>
-#include <boost/preprocessor/seq/enum.hpp>
-#include <boost/preprocessor/stringize.hpp>
 
 // ---------------------------------------------------------------------------
 //  ROOT type-leaf string for scalar branches.
@@ -56,98 +52,6 @@ template<> struct RootLeafType<unsigned long> { static constexpr const char* val
 template<> struct RootLeafType<short>         { static constexpr const char* value = "S"; };
 template<> struct RootLeafType<bool>          { static constexpr const char* value = "O"; };
 template<> struct RootLeafType<char>          { static constexpr const char* value = "B"; };
-
-// Build runtime field name array (shared logic with SoABuffer).
-// C++20: real names via pfr::names_as_array.
-// C++17: delegated to ScalarFieldNames<Struct> trait (see below).
-template<typename Struct>
-std::array<std::string, boost::pfr::tuple_size_v<Struct>>
-get_field_names();   // defined after ScalarFieldNames
-
-} // namespace scalar_detail
-
-// ---------------------------------------------------------------------------
-//  ScalarFieldNames<Struct> -- same pattern as SoaFieldNames in SoABuffer.hpp.
-//  Specialise via REGISTER_SCALAR_FIELD_NAMES in C++17 mode.
-// ---------------------------------------------------------------------------
-template<typename Struct>
-struct ScalarFieldNames {
-    static constexpr bool registered = false;
-
-    static std::array<std::string, boost::pfr::tuple_size_v<Struct>> get() {
-        return get_impl(std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
-    }
-private:
-    template<std::size_t... Is>
-    static std::array<std::string, sizeof...(Is)>
-    get_impl(std::index_sequence<Is...>) {
-        return { ("field_" + std::to_string(Is))... };
-    }
-};
-
-// ---------------------------------------------------------------------------
-//  Boost.PP stringify helper (same technique as in SoABuffer.hpp).
-// ---------------------------------------------------------------------------
-#define SCALAR_PP_STRINGIFY_OP(r, _, elem) BOOST_PP_STRINGIZE(elem)
-
-#define SCALAR_PP_STRINGIFY_EACH(...)                       \
-    BOOST_PP_SEQ_ENUM(                                      \
-        BOOST_PP_SEQ_TRANSFORM(                             \
-            SCALAR_PP_STRINGIFY_OP, _,                      \
-            BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
-
-// ---------------------------------------------------------------------------
-//  REGISTER_SCALAR_FIELD_NAMES(StructType, field1, field2, ...)
-//  Specialises ScalarFieldNames for StructType.
-//  Place at namespace scope, after the struct definition.
-// ---------------------------------------------------------------------------
-#define REGISTER_SCALAR_FIELD_NAMES(StructType, ...)                            \
-template<>                                                                       \
-struct ScalarFieldNames<StructType> {                                            \
-    static constexpr bool registered = true;                                     \
-    static constexpr std::size_t kN = boost::pfr::tuple_size_v<StructType>;     \
-    static std::array<std::string, kN> get() {                                  \
-        static const char* const names[] = {                                    \
-            SCALAR_PP_STRINGIFY_EACH(__VA_ARGS__)                                \
-        };                                                                       \
-        return get_impl(std::make_index_sequence<kN>{}, names);                  \
-    }                                                                            \
-private:                                                                         \
-    template<std::size_t... Is>                                                  \
-    static std::array<std::string, sizeof...(Is)>                               \
-    get_impl(std::index_sequence<Is...>, const char* const* n) {                \
-        return { std::string(n[Is])... };                                        \
-    }                                                                            \
-};
-
-// ---------------------------------------------------------------------------
-//  scalar_detail::get_field_names  (needs ScalarFieldNames to be visible)
-// ---------------------------------------------------------------------------
-namespace scalar_detail {
-
-template<typename Struct>
-std::array<std::string, boost::pfr::tuple_size_v<Struct>>
-get_field_names() {
-#if __cplusplus >= 202002L
-    constexpr auto pfr_names = boost::pfr::names_as_array<Struct>();
-    return get_names_impl<Struct>(pfr_names,
-        std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
-#else
-    static_assert(ScalarFieldNames<Struct>::registered,
-        "ScalarBuffer (C++17): field names not registered for this struct. "
-        "Use REGISTER_SCALAR_FIELD_NAMES(StructType, field1, field2, ...) "
-        "at namespace scope, or compile with -std=c++20.");
-    return ScalarFieldNames<Struct>::get();
-#endif
-}
-
-#if __cplusplus >= 202002L
-template<typename Struct, typename NamesArray, std::size_t... Is>
-std::array<std::string, sizeof...(Is)>
-get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
-    return { std::string(pfr_names[Is])... };
-}
-#endif
 
 } // namespace scalar_detail
 
@@ -216,11 +120,11 @@ public:
     // ------------------------------------------------------------------
 
     static std::array<std::string, kNFields> field_names() {
-        return scalar_detail::get_field_names<Struct>();
+        return trg_detail::get_field_names<Struct>();
     }
 
     void print_summary(std::ostream& os = std::cout) const {
-        auto names = scalar_detail::get_field_names<Struct>();
+        auto names = trg_detail::get_field_names<Struct>();
         os << "ScalarBuffer<" << typeid(Struct).name()
            << ">  fields=" << kNFields << '\n';
         print_impl(os, names, std::make_index_sequence<kNFields>{});
@@ -235,7 +139,7 @@ private:
     void make_branches_impl(TTree& tree,
                             const std::string& prefix,
                             std::index_sequence<Is...>) {
-        auto names = scalar_detail::get_field_names<Struct>();
+        auto names = trg_detail::get_field_names<Struct>();
         (make_one_branch<Is>(tree, prefix, names[Is]), ...);
     }
 
@@ -258,7 +162,7 @@ private:
     void set_addresses_impl(TTree& tree,
                             const std::string& prefix,
                             std::index_sequence<Is...>) {
-        auto names = scalar_detail::get_field_names<Struct>();
+        auto names = trg_detail::get_field_names<Struct>();
         (tree.SetBranchAddress(
             (prefix + names[Is]).c_str(),
             &boost::pfr::get<Is>(data)

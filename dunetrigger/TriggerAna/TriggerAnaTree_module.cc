@@ -327,7 +327,7 @@ void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
 // C++17 SOA and Scalar fields registration
 // To be removed when LArSoft switches to C++20 standard.
 //
-REGISTER_SOA_FIELD_NAMES(dunetrigger::MCTruthRow,
+REGISTER_FIELD_NAMES(dunetrigger::MCTruthRow,
                          pdg,
                          process,
                          status_code,
@@ -345,7 +345,7 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::MCTruthRow,
                          energy,
                          kinetic_energy)
 
-REGISTER_SOA_FIELD_NAMES(dunetrigger::MCNeutrinoRow,
+REGISTER_FIELD_NAMES(dunetrigger::MCNeutrinoRow,
                          block_id,
                          generator_name,
                          nupdg,
@@ -363,7 +363,7 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::MCNeutrinoRow,
                          pt,
                          theta)
 
-REGISTER_SOA_FIELD_NAMES(dunetrigger::MCParticleRow,
+REGISTER_FIELD_NAMES(dunetrigger::MCParticleRow,
                          pdg,
                          generator_name,
                          status_code,
@@ -389,7 +389,7 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::MCParticleRow,
                          shower_numelectrons,
                          process)
 
-REGISTER_SOA_FIELD_NAMES(dunetrigger::SimIDERow,
+REGISTER_FIELD_NAMES(dunetrigger::SimIDERow,
                          channel,
                          timestamp,
                          numelectrons,
@@ -403,7 +403,7 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::SimIDERow,
                          readout_view,
                          detector_element)
 
-REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveRow,
+REGISTER_FIELD_NAMES(dunetrigger::TriggerPrimitiveRow,
                          version,
                          flag,
                          detid,
@@ -417,7 +417,7 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveRow,
                          readout_view,
                          TPCSetID)
 
-REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveBacktrackingRow,
+REGISTER_FIELD_NAMES(dunetrigger::TriggerPrimitiveBacktrackingRow,
                          bt_primary_track_id,
                          bt_primary_track_numelectron_frac,
                          bt_primary_track_energy_frac,
@@ -432,15 +432,15 @@ REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveBacktrackingRow,
                          bt_truth_block_id,
                          bt_generator_name)
 
-REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveAssociationRow,
+REGISTER_FIELD_NAMES(dunetrigger::TriggerPrimitiveAssociationRow,
                          ta_number)
 
-REGISTER_SCALAR_FIELD_NAMES(dunetrigger::EventMetaData,
+REGISTER_FIELD_NAMES(dunetrigger::EventMetaData,
                             event,
                             run,
                             subrun)
 
-REGISTER_SCALAR_FIELD_NAMES(dunetrigger::EventSummaryData,
+REGISTER_FIELD_NAMES(dunetrigger::EventSummaryData,
                             mctruths_count,
                             mcparticles_count,
                             mcneutrinos_count,
