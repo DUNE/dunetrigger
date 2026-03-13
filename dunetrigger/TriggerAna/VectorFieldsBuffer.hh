@@ -6,23 +6,14 @@
  *        with ROOT TTree branch registration and clear support.
  *
  * @par Requirements
- * - C++17 or later (GCC >= 12 supported)
+ * - C++17 or later 
  * - Boost >= 1.75 (Boost.PFR, header-only)
- * - ROOT >= 6.x (for TTree / TBranch)
  *
  * @par Field-name reflection
  * In C++20 mode (Boost >= 1.80) real struct field names are used for
  * branch names (e.g. `trk_px`).  In C++17 mode use
  * `REGISTER_FIELD_NAMES(StructType, field1, ...)` at namespace scope.
  *
- * @par Compile (C++17)
- * @code
- * g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
- * @endcode
- * @par Compile (C++20, real field names)
- * @code
- * g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
- * @endcode
  */
 
 #include "FieldNames.hh"
