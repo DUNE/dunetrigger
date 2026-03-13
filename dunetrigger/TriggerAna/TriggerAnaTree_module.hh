@@ -1,10 +1,28 @@
 #ifndef DUNETRIGGER_TRIGGERANATREE_MODULE_HH
 #define DUNETRIGGER_TRIGGERANATREE_MODULE_HH
 
+#include "art/Framework/Core/EDAnalyzer.h"
+#include "art/Framework/Principal/Event.h"
+#include "art/Framework/Services/Registry/ServiceHandle.h"
+#include "art_root_io/TFileService.h"
+#include "detdataformats/trigger/TriggerActivityData.hpp"
+#include "detdataformats/trigger/TriggerCandidateData.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
+#include "fhiclcpp/ParameterSet.h"
+#include "larcore/Geometry/WireReadout.h"
 #include "lardataobj/Simulation/SimChannel.h"
 
+#include "ScalarFieldsBuffer.hh"
+#include "VectorFieldsBuffer.hh"
+
+#include <TTree.h>
+
+#include <nlohmann/json.hpp>
+
+#include <array>
+#include <map>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -172,6 +190,91 @@ struct TriggerPrimitiveAssociationRow {
   int ta_number = -1;
 
   TriggerPrimitiveAssociationRow() = default;
+};
+
+class TriggerAnaTree : public art::EDAnalyzer {
+public:
+  explicit TriggerAnaTree(fhicl::ParameterSet const &p);
+  // The compiler-generated destructor is fine for non-base
+  // classes without bare pointers or other resource use.
+
+  // Plugins should not be copied or assigned.
+  TriggerAnaTree(TriggerAnaTree const &) = delete;
+  TriggerAnaTree(TriggerAnaTree &&) = delete;
+  TriggerAnaTree &operator=(TriggerAnaTree const &) = delete;
+  TriggerAnaTree &operator=(TriggerAnaTree &&) = delete;
+
+  // Required functions.
+  void beginJob() override;
+  void analyze(art::Event const &e) override;
+  void endJob() override;
+
+private:
+
+  using TriggerPrimitiveWriter = VectorFieldsBuffer<TriggerPrimitiveRow>;
+  using TriggerPrimitiveBacktrackingWriter = VectorFieldsBuffer<TriggerPrimitiveBacktrackingRow>;
+  using TriggerPrimitiveAssociationWriter = VectorFieldsBuffer<TriggerPrimitiveAssociationRow>;
+
+  art::ServiceHandle<art::TFileService> tfs;
+  std::map<std::string, TTree *> tree_map;
+  // buffers for writing to ROOT Trees
+
+  ScalarFieldsBuffer<EventMetaData> ev_sbuf;
+
+  size_t fAssnIdx;
+
+  std::unordered_map<int, int> trkId_to_truthBlockId;
+  std::unordered_map<int, std::string> truthBlockId_to_generator_name;
+  std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
+
+  std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
+  std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
+  std::map<int, double> track_en_sums;
+  std::map<int, double> track_electron_sums;
+
+  bool dump_tp, dump_ta, dump_tc;
+  std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
+
+  bool tp_backtracking;
+
+  void make_tp_tree_if_needed(std::string tag, bool assn = false);
+  void make_ta_tree_if_needed(std::string tag, bool assn = false);
+  void make_tc_tree_if_needed(std::string tag);
+
+  std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveRow &tp, const std::string &tool_type) const;
+
+  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
+
+  bool dump_summary_info;
+  // visible energy for the event
+
+  TTree *summary_tree;
+  ScalarFieldsBuffer<EventSummaryData> evsummary_buf;
+
+  // MCTruth
+  bool dump_mctruths;
+
+  TTree* mctruth_tree;
+  VectorFieldsBuffer<MCTruthRow> mctruth_writer;
+
+  TTree* mcneutrino_tree;
+  VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_writer;
+
+  bool dump_mcparticles;
+
+  TTree* mcparticle_tree;
+  VectorFieldsBuffer<MCParticleRow> mcparticle_writer;
+
+  std::map<std::string, std::array<int, 3>> bt_view_offsets;
+
+  bool dump_simides;
+  std::string simchannel_tag;
+  TTree* simide_tree;
+  VectorFieldsBuffer<SimIDERow> simide_writer;
+
+  // JSON metadata
+  nlohmann::json info_data;
+  bool first_event_flag;
 };
 
 } // namespace dunetrigger
