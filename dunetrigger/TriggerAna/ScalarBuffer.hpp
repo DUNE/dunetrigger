@@ -31,29 +31,9 @@
 #include <array>
 #include <iostream>
 #include <string>
-#include <tuple>
 #include <type_traits>
 #include <utility>
-#include <stdexcept>
 
-// ---------------------------------------------------------------------------
-//  ROOT type-leaf string for scalar branches.
-//  TTree::Branch for scalars requires the type descriptor, e.g. "run/I".
-// ---------------------------------------------------------------------------
-namespace scalar_detail {
-
-template<typename T> struct RootLeafType;
-template<> struct RootLeafType<float>         { static constexpr const char* value = "F"; };
-template<> struct RootLeafType<double>        { static constexpr const char* value = "D"; };
-template<> struct RootLeafType<int>           { static constexpr const char* value = "I"; };
-template<> struct RootLeafType<unsigned int>  { static constexpr const char* value = "i"; };
-template<> struct RootLeafType<long>          { static constexpr const char* value = "L"; };
-template<> struct RootLeafType<unsigned long> { static constexpr const char* value = "l"; };
-template<> struct RootLeafType<short>         { static constexpr const char* value = "S"; };
-template<> struct RootLeafType<bool>          { static constexpr const char* value = "O"; };
-template<> struct RootLeafType<char>          { static constexpr const char* value = "B"; };
-
-} // namespace scalar_detail
 
 // ---------------------------------------------------------------------------
 //  ScalarBuffer<Struct>
@@ -132,29 +112,13 @@ public:
 
 private:
     // ---- make_branches ---------------------------------------------------
-    // Scalar branches use the leaf-list form:
-    //   tree.Branch("name", &field, "name/T")
-    // where T is the ROOT type code for the field's C++ type.
     template<std::size_t... Is>
     void make_branches_impl(TTree& tree,
                             const std::string& prefix,
                             std::index_sequence<Is...>) {
         auto names = trg_detail::get_field_names<Struct>();
-        (make_one_branch<Is>(tree, prefix, names[Is]), ...);
-    }
-
-    template<std::size_t I>
-    void make_one_branch(TTree& tree,
-                         const std::string& prefix,
-                         const std::string& name) {
-        using FieldType = std::remove_reference_t<
-            decltype(boost::pfr::get<I>(std::declval<Struct&>()))>;
-        const std::string branch_name = prefix + name;
-        const std::string leaf_list   = branch_name + "/"
-                                      + scalar_detail::RootLeafType<FieldType>::value;
-        tree.Branch(branch_name.c_str(),
-                    &boost::pfr::get<I>(data),
-                    leaf_list.c_str());
+        ((tree.Branch((prefix + names[Is]).c_str(),
+                      &boost::pfr::get<Is>(data))), ...);
     }
 
     // ---- set_branch_addresses --------------------------------------------
