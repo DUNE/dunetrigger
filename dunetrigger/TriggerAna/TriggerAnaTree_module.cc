@@ -474,9 +474,9 @@ public:
 
 private:
 
-  using TriggerPrimitiveWriter = SoAWriter<TriggerPrimitiveRow>;
-  using TriggerPrimitiveBacktrackingWriter = SoAWriter<TriggerPrimitiveBacktrackingRow>;
-  using TriggerPrimitiveAssociationWriter = SoAWriter<TriggerPrimitiveAssociationRow>;
+  using TriggerPrimitiveWriter = SoABuffer<TriggerPrimitiveRow>;
+  using TriggerPrimitiveBacktrackingWriter = SoABuffer<TriggerPrimitiveBacktrackingRow>;
+  using TriggerPrimitiveAssociationWriter = SoABuffer<TriggerPrimitiveAssociationRow>;
 
 
   art::ServiceHandle<art::TFileService> tfs;
@@ -522,23 +522,23 @@ private:
   bool dump_mctruths;
 
   TTree* mctruth_tree;
-  SoAWriter<MCTruthRow> mctruth_writer;
+  SoABuffer<MCTruthRow> mctruth_writer;
   
 
   TTree* mcneutrino_tree;
-  SoAWriter<MCNeutrinoRow> mcneutrino_writer;
+  SoABuffer<MCNeutrinoRow> mcneutrino_writer;
 
   bool dump_mcparticles;
 
   TTree* mcparticle_tree;
-  SoAWriter<MCParticleRow> mcparticle_writer;
+  SoABuffer<MCParticleRow> mcparticle_writer;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
   bool dump_simides;
   std::string simchannel_tag;
   TTree* simide_tree;
-  SoAWriter<SimIDERow> simide_writer;
+  SoABuffer<SimIDERow> simide_writer;
   
   // JSON metadata
   json info_data;
@@ -667,7 +667,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     }
 
 
-    mctruth_writer.buffer().reserve(mctruth_collection_size);
+    mctruth_writer.reserve(mctruth_collection_size);
 
     for (auto const &mctruthHandle : mctruthHandles) {
       // Extract the generator name from the truth handle input label
@@ -895,7 +895,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         tp_writer.push_back();
 
         if (tpbt_writer) {
-          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row(), tp_tool_type);
+          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type);
           tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
           tpbt_writer.push_back();
         }

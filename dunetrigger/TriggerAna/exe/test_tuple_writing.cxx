@@ -60,8 +60,8 @@ REGISTER_FIELD_NAMES(EventHeader, run, event_id, n_tracks, n_clusters, beam_ener
 // =============================================================================
 
 /// Simulate one event: fill track and cluster writers
-void simulate_event(SoAWriter<Track>&   tracks,
-                    SoAWriter<Cluster>& clusters,
+void simulate_event(SoABuffer<Track>&   tracks,
+                    SoABuffer<Cluster>& clusters,
                     TRandom3&           rng)
 {
     const int n_tracks   = rng.Integer(10) + 2;
@@ -100,8 +100,8 @@ void write_demo(const char* filename) {
     // -------------------------------------------------------------------------
     // 1. Create writers (once, outside the event loop)
     // -------------------------------------------------------------------------
-    SoAWriter<Track>   track_writer(64);  // reserves 64 slots in the buffer
-    SoAWriter<Cluster> cluster_writer(16);
+    SoABuffer<Track>   track_writer(64);  // reserves 64 slots in the buffer
+    SoABuffer<Cluster> cluster_writer(16);
 
     // -------------------------------------------------------------------------
     // 2. Create ROOT file + tree, register all branches automatically
@@ -226,8 +226,8 @@ void scalar_demo(const char* filename) {
     std::cout << "\n=== SCALAR WRITE ===\n";
 
     ScalarBuffer<EventHeader> hdr;
-    SoAWriter<Track>          track_writer(64);
-    SoAWriter<Cluster>        cluster_writer(16);
+    SoABuffer<Track>          track_writer(64);
+    SoABuffer<Cluster>        cluster_writer(16);
 
     hdr.print_summary();
 

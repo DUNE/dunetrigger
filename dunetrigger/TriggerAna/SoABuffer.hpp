@@ -65,13 +65,34 @@ struct TupleToVectorPtrs<std::tuple<Ts...>> {
 //  SoABuffer<Struct>
 //  ---
 //  Wraps one std::vector<T> per field of Struct, reflecting the layout
-//  automatically through Boost.PFR.  Provides:
-//    push_back(const Struct&)   -- append one element
-//    get(size_t i)              -- reconstruct an AoS element
-//    size()                     -- number of stored elements
-//    clear()                    -- empty all vectors (keeps capacity)
-//    make_branches(TTree*, prefix)  -- register all vectors as TTree branches
-//    set_branch_addresses(TTree*, prefix) -- re-point addresses on an existing tree
+//  automatically through Boost.PFR.
+//
+//  Write path -- fill the public staging row, then commit it:
+//    buf->field = value;    // or buf.row.field = value
+//    buf.push_back();       // commit row to SoA storage
+//    tree.Fill();
+//    buf.clear();           // empty storage and reset row
+//
+//  Read path -- attach to an existing tree, then iterate:
+//    buf.set_branch_addresses(tree, "prefix_");
+//    for (Long64_t e = 0; e < tree.GetEntries(); ++e) {
+//        tree.GetEntry(e);
+//        buf.get(i);        // reconstruct one AoS element
+//    }
+//
+//  Methods:
+//    row                             -- public staging struct (read/write)
+//    push_back()                     -- commit row to storage (gated)
+//    push_back(const Struct&)        -- append directly (always)
+//    commit_and_reset()              -- push_back() + reset_row() (gated)
+//    reset_row()                     -- zero-initialise row (always)
+//    get(size_t i)                   -- reconstruct an AoS element
+//    size()                          -- number of stored rows
+//    clear()                         -- empty storage and reset row (gated)
+//    reserve(n)                      -- pre-allocate column vectors
+//    make_branches(TTree&, prefix)   -- register TTree branches (gated)
+//    set_branch_addresses(TTree&, prefix) -- attach to existing branches
+//    enable(bool) / operator bool()  -- enable/disable write operations
 // ---------------------------------------------------------------------------
 template<typename Struct>
 class SoABuffer {
@@ -83,19 +104,24 @@ class SoABuffer {
                   "SoABuffer does not support empty structs");
 
 public:
-    // Number of fields in Struct
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
 
-    // Tuple-of-vectors type that mirrors the struct layout
     using FieldTuple  = decltype(boost::pfr::structure_to_tuple(std::declval<Struct>()));
     using ArraysTuple = typename soa_detail::TupleToVectors<FieldTuple>::type;
-    // Tuple of raw pointers to each vector -- passed to ROOT's SetBranchAddress (needs T**)
     using PtrsTuple   = typename soa_detail::TupleToVectorPtrs<FieldTuple>::type;
+
+    /// Staging row -- fill fields here, then call push_back().
+    /// Mirrors ScalarBuffer::data.
+    Struct row{};
 
     // ------------------------------------------------------------------
     // Construction
     // ------------------------------------------------------------------
     SoABuffer() : ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
+
+    explicit SoABuffer(std::size_t reserve_n) : SoABuffer() {
+        reserve(reserve_n);
+    }
 
     // Copying would leave ptrs_ pointing at the source's arrays_ -- disallow.
     SoABuffer(const SoABuffer&)            = delete;
@@ -114,21 +140,53 @@ public:
         return *this;
     }
 
-    /// Reserve memory for all vectors at once
-    void reserve(std::size_t n) {
-        std::apply([n](auto&... vecs) { (vecs.reserve(n), ...); }, arrays_);
+    // ------------------------------------------------------------------
+    // Staging row access
+    // ------------------------------------------------------------------
+
+    Struct* operator->() noexcept       { return &row; }
+    const Struct* operator->() const noexcept { return &row; }
+
+    // ------------------------------------------------------------------
+    // Enable / disable
+    // ------------------------------------------------------------------
+
+    /// Activate or deactivate write operations (default: enabled).
+    /// When disabled, make_branches, push_back(), commit_and_reset(),
+    /// and clear() are all no-ops.  Must be called before make_branches.
+    void enable(bool e = true) noexcept { enabled_ = e; }
+
+    [[nodiscard]] bool is_enabled() const noexcept { return enabled_; }
+    [[nodiscard]] explicit operator bool() const noexcept { return enabled_; }
+
+    // ------------------------------------------------------------------
+    // Write path
+    // ------------------------------------------------------------------
+
+    /// Commit the current staging row to storage.  No-op when disabled.
+    void push_back() {
+        if (enabled_) push_back_direct(row);
     }
 
-    // ------------------------------------------------------------------
-    // Element access
-    // ------------------------------------------------------------------
-
-    /// Append a struct as a new row
+    /// Append s directly, bypassing the staging row.  Always active.
     void push_back(const Struct& s) {
-        push_impl(s, std::make_index_sequence<kNFields>{});
+        push_back_direct(s);
     }
 
-    /// Reconstruct a struct from row i. Throws std::out_of_range if i >= size().
+    /// Commit staging row then zero-initialise it.  No-op when disabled.
+    void commit_and_reset() {
+        if (enabled_) { push_back_direct(row); reset_row(); }
+    }
+
+    /// Zero-initialise the staging row without touching storage.
+    void reset_row() { row = Struct{}; }
+
+    // ------------------------------------------------------------------
+    // Storage
+    // ------------------------------------------------------------------
+
+    /// Reconstruct a struct from stored row i.
+    /// Throws std::out_of_range if i >= size().
     Struct get(std::size_t i) const {
         if (i >= size())
             throw std::out_of_range(
@@ -137,35 +195,39 @@ public:
         return get_impl(i, std::make_index_sequence<kNFields>{});
     }
 
-    /// Number of rows stored
+    /// Number of committed rows.
     std::size_t size() const {
         return std::get<0>(arrays_).size();
     }
 
-    /// Direct access to the i-th column vector (type-safe via index)
+    /// Direct access to the i-th column vector (type-safe via index).
     template<std::size_t I>
     auto& column() { return std::get<I>(arrays_); }
 
     template<std::size_t I>
     const auto& column() const { return std::get<I>(arrays_); }
 
-    // ------------------------------------------------------------------
-    // Clear
-    // ------------------------------------------------------------------
+    /// Pre-allocate all column vectors.
+    void reserve(std::size_t n) {
+        std::apply([n](auto&... vecs) { (vecs.reserve(n), ...); }, arrays_);
+    }
 
-    /// Empty all column vectors (capacity is preserved)
+    /// Empty storage and zero-initialise the staging row.
+    /// No-op when disabled.
     void clear() {
-        std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
+        if (enabled_) {
+            std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
+            reset_row();
+        }
     }
 
     // ------------------------------------------------------------------
     // ROOT TTree interface
     // ------------------------------------------------------------------
 
-    /// Create one STL-vector branch per field on tree.
-    /// The branch name is  prefix + field_name  (e.g. "trk_x", "trk_y", ...).
-    /// Call once after TTree construction, before the event loop.
+    /// Create one STL-vector branch per field.  No-op when disabled.
     void make_branches(TTree& tree, const std::string& prefix = "") {
+        if (!enabled_) return;
         auto names = trg_detail::get_field_names<Struct>();
         std::size_t i = 0;
         std::apply([&](auto&... vecs) {
@@ -174,8 +236,6 @@ public:
     }
 
     /// Re-point branch addresses to this buffer's vectors.
-    /// Use when reading back from an existing file, or after the buffer
-    /// has been moved in memory.
     void set_branch_addresses(TTree& tree, const std::string& prefix = "") {
         auto names = trg_detail::get_field_names<Struct>();
         std::size_t i = 0;
@@ -191,12 +251,10 @@ public:
     // Utilities
     // ------------------------------------------------------------------
 
-    /// Field names -- real names in C++20 mode, "field_N" in C++17 mode.
     static std::array<std::string, kNFields> field_names() {
         return trg_detail::get_field_names<Struct>();
     }
 
-    /// Print a short summary of stored columns to stdout
     void print_summary(std::ostream& os = std::cout) const {
         auto names = trg_detail::get_field_names<Struct>();
         os << "SoABuffer<" << typeid(Struct).name()
@@ -212,21 +270,24 @@ public:
     }
 
 private:
+    bool        enabled_ = true;
     ArraysTuple arrays_;
-    PtrsTuple   ptrs_;   // each element points at the corresponding vector in arrays_
+    PtrsTuple   ptrs_;
 
     template<std::size_t... Is>
     PtrsTuple make_ptrs(std::index_sequence<Is...>) {
         return PtrsTuple{ &std::get<Is>(arrays_)... };
     }
 
-    // ---- push_back -------------------------------------------------------
+    void push_back_direct(const Struct& s) {
+        push_impl(s, std::make_index_sequence<kNFields>{});
+    }
+
     template<std::size_t... Is>
     void push_impl(const Struct& s, std::index_sequence<Is...>) {
         (std::get<Is>(arrays_).push_back(boost::pfr::get<Is>(s)), ...);
     }
 
-    // ---- get -------------------------------------------------------------
     template<std::size_t... Is>
     Struct get_impl(std::size_t i, std::index_sequence<Is...>) const {
         Struct s{};
@@ -235,129 +296,11 @@ private:
     }
 
     static void check_set_address(Int_t status, const std::string& branch_name) {
-        // ROOT returns kMissingBranch (-5) or other negative codes on failure
         if (status < 0)
             throw std::runtime_error(
                 "SoABuffer::set_branch_addresses: failed to bind branch \"" +
                 branch_name + "\" (ROOT error code " + std::to_string(status) + ")");
     }
-
-};
-
-// ---------------------------------------------------------------------------
-//  SoAWriter<Struct>
-//  ---
-//  Convenience wrapper around SoABuffer<Struct> with an internal staging row.
-//  Typical usage:
-//
-//    SoAWriter<Track> writer;
-//    writer.make_branches(tree, "trk_");
-//
-//    for (auto& raw : source) {
-//        writer->x         = raw.x;      // fill staging row
-//        writer->px        = raw.px;
-//        writer.push_back();             // commit row -> SoA buffer
-//    }
-//    tree.Fill();
-//    writer.clear();                     // reset buffer and staging row
-//
-//  Methods:
-//    push_back()          -- append current value of `row` into the SoA buffer
-//    commit_and_reset()   -- append current `row`, then reset it
-//    clear()              -- clear the SoA buffer AND zero-initialise `row`
-//    reset_row()          -- zero-initialise `row` only (buffer unchanged)
-//    buffer()             -- access the underlying SoABuffer (e.g. for size(),
-//                           get(i), set_branch_addresses for read-back)
-//    make_branches(...)   -- forwarded to SoABuffer
-// ---------------------------------------------------------------------------
-template<typename Struct>
-class SoAWriter {
-public:
-    /// Access the staging row fields via `writer->field`.
-    /// Always available regardless of enabled state.
-    Struct* operator->() noexcept { return &row_; }
-    const Struct* operator->() const noexcept { return &row_; }
-    Struct& row() noexcept { return row_; }
-    const Struct& row() const noexcept { return row_; }
-
-    // ------------------------------------------------------------------
-    // Construction
-    // ------------------------------------------------------------------
-    SoAWriter() = default;
-
-    explicit SoAWriter(std::size_t reserve_n) {
-        buffer_.reserve(reserve_n);
-    }
-
-    // ------------------------------------------------------------------
-    // Enable / disable
-    // ------------------------------------------------------------------
-
-    /// Activate or deactivate this writer (default: enabled).
-    /// When disabled, make_branches, push_back, commit_and_reset, and
-    /// clear are all no-ops.  Must be called before make_branches.
-    void enable(bool e = true) noexcept { enabled_ = e; }
-
-    /// Returns true when this writer is active.
-    [[nodiscard]] explicit operator bool() const noexcept { return enabled_; }
-
-    // ------------------------------------------------------------------
-    // Core operations
-    // ------------------------------------------------------------------
-
-    /// Copy the current value of `row` into the SoA buffer.
-    /// No-op when disabled.
-    void push_back() {
-        if (enabled_) buffer_.push_back(row_);
-    }
-
-    /// Copy current row into the buffer and reset staging row.
-    /// No-op when disabled.
-    void commit_and_reset() {
-        if (enabled_) { buffer_.push_back(row_); reset_row(); }
-    }
-
-    /// Empty the SoA buffer and zero-initialise the staging row.
-    /// No-op when disabled.
-    void clear() {
-        if (enabled_) { buffer_.clear(); reset_row(); }
-    }
-
-    /// Zero-initialise the staging row without touching the buffer.
-    void reset_row() {
-        row_ = Struct{};
-    }
-
-    // ------------------------------------------------------------------
-    // Buffer access
-    // ------------------------------------------------------------------
-
-    [[nodiscard]] SoABuffer<Struct>& buffer() noexcept { return buffer_; }
-    [[nodiscard]] const SoABuffer<Struct>& buffer() const noexcept { return buffer_; }
-
-    /// Current SoA buffer row count (number of committed rows).
-    [[nodiscard]] std::size_t row_count() const noexcept { return buffer_.size(); }
-
-    /// Shorthand for the number of committed rows.
-    [[nodiscard]] std::size_t size() const noexcept { return buffer_.size(); }
-
-    // ------------------------------------------------------------------
-    // ROOT TTree forwarding
-    // ------------------------------------------------------------------
-
-    /// Register branches on the tree.  No-op when disabled.
-    void make_branches(TTree& tree, const std::string& prefix = "") {
-        if (enabled_) buffer_.make_branches(tree, prefix);
-    }
-
-    void print_summary(std::ostream& os = std::cout) const {
-        buffer_.print_summary(os);
-    }
-
-private:
-    bool enabled_ = true;
-    Struct row_{};
-    SoABuffer<Struct> buffer_;
 };
 
 #endif // SOA_BUFFER_HPP
