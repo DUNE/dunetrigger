@@ -2,7 +2,7 @@
 #define SCALAR_BUFFER_HH
 // =============================================================================
 //  ScalarBuffer.hpp
-//  Saves one POD struct per ROOT event as scalar branches (no std::vector).
+//  Saves one struct per ROOT event as scalar branches (no std::vector).
 //
 //  Intended for per-event quantities: run number, event ID, trigger flags,
 //  global kinematics, etc.  For per-object collections use SoABuffer.hpp.
@@ -53,8 +53,10 @@
 // ---------------------------------------------------------------------------
 template<typename Struct>
 class ScalarBuffer {
-    static_assert(std::is_trivially_copyable_v<Struct>,
-                  "ScalarBuffer requires a POD / trivially-copyable struct");
+    static_assert(std::is_default_constructible_v<Struct>,
+                  "ScalarBuffer requires a default-constructible struct");
+    static_assert(std::is_copy_assignable_v<Struct>,
+                  "ScalarBuffer requires a copy-assignable struct");
 
 public:
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
