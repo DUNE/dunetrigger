@@ -8,19 +8,13 @@
 //  global kinematics, etc.  For per-object collections use VectorFieldsBuffer.hh.
 //
 //  Requirements:
-//    - C++17 or later  (GCC >= 12 supported)
+//    - C++17 or later
 //    - Boost >= 1.75   (Boost.PFR + Boost.Preprocessor, header-only)
-//    - ROOT >= 6.x     (for TTree / TBranch)
 //
 //  Field-name reflection:
 //    C++20 : real field names via boost::pfr::names_as_array (automatic).
 //    C++17 : use REGISTER_FIELD_NAMES(StructType, field1, field2, ...)
 //            at namespace scope (provided by FieldNames.hpp).
-//
-//  Compile (C++17):
-//    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o demo
-//  Compile (C++20, real field names):
-//    g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o demo
 // =============================================================================
 
 #include "FieldNames.hh"

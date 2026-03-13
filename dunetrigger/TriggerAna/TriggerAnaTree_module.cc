@@ -284,7 +284,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       // Store generator name for TP backtracking
       truthBlockId_to_generator_name[truth_block_counter] = generator_name;
 
-      // mctruth_buf_leg.id = truth_block_counter;
       // NOTE: here we are making an assumption that the geant4 stage's process
       // name is largeant. This should be safe mostly.
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
