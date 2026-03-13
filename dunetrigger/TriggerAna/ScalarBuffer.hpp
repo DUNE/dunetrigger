@@ -83,7 +83,11 @@ public:
     /// Branch leaf descriptor is derived automatically from the field type.
     /// prefix + field_name is used as the branch name.
     void make_branches(TTree& tree, const std::string& prefix = "") {
-        make_branches_impl(tree, prefix, std::make_index_sequence<kNFields>{});
+        auto names = trg_detail::get_field_names<Struct>();
+        std::size_t i = 0;
+        std::apply([&](auto&... fields) {
+            ((tree.Branch((prefix + names[i++]).c_str(), &fields)), ...);
+        }, boost::pfr::structure_tie(data));
     }
 
     // ------------------------------------------------------------------
@@ -92,7 +96,11 @@ public:
 
     /// Point each branch address at the corresponding field of data.
     void set_branch_addresses(TTree& tree, const std::string& prefix = "") {
-        set_addresses_impl(tree, prefix, std::make_index_sequence<kNFields>{});
+        auto names = trg_detail::get_field_names<Struct>();
+        std::size_t i = 0;
+        std::apply([&](auto&... fields) {
+            ((tree.SetBranchAddress((prefix + names[i++]).c_str(), &fields)), ...);
+        }, boost::pfr::structure_tie(data));
     }
 
     // ------------------------------------------------------------------
@@ -107,41 +115,16 @@ public:
         auto names = trg_detail::get_field_names<Struct>();
         os << "ScalarBuffer<" << typeid(Struct).name()
            << ">  fields=" << kNFields << '\n';
-        print_impl(os, names, std::make_index_sequence<kNFields>{});
+        std::size_t i = 0;
+        std::apply([&](const auto&... fields) {
+            ([&](const auto& field) {
+                os << "  [" << i << "] " << names[i]
+                   << "  addr=" << static_cast<const void*>(&field) << '\n';
+                ++i;
+            }(fields), ...);
+        }, boost::pfr::structure_tie(data));
     }
 
-private:
-    // ---- make_branches ---------------------------------------------------
-    template<std::size_t... Is>
-    void make_branches_impl(TTree& tree,
-                            const std::string& prefix,
-                            std::index_sequence<Is...>) {
-        auto names = trg_detail::get_field_names<Struct>();
-        ((tree.Branch((prefix + names[Is]).c_str(),
-                      &boost::pfr::get<Is>(data))), ...);
-    }
-
-    // ---- set_branch_addresses --------------------------------------------
-    template<std::size_t... Is>
-    void set_addresses_impl(TTree& tree,
-                            const std::string& prefix,
-                            std::index_sequence<Is...>) {
-        auto names = trg_detail::get_field_names<Struct>();
-        (tree.SetBranchAddress(
-            (prefix + names[Is]).c_str(),
-            &boost::pfr::get<Is>(data)
-        ), ...);
-    }
-
-    // ---- print -----------------------------------------------------------
-    template<std::size_t... Is>
-    void print_impl(std::ostream& os,
-                    const std::array<std::string, kNFields>& names,
-                    std::index_sequence<Is...>) const {
-        ((os << "  [" << Is << "] " << names[Is]
-             << "  addr=" << static_cast<const void*>(&boost::pfr::get<Is>(data))
-             << '\n'), ...);
-    }
 };
 
 #endif // SCALAR_BUFFER_HPP

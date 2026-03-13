@@ -116,7 +116,7 @@ public:
 
     /// Reserve memory for all vectors at once
     void reserve(std::size_t n) {
-        reserve_impl(n, std::make_index_sequence<kNFields>{});
+        std::apply([n](auto&... vecs) { (vecs.reserve(n), ...); }, arrays_);
     }
 
     // ------------------------------------------------------------------
@@ -155,7 +155,7 @@ public:
 
     /// Empty all column vectors (capacity is preserved)
     void clear() {
-        clear_impl(std::make_index_sequence<kNFields>{});
+        std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
     }
 
     // ------------------------------------------------------------------
@@ -166,14 +166,25 @@ public:
     /// The branch name is  prefix + field_name  (e.g. "trk_x", "trk_y", ...).
     /// Call once after TTree construction, before the event loop.
     void make_branches(TTree& tree, const std::string& prefix = "") {
-        make_branches_impl(&tree, prefix, std::make_index_sequence<kNFields>{});
+        auto names = trg_detail::get_field_names<Struct>();
+        std::size_t i = 0;
+        std::apply([&](auto&... vecs) {
+            ((tree.Branch((prefix + names[i++]).c_str(), &vecs)), ...);
+        }, arrays_);
     }
 
     /// Re-point branch addresses to this buffer's vectors.
     /// Use when reading back from an existing file, or after the buffer
     /// has been moved in memory.
     void set_branch_addresses(TTree& tree, const std::string& prefix = "") {
-        set_addresses_impl(&tree, prefix, std::make_index_sequence<kNFields>{});
+        auto names = trg_detail::get_field_names<Struct>();
+        std::size_t i = 0;
+        std::apply([&](auto&... ptrs) {
+            ([&](auto& ptr) {
+                const auto name = prefix + names[i++];
+                check_set_address(tree.SetBranchAddress(name.c_str(), &ptr), name);
+            }(ptrs), ...);
+        }, ptrs_);
     }
 
     // ------------------------------------------------------------------
@@ -191,7 +202,13 @@ public:
         os << "SoABuffer<" << typeid(Struct).name()
            << ">  rows=" << size()
            << "  fields=" << kNFields << '\n';
-        print_impl(os, names, std::make_index_sequence<kNFields>{});
+        std::size_t i = 0;
+        std::apply([&](const auto&... vecs) {
+            ([&](const auto& vec) {
+                os << "  [" << i << "] " << names[i] << "  size=" << vec.size() << '\n';
+                ++i;
+            }(vecs), ...);
+        }, arrays_);
     }
 
 private:
@@ -217,51 +234,6 @@ private:
         return s;
     }
 
-    // ---- clear -----------------------------------------------------------
-    template<std::size_t... Is>
-    void clear_impl(std::index_sequence<Is...>) {
-        (std::get<Is>(arrays_).clear(), ...);
-    }
-
-    // ---- reserve ---------------------------------------------------------
-    template<std::size_t... Is>
-    void reserve_impl(std::size_t n, std::index_sequence<Is...>) {
-        (std::get<Is>(arrays_).reserve(n), ...);
-    }
-
-    // ---- make_branches ---------------------------------------------------
-    // ROOT TTree::Branch for std::vector<T> takes a pointer-to-pointer:
-    //   tree->Branch("name", &vec_ptr)
-    // where vec_ptr is a std::vector<T>*.
-    template<std::size_t... Is>
-    void make_branches_impl(TTree* tree,
-                            const std::string& prefix,
-                            std::index_sequence<Is...>) {
-        auto names = trg_detail::get_field_names<Struct>();
-        (tree->Branch(
-            (prefix + names[Is]).c_str(),
-            &std::get<Is>(arrays_)          // ROOT takes std::vector<T>* directly
-        ), ...);
-    }
-
-    // ---- set_branch_addresses --------------------------------------------
-    // SetBranchAddress for STL-vector branches requires T** (pointer-to-pointer).
-    // ptrs_[I] is a std::vector<T>* pointing at arrays_[I]; we pass &ptrs_[I].
-    // Return value is checked: ROOT returns <0 on failure (name/type mismatch).
-    template<std::size_t... Is>
-    void set_addresses_impl(TTree* tree,
-                            const std::string& prefix,
-                            std::index_sequence<Is...>) {
-        auto names = trg_detail::get_field_names<Struct>();
-        (check_set_address(
-            tree->SetBranchAddress(
-                (prefix + names[Is]).c_str(),
-                &std::get<Is>(ptrs_)        // T** -- what ROOT requires for vector branches
-            ),
-            prefix + names[Is]
-        ), ...);
-    }
-
     static void check_set_address(Int_t status, const std::string& branch_name) {
         // ROOT returns kMissingBranch (-5) or other negative codes on failure
         if (status < 0)
@@ -270,14 +242,6 @@ private:
                 branch_name + "\" (ROOT error code " + std::to_string(status) + ")");
     }
 
-    // ---- print -----------------------------------------------------------
-    template<std::size_t... Is>
-    void print_impl(std::ostream& os,
-                    const std::array<std::string, kNFields>& names,
-                    std::index_sequence<Is...>) const {
-        ((os << "  [" << Is << "] " << names[Is]
-             << "  size=" << std::get<Is>(arrays_).size() << '\n'), ...);
-    }
 };
 
 // ---------------------------------------------------------------------------
