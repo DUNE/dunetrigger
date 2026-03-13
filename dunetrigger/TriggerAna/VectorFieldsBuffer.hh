@@ -1,25 +1,29 @@
 #ifndef VECTOR_FIELDS_BUFFER_HH
 #define VECTOR_FIELDS_BUFFER_HH
-// =============================================================================
-//  VectorFieldsBuffer.hh
-//  Automatic Structure-of-Arrays buffer from a C++ struct,
-//  with ROOT TTree branch registration and clear support.
-//
-//  Requirements:
-//    - C++17 or later  (GCC >= 12 supported)
-//    - Boost >= 1.75   (Boost.PFR, header-only)
-//    - ROOT >= 6.x     (for TTree / TBranch)
-//
-//  Field-name reflection:
-//    In C++20 mode (Boost >= 1.80) real struct field names are used for
-//    branch names (e.g. "trk_px").  In C++17 mode use
-//    REGISTER_FIELD_NAMES(StructType, field1, ...) at namespace scope.
-//
-//  Compile (C++17):
-//    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
-//  Compile (C++20, real field names):
-//    g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
-// =============================================================================
+/**
+ * @file VectorFieldsBuffer.hh
+ * @brief Automatic Structure-of-Arrays buffer from a C++ struct,
+ *        with ROOT TTree branch registration and clear support.
+ *
+ * @par Requirements
+ * - C++17 or later (GCC >= 12 supported)
+ * - Boost >= 1.75 (Boost.PFR, header-only)
+ * - ROOT >= 6.x (for TTree / TBranch)
+ *
+ * @par Field-name reflection
+ * In C++20 mode (Boost >= 1.80) real struct field names are used for
+ * branch names (e.g. `trk_px`).  In C++17 mode use
+ * `REGISTER_FIELD_NAMES(StructType, field1, ...)` at namespace scope.
+ *
+ * @par Compile (C++17)
+ * @code
+ * g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
+ * @endcode
+ * @par Compile (C++20, real field names)
+ * @code
+ * g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
+ * @endcode
+ */
 
 #include "FieldNames.hh"
 
@@ -35,12 +39,10 @@
 #include <vector>
 #include <stdexcept>
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
+/** @internal Internal implementation helpers — not part of the public API. */
 namespace soa_detail {
 
-// Map a tuple<T0, T1, ...> -> tuple<vector<T0>, vector<T1>, ...>
+/// @brief Maps `tuple<T0, T1, ...>` to `tuple<vector<T0>, vector<T1>, ...>`.
 template<typename Tuple>
 struct TupleToVectors;
 
@@ -49,8 +51,8 @@ struct TupleToVectors<std::tuple<Ts...>> {
     using type = std::tuple<std::vector<Ts>...>;
 };
 
-// Map a tuple<T0, T1, ...> -> tuple<vector<T0>*, vector<T1>*, ...>
-// Used to provide the T** that ROOT's SetBranchAddress requires.
+/// @brief Maps `tuple<T0, T1, ...>` to `tuple<vector<T0>*, vector<T1>*, ...>`.
+/// @note Used to provide the `T**` pointers that ROOT's SetBranchAddress requires.
 template<typename Tuple>
 struct TupleToVectorPtrs;
 
@@ -61,39 +63,32 @@ struct TupleToVectorPtrs<std::tuple<Ts...>> {
 
 } // namespace soa_detail
 
-// ---------------------------------------------------------------------------
-//  VectorFieldsBuffer<Struct>
-//  ---
-//  Wraps one std::vector<T> per field of Struct, reflecting the layout
-//  automatically through Boost.PFR.
-//
-//  Write path -- fill the public staging row, then commit it:
-//    buf->field = value;    // or buf.row.field = value
-//    buf.push_back();       // commit row to SoA storage
-//    tree.Fill();
-//    buf.clear();           // empty storage and reset row
-//
-//  Read path -- attach to an existing tree, then iterate:
-//    buf.set_branch_addresses(tree, "prefix_");
-//    for (Long64_t e = 0; e < tree.GetEntries(); ++e) {
-//        tree.GetEntry(e);
-//        buf.get(i);        // reconstruct one AoS element
-//    }
-//
-//  Methods:
-//    row                             -- public staging struct (read/write)
-//    push_back()                     -- commit row to storage (gated)
-//    push_back(const Struct&)        -- append directly (always)
-//    commit_and_reset()              -- push_back() + reset_row() (gated)
-//    reset_row()                     -- zero-initialise row (always)
-//    get(size_t i)                   -- reconstruct an AoS element
-//    size()                          -- number of stored rows
-//    clear()                         -- empty storage and reset row (gated)
-//    reserve(n)                      -- pre-allocate column vectors
-//    make_branches(TTree&, prefix)   -- register TTree branches (gated)
-//    set_branch_addresses(TTree&, prefix) -- attach to existing branches
-//    enable(bool) / operator bool()  -- enable/disable write operations
-// ---------------------------------------------------------------------------
+/**
+ * @brief Wraps one `std::vector<T>` per field of @p Struct, reflecting the
+ *        layout automatically through Boost.PFR.
+ *
+ * @par Write path
+ * Fill the public staging row, then commit it:
+ * @code
+ * buf->field = value;    // or buf.row.field = value
+ * buf.push_back();       // commit row to SoA storage
+ * tree.Fill();
+ * buf.clear();           // empty storage and reset row
+ * @endcode
+ *
+ * @par Read path
+ * Attach to an existing tree, then iterate:
+ * @code
+ * buf.set_branch_addresses(tree, "prefix_");
+ * for (Long64_t e = 0; e < tree.GetEntries(); ++e) {
+ *     tree.GetEntry(e);
+ *     buf.get(i);        // reconstruct one AoS element
+ * }
+ * @endcode
+ *
+ * @tparam Struct A default-constructible, copy-constructible aggregate whose
+ *                fields are stored as parallel `std::vector` columns.
+ */
 template<typename Struct>
 class VectorFieldsBuffer {
     static_assert(std::is_default_constructible_v<Struct>,
@@ -104,34 +99,44 @@ class VectorFieldsBuffer {
                   "VectorFieldsBuffer does not support empty structs");
 
 public:
+    /// @brief Number of fields in @p Struct, determined at compile time.
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
 
+    /// @brief Tuple of field types mirroring @p Struct.
     using FieldTuple  = decltype(boost::pfr::structure_to_tuple(std::declval<Struct>()));
+    /// @brief Tuple of `std::vector` column storage types.
     using ArraysTuple = typename soa_detail::TupleToVectors<FieldTuple>::type;
+    /// @brief Tuple of `std::vector*` pointer types used by ROOT's SetBranchAddress.
     using PtrsTuple   = typename soa_detail::TupleToVectorPtrs<FieldTuple>::type;
 
-    /// Staging row -- fill fields here, then call push_back().
-    /// Mirrors ScalarFieldsBuffer::data.
+    /// @brief Staging row — fill fields here, then call push_back().
+    /// @note Mirrors ScalarFieldsBuffer::data.
     Struct row{};
 
     // ------------------------------------------------------------------
     // Construction
     // ------------------------------------------------------------------
+
+    /// @brief Default constructor.
     VectorFieldsBuffer() : ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
+    /// @brief Construct and pre-allocate column vectors.
+    /// @param reserve_n Number of rows to reserve in each column vector.
     explicit VectorFieldsBuffer(std::size_t reserve_n) : VectorFieldsBuffer() {
         reserve(reserve_n);
     }
 
-    // Copying would leave ptrs_ pointing at the source's arrays_ -- disallow.
+    /// @note Copy-disabled: copying would leave ptrs_ pointing at the source's arrays_.
     VectorFieldsBuffer(const VectorFieldsBuffer&)            = delete;
+    /// @note Copy-disabled: copying would leave ptrs_ pointing at the source's arrays_.
     VectorFieldsBuffer& operator=(const VectorFieldsBuffer&) = delete;
 
-    // Move is safe: re-initialise ptrs_ to point at the new arrays_.
+    /// @brief Move constructor — re-initialises ptrs_ to point at the new arrays_.
     VectorFieldsBuffer(VectorFieldsBuffer&& o) noexcept
         : arrays_(std::move(o.arrays_))
         , ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
+    /// @brief Move assignment — re-initialises ptrs_ to point at the new arrays_.
     VectorFieldsBuffer& operator=(VectorFieldsBuffer&& o) noexcept {
         if (this != &o) {
             arrays_ = std::move(o.arrays_);
@@ -144,49 +149,60 @@ public:
     // Staging row access
     // ------------------------------------------------------------------
 
+    /// @brief Access fields of the staging row directly.
     Struct* operator->() noexcept       { return &row; }
+    /// @copydoc operator->()
     const Struct* operator->() const noexcept { return &row; }
 
     // ------------------------------------------------------------------
     // Enable / disable
     // ------------------------------------------------------------------
 
-    /// Activate or deactivate write operations (default: enabled).
-    /// When disabled, make_branches, push_back(), commit_and_reset(),
-    /// and clear() are all no-ops.  Must be called before make_branches.
+    /// @brief Activate or deactivate write operations.
+    /// @param e @c true to enable (default), @c false to disable.
+    /// @note When disabled, make_branches(), push_back(), commit_and_reset(),
+    ///       and clear() are all no-ops.  Must be called before make_branches().
     void enable(bool e = true) noexcept { enabled_ = e; }
 
+    /// @return @c true if write operations are active.
     [[nodiscard]] bool is_enabled() const noexcept { return enabled_; }
+
+    /// @return @c true if write operations are active.
     [[nodiscard]] explicit operator bool() const noexcept { return enabled_; }
 
     // ------------------------------------------------------------------
     // Write path
     // ------------------------------------------------------------------
 
-    /// Commit the current staging row to storage.  No-op when disabled.
+    /// @brief Commit the current staging row to storage.
+    /// @note No-op when disabled.
     void push_back() {
         if (enabled_) push_back_direct(row);
     }
 
-    /// Append s directly, bypassing the staging row.  Always active.
+    /// @brief Append @p s directly, bypassing the staging row.
+    /// @param s Row to append.  Always active regardless of the enabled flag.
     void push_back(const Struct& s) {
         push_back_direct(s);
     }
 
-    /// Commit staging row then zero-initialise it.  No-op when disabled.
+    /// @brief Commit the staging row then zero-initialise it.
+    /// @note No-op when disabled.
     void commit_and_reset() {
         if (enabled_) { push_back_direct(row); reset_row(); }
     }
 
-    /// Zero-initialise the staging row without touching storage.
+    /// @brief Zero-initialise the staging row without touching storage.
     void reset_row() { row = Struct{}; }
 
     // ------------------------------------------------------------------
     // Storage
     // ------------------------------------------------------------------
 
-    /// Reconstruct a struct from stored row i.
-    /// Throws std::out_of_range if i >= size().
+    /// @brief Reconstruct a struct from stored row @p i.
+    /// @param i Zero-based row index.
+    /// @return Copy of the stored row at index @p i.
+    /// @throws std::out_of_range if @p i >= size().
     Struct get(std::size_t i) const {
         if (i >= size())
             throw std::out_of_range(
@@ -195,25 +211,29 @@ public:
         return get_impl(i, std::make_index_sequence<kNFields>{});
     }
 
-    /// Number of committed rows.
+    /// @return Number of committed rows.
     std::size_t size() const {
         return std::get<0>(arrays_).size();
     }
 
-    /// Direct access to the i-th column vector (type-safe via index).
+    /// @brief Direct access to the I-th column vector (type-safe via index).
+    /// @tparam I Zero-based column index.
+    /// @return Reference to the column's `std::vector`.
     template<std::size_t I>
     auto& column() { return std::get<I>(arrays_); }
 
+    /// @copydoc column()
     template<std::size_t I>
     const auto& column() const { return std::get<I>(arrays_); }
 
-    /// Pre-allocate all column vectors.
+    /// @brief Pre-allocate all column vectors.
+    /// @param n Number of rows to reserve.
     void reserve(std::size_t n) {
         std::apply([n](auto&... vecs) { (vecs.reserve(n), ...); }, arrays_);
     }
 
-    /// Empty storage and zero-initialise the staging row.
-    /// No-op when disabled.
+    /// @brief Empty storage and zero-initialise the staging row.
+    /// @note No-op when disabled.
     void clear() {
         if (enabled_) {
             std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
@@ -225,7 +245,10 @@ public:
     // ROOT TTree interface
     // ------------------------------------------------------------------
 
-    /// Create one STL-vector branch per field.  No-op when disabled.
+    /// @brief Create one STL-vector branch per field on @p tree.
+    /// @param tree   The TTree to attach branches to.
+    /// @param prefix Optional prefix prepended to each branch name.
+    /// @note No-op when disabled.
     void make_branches(TTree& tree, const std::string& prefix = "") {
         if (!enabled_) return;
         auto names = trg_detail::get_field_names<Struct>();
@@ -235,7 +258,10 @@ public:
         }, arrays_);
     }
 
-    /// Re-point branch addresses to this buffer's vectors.
+    /// @brief Re-point branch addresses to this buffer's vectors.
+    /// @param tree   The TTree to bind branch addresses from.
+    /// @param prefix Optional prefix prepended to each branch name.
+    /// @throws std::runtime_error if a branch cannot be bound.
     void set_branch_addresses(TTree& tree, const std::string& prefix = "") {
         auto names = trg_detail::get_field_names<Struct>();
         std::size_t i = 0;
@@ -251,12 +277,17 @@ public:
     // Utilities
     // ------------------------------------------------------------------
 
+    /// @brief Returns the array of field names for @p Struct.
+    /// @return Array of @c kNFields field-name strings.
     static std::array<std::string, kNFields> field_names() {
         return trg_detail::get_field_names<Struct>();
     }
 
+    /// @brief Print a summary of field names and stored values to @p os.
+    /// @param os Output stream (default: @c std::cout).
     void print_summary(std::ostream& os = std::cout) const { os << *this; }
 
+    /// @brief Stream insertion operator — prints field names and stored column contents.
     friend std::ostream& operator<<(std::ostream& os, const VectorFieldsBuffer& buf) {
         auto names = trg_detail::get_field_names<Struct>();
         os << "VectorFieldsBuffer<" << typeid(Struct).name()
