@@ -948,7 +948,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
             tp_writer->readout_view = chinfo.view;
             tp_writer->TPCSetID = chinfo.tpcset_id;
             tp_writer.push_back();
-            if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID) row — backtracking not computed for association TPs
+            if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID) row -- backtracking not computed for association TPs
             tpass_writer->ta_number = fAssnIdx;
             tpass_writer.push_back();
           }

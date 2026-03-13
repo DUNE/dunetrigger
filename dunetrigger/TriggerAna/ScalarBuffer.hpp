@@ -15,7 +15,7 @@
 //  Field-name reflection:
 //    C++20 : real field names via boost::pfr::names_as_array (automatic).
 //    C++17 : use REGISTER_SCALAR_FIELD_NAMES(StructType, field1, field2, ...)
-//            at namespace scope — shares the same Boost.PP machinery as
+//            at namespace scope -- shares the same Boost.PP machinery as
 //            REGISTER_SOA_FIELD_NAMES in SoABuffer.hpp.
 //
 //  Compile (C++17):
@@ -67,7 +67,7 @@ get_field_names();   // defined after ScalarFieldNames
 } // namespace scalar_detail
 
 // ---------------------------------------------------------------------------
-//  ScalarFieldNames<Struct> — same pattern as SoaFieldNames in SoABuffer.hpp.
+//  ScalarFieldNames<Struct> -- same pattern as SoaFieldNames in SoABuffer.hpp.
 //  Specialise via REGISTER_SCALAR_FIELD_NAMES in C++17 mode.
 // ---------------------------------------------------------------------------
 template<typename Struct>
@@ -155,15 +155,15 @@ get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
 //  ScalarBuffer<Struct>
 //  ---
 //  Holds one instance of Struct and registers each field as a scalar branch
-//  on a TTree.  The struct is the branch buffer itself — ROOT reads/writes
+//  on a TTree.  The struct is the branch buffer itself -- ROOT reads/writes
 //  directly into its fields.  One Fill() per event.
 //
 //  Methods:
-//    make_branches(TTree&, prefix)       – register scalar branches (write)
-//    set_branch_addresses(TTree&, prefix)– attach to existing branches (read)
-//    data                               – public Struct instance (read/write)
-//    reset()                            – zero-initialise data
-//    print_summary(os)                  – list field names and addresses
+//    make_branches(TTree&, prefix)       -- register scalar branches (write)
+//    set_branch_addresses(TTree&, prefix)-- attach to existing branches (read)
+//    data                               -- public Struct instance (read/write)
+//    reset()                            -- zero-initialise data
+//    print_summary(os)                  -- list field names and addresses
 // ---------------------------------------------------------------------------
 template<typename Struct>
 class ScalarBuffer {
@@ -173,7 +173,7 @@ class ScalarBuffer {
 public:
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
 
-    /// The live struct — ROOT branches point directly into its fields.
+    /// The live struct -- ROOT branches point directly into its fields.
     Struct data{};
 
     Struct* operator->() noexcept { return &data; }
@@ -192,7 +192,7 @@ public:
     void reset() { data = Struct{}; }
 
     // ------------------------------------------------------------------
-    // ROOT TTree interface — write
+    // ROOT TTree interface -- write
     // ------------------------------------------------------------------
 
     /// Register one scalar branch per field.
@@ -203,7 +203,7 @@ public:
     }
 
     // ------------------------------------------------------------------
-    // ROOT TTree interface — read
+    // ROOT TTree interface -- read
     // ------------------------------------------------------------------
 
     /// Point each branch address at the corresponding field of data.

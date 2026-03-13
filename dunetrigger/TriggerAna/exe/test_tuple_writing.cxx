@@ -1,5 +1,5 @@
 // =============================================================================
-//  main.cpp – usage demo for SoABuffer with ROOT TTree
+//  main.cpp -- usage demo for SoABuffer with ROOT TTree
 //
 //  Compile:
 //    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
@@ -16,7 +16,7 @@
 #include <cassert>
 
 // =============================================================================
-//  Domain structs – plain POD, zero modification needed
+//  Domain structs -- plain POD, zero modification needed
 // =============================================================================
 
 struct Track {
@@ -26,7 +26,7 @@ struct Track {
     float  px;       // momentum x [GeV/c]
     float  py;       // momentum y [GeV/c]
     float  pz;       // momentum z [GeV/c]
-    float  chi2;     // track fit chi²
+    float  chi2;     // track fit chi^2
     int    n_hits;   // number of detector hits
     int    pdg_id;   // PDG particle code
     bool   is_primary;
@@ -43,7 +43,7 @@ struct Cluster {
 REGISTER_SOA_FIELD_NAMES(Track,   x, y, z, px, py, pz, chi2, n_hits, pdg_id, is_primary)
 REGISTER_SOA_FIELD_NAMES(Cluster, energy, eta, phi, n_cells)
 
-// Per-event scalar struct — one instance saved per TTree::Fill()
+// Per-event scalar struct -- one instance saved per TTree::Fill()
 struct EventHeader {
     int    run;
     int    event_id;
@@ -220,7 +220,7 @@ void column_access_demo() {
 }
 
 // =============================================================================
-//  Scalar demo — one EventHeader per event alongside the SoA collections
+//  Scalar demo -- one EventHeader per event alongside the SoA collections
 // =============================================================================
 void scalar_demo(const char* filename) {
     std::cout << "\n=== SCALAR WRITE ===\n";

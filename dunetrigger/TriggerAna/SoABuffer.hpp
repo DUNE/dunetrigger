@@ -38,7 +38,7 @@
 // ---------------------------------------------------------------------------
 namespace soa_detail {
 
-// Map a tuple<T0, T1, ...> → tuple<vector<T0>, vector<T1>, ...>
+// Map a tuple<T0, T1, ...> -> tuple<vector<T0>, vector<T1>, ...>
 template<typename Tuple>
 struct TupleToVectors;
 
@@ -47,7 +47,7 @@ struct TupleToVectors<std::tuple<Ts...>> {
     using type = std::tuple<std::vector<Ts>...>;
 };
 
-// Map a tuple<T0, T1, ...> → tuple<vector<T0>*, vector<T1>*, ...>
+// Map a tuple<T0, T1, ...> -> tuple<vector<T0>*, vector<T1>*, ...>
 // Used to provide the T** that ROOT's SetBranchAddress requires.
 template<typename Tuple>
 struct TupleToVectorPtrs;
@@ -60,7 +60,7 @@ struct TupleToVectorPtrs<std::tuple<Ts...>> {
 } // namespace soa_detail
 
 // ---------------------------------------------------------------------------
-//  SoaFieldNames<Struct> — specialisable trait for field name registration.
+//  SoaFieldNames<Struct> -- specialisable trait for field name registration.
 //
 //  C++20: names are always available automatically via Boost.PFR; no action
 //         needed from the user.
@@ -96,8 +96,8 @@ private:
 //
 //  Uses Boost.Preprocessor to stringify each field name individually:
 //
-//    BOOST_PP_VARIADIC_TO_SEQ(x, y, z)  →  (x)(y)(z)      [a PP sequence]
-//    BOOST_PP_SEQ_ENUM(                  →  "x", "y", "z"  [comma-separated]
+//    BOOST_PP_VARIADIC_TO_SEQ(x, y, z)  ->  (x)(y)(z)      [a PP sequence]
+//    BOOST_PP_SEQ_ENUM(                  ->  "x", "y", "z"  [comma-separated]
 //        BOOST_PP_SEQ_TRANSFORM(
 //            SOA_PP_STRINGIFY_OP, _, seq))
 //
@@ -113,12 +113,12 @@ private:
 #include <boost/preprocessor/seq/enum.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
-// Callback for BOOST_PP_SEQ_TRANSFORM: (data, elem) → "elem"
+// Callback for BOOST_PP_SEQ_TRANSFORM: (data, elem) -> "elem"
 // The macro receives (r, data, elem); data is unused (_).
 #define SOA_PP_STRINGIFY_OP(r, _, elem) BOOST_PP_STRINGIZE(elem)
 
 // Produce a comma-separated list of quoted strings from a variadic list:
-//   SOA_PP_STRINGIFY_EACH(x, y, z)  →  "x", "y", "z"
+//   SOA_PP_STRINGIFY_EACH(x, y, z)  ->  "x", "y", "z"
 #define SOA_PP_STRINGIFY_EACH(...)                          \
     BOOST_PP_SEQ_ENUM(                                      \
         BOOST_PP_SEQ_TRANSFORM(                             \
@@ -154,7 +154,7 @@ namespace soa_detail {
 
 // Dispatch: C++20 uses PFR directly; C++17 goes through the trait.
 #if __cplusplus >= 202002L
-// Forward declaration — defined below get_field_names to avoid lookup issues
+// Forward declaration -- defined below get_field_names to avoid lookup issues
 // across compilers.
 template<typename Struct, typename NamesArray, std::size_t... Is>
 std::array<std::string, sizeof...(Is)>
@@ -192,12 +192,12 @@ get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
 //  ---
 //  Wraps one std::vector<T> per field of Struct, reflecting the layout
 //  automatically through Boost.PFR.  Provides:
-//    push_back(const Struct&)   – append one element
-//    get(size_t i)              – reconstruct an AoS element
-//    size()                     – number of stored elements
-//    clear()                    – empty all vectors (keeps capacity)
-//    make_branches(TTree*, prefix)  – register all vectors as TTree branches
-//    set_branch_addresses(TTree*, prefix) – re-point addresses on an existing tree
+//    push_back(const Struct&)   -- append one element
+//    get(size_t i)              -- reconstruct an AoS element
+//    size()                     -- number of stored elements
+//    clear()                    -- empty all vectors (keeps capacity)
+//    make_branches(TTree*, prefix)  -- register all vectors as TTree branches
+//    set_branch_addresses(TTree*, prefix) -- re-point addresses on an existing tree
 // ---------------------------------------------------------------------------
 template<typename Struct>
 class SoABuffer {
@@ -215,7 +215,7 @@ public:
     // Tuple-of-vectors type that mirrors the struct layout
     using FieldTuple  = decltype(boost::pfr::structure_to_tuple(std::declval<Struct>()));
     using ArraysTuple = typename soa_detail::TupleToVectors<FieldTuple>::type;
-    // Tuple of raw pointers to each vector — passed to ROOT's SetBranchAddress (needs T**)
+    // Tuple of raw pointers to each vector -- passed to ROOT's SetBranchAddress (needs T**)
     using PtrsTuple   = typename soa_detail::TupleToVectorPtrs<FieldTuple>::type;
 
     // ------------------------------------------------------------------
@@ -223,7 +223,7 @@ public:
     // ------------------------------------------------------------------
     SoABuffer() : ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
-    // Copying would leave ptrs_ pointing at the source's arrays_ — disallow.
+    // Copying would leave ptrs_ pointing at the source's arrays_ -- disallow.
     SoABuffer(const SoABuffer&)            = delete;
     SoABuffer& operator=(const SoABuffer&) = delete;
 
@@ -289,7 +289,7 @@ public:
     // ------------------------------------------------------------------
 
     /// Create one STL-vector branch per field on tree.
-    /// The branch name is  prefix + field_name  (e.g. "trk_x", "trk_y", …).
+    /// The branch name is  prefix + field_name  (e.g. "trk_x", "trk_y", ...).
     /// Call once after TTree construction, before the event loop.
     void make_branches(TTree& tree, const std::string& prefix = "") {
         make_branches_impl(&tree, prefix, std::make_index_sequence<kNFields>{});
@@ -306,7 +306,7 @@ public:
     // Utilities
     // ------------------------------------------------------------------
 
-    /// Field names — real names in C++20 mode, "field_N" in C++17 mode.
+    /// Field names -- real names in C++20 mode, "field_N" in C++17 mode.
     static std::array<std::string, kNFields> field_names() {
         return soa_detail::get_field_names<Struct>();
     }
@@ -382,7 +382,7 @@ private:
         (check_set_address(
             tree->SetBranchAddress(
                 (prefix + names[Is]).c_str(),
-                &std::get<Is>(ptrs_)        // T** — what ROOT requires for vector branches
+                &std::get<Is>(ptrs_)        // T** -- what ROOT requires for vector branches
             ),
             prefix + names[Is]
         ), ...);
@@ -418,19 +418,19 @@ private:
 //    for (auto& raw : source) {
 //        writer->x         = raw.x;      // fill staging row
 //        writer->px        = raw.px;
-//        writer.push_back();             // commit row → SoA buffer
+//        writer.push_back();             // commit row -> SoA buffer
 //    }
 //    tree.Fill();
 //    writer.clear();                     // reset buffer and staging row
 //
 //  Methods:
-//    push_back()          – append current value of `row` into the SoA buffer
-//    commit_and_reset()   – append current `row`, then reset it
-//    clear()              – clear the SoA buffer AND zero-initialise `row`
-//    reset_row()          – zero-initialise `row` only (buffer unchanged)
-//    buffer()             – access the underlying SoABuffer (e.g. for size(),
+//    push_back()          -- append current value of `row` into the SoA buffer
+//    commit_and_reset()   -- append current `row`, then reset it
+//    clear()              -- clear the SoA buffer AND zero-initialise `row`
+//    reset_row()          -- zero-initialise `row` only (buffer unchanged)
+//    buffer()             -- access the underlying SoABuffer (e.g. for size(),
 //                           get(i), set_branch_addresses for read-back)
-//    make_branches(...)   – forwarded to SoABuffer
+//    make_branches(...)   -- forwarded to SoABuffer
 // ---------------------------------------------------------------------------
 template<typename Struct>
 class SoAWriter {
