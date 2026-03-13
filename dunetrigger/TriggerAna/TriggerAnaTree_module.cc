@@ -37,8 +37,8 @@
 #include <TTree.h>
 
 
-#include "SoABuffer.hh"
-#include "ScalarBuffer.hh"
+#include "VectorFieldsBuffer.hh"
+#include "ScalarFieldsBuffer.hh"
 #include "TriggerAnaTree_module.hh"
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
@@ -52,8 +52,12 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+using dunedaq::trgdataformats::TriggerPrimitive;
 using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
+
+
+
 
 namespace dunetrigger {
 class TriggerAnaTree;
@@ -79,16 +83,16 @@ public:
 
 private:
 
-  using TriggerPrimitiveWriter = SoABuffer<TriggerPrimitiveRow>;
-  using TriggerPrimitiveBacktrackingWriter = SoABuffer<TriggerPrimitiveBacktrackingRow>;
-  using TriggerPrimitiveAssociationWriter = SoABuffer<TriggerPrimitiveAssociationRow>;
+  using TriggerPrimitiveWriter = VectorFieldsBuffer<TriggerPrimitiveRow>;
+  using TriggerPrimitiveBacktrackingWriter = VectorFieldsBuffer<TriggerPrimitiveBacktrackingRow>;
+  using TriggerPrimitiveAssociationWriter = VectorFieldsBuffer<TriggerPrimitiveAssociationRow>;
 
 
   art::ServiceHandle<art::TFileService> tfs;
   std::map<std::string, TTree *> tree_map;
   // buffers for writing to ROOT Trees
 
-  ScalarBuffer<EventMetaData> ev_sbuf;
+  ScalarFieldsBuffer<EventMetaData> ev_sbuf;
 
   size_t fAssnIdx;
 
@@ -120,30 +124,30 @@ private:
   // visible energy for the event
 
   TTree *summary_tree;
-  ScalarBuffer<EventSummaryData> evsummary_buf;
+  ScalarFieldsBuffer<EventSummaryData> evsummary_buf;
 
 
   // MCTruth
   bool dump_mctruths;
 
   TTree* mctruth_tree;
-  SoABuffer<MCTruthRow> mctruth_writer;
+  VectorFieldsBuffer<MCTruthRow> mctruth_writer;
   
 
   TTree* mcneutrino_tree;
-  SoABuffer<MCNeutrinoRow> mcneutrino_writer;
+  VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_writer;
 
   bool dump_mcparticles;
 
   TTree* mcparticle_tree;
-  SoABuffer<MCParticleRow> mcparticle_writer;
+  VectorFieldsBuffer<MCParticleRow> mcparticle_writer;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
   bool dump_simides;
   std::string simchannel_tag;
   TTree* simide_tree;
-  SoABuffer<SimIDERow> simide_writer;
+  VectorFieldsBuffer<SimIDERow> simide_writer;
   
   // JSON metadata
   json info_data;

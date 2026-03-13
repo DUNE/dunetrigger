@@ -1,11 +1,11 @@
-#ifndef SCALAR_BUFFER_HH
-#define SCALAR_BUFFER_HH
+#ifndef SCALAR_FIELDS_BUFFER_HH
+#define SCALAR_FIELDS_BUFFER_HH
 // =============================================================================
-//  ScalarBuffer.hpp
+//  ScalarFieldsBuffer.hh
 //  Saves one struct per ROOT event as scalar branches (no std::vector).
 //
 //  Intended for per-event quantities: run number, event ID, trigger flags,
-//  global kinematics, etc.  For per-object collections use SoABuffer.hpp.
+//  global kinematics, etc.  For per-object collections use VectorFieldsBuffer.hh.
 //
 //  Requirements:
 //    - C++17 or later  (GCC >= 12 supported)
@@ -36,7 +36,7 @@
 
 
 // ---------------------------------------------------------------------------
-//  ScalarBuffer<Struct>
+//  ScalarFieldsBuffer<Struct>
 //  ---
 //  Holds one instance of Struct and registers each field as a scalar branch
 //  on a TTree.  The struct is the branch buffer itself -- ROOT reads/writes
@@ -52,11 +52,11 @@
 //    print_summary(os)                  -- list field names and addresses
 // ---------------------------------------------------------------------------
 template<typename Struct>
-class ScalarBuffer {
+class ScalarFieldsBuffer {
     static_assert(std::is_default_constructible_v<Struct>,
-                  "ScalarBuffer requires a default-constructible struct");
+                  "ScalarFieldsBuffer requires a default-constructible struct");
     static_assert(std::is_copy_assignable_v<Struct>,
-                  "ScalarBuffer requires a copy-assignable struct");
+                  "ScalarFieldsBuffer requires a copy-assignable struct");
 
 public:
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
@@ -70,7 +70,7 @@ public:
     // ------------------------------------------------------------------
     // Construction
     // ------------------------------------------------------------------
-    ScalarBuffer() = default;
+    ScalarFieldsBuffer() = default;
 
     // ------------------------------------------------------------------
     // Enable / disable
@@ -130,9 +130,9 @@ public:
 
     void print_summary(std::ostream& os = std::cout) const { os << *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const ScalarBuffer& buf) {
+    friend std::ostream& operator<<(std::ostream& os, const ScalarFieldsBuffer& buf) {
         auto names = trg_detail::get_field_names<Struct>();
-        os << "ScalarBuffer<" << typeid(Struct).name()
+        os << "ScalarFieldsBuffer<" << typeid(Struct).name()
            << ">  fields=" << kNFields
            << "  enabled=" << std::boolalpha << buf.enabled_ << '\n';
         std::size_t i = 0;
@@ -148,4 +148,4 @@ private:
     bool enabled_ = true;
 };
 
-#endif // SCALAR_BUFFER_HH
+#endif // SCALAR_FIELDS_BUFFER_HH

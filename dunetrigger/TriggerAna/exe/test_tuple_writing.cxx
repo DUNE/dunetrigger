@@ -1,12 +1,12 @@
 // =============================================================================
-//  main.cpp -- usage demo for SoABuffer with ROOT TTree
+//  main.cpp -- usage demo for VectorFieldsBuffer with ROOT TTree
 //
 //  Compile:
 //    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
 // =============================================================================
 
-#include "../SoABuffer.hh"
-#include "../ScalarBuffer.hh"
+#include "../VectorFieldsBuffer.hh"
+#include "../ScalarFieldsBuffer.hh"
 
 #include <TFile.h>
 #include <TTree.h>
@@ -60,8 +60,8 @@ REGISTER_FIELD_NAMES(EventHeader, run, event_id, n_tracks, n_clusters, beam_ener
 // =============================================================================
 
 /// Simulate one event: fill track and cluster writers
-void simulate_event(SoABuffer<Track>&   tracks,
-                    SoABuffer<Cluster>& clusters,
+void simulate_event(VectorFieldsBuffer<Track>&   tracks,
+                    VectorFieldsBuffer<Cluster>& clusters,
                     TRandom3&           rng)
 {
     const int n_tracks   = rng.Integer(10) + 2;
@@ -100,8 +100,8 @@ void write_demo(const char* filename) {
     // -------------------------------------------------------------------------
     // 1. Create writers (once, outside the event loop)
     // -------------------------------------------------------------------------
-    SoABuffer<Track>   track_writer(64);  // reserves 64 slots in the buffer
-    SoABuffer<Cluster> cluster_writer(16);
+    VectorFieldsBuffer<Track>   track_writer(64);  // reserves 64 slots in the buffer
+    VectorFieldsBuffer<Cluster> cluster_writer(16);
 
     // -------------------------------------------------------------------------
     // 2. Create ROOT file + tree, register all branches automatically
@@ -158,8 +158,8 @@ void write_demo(const char* filename) {
 void read_demo(const char* filename) {
     std::cout << "\n=== READ BACK ===\n";
 
-    SoABuffer<Track>   track_buf;
-    SoABuffer<Cluster> cluster_buf;
+    VectorFieldsBuffer<Track>   track_buf;
+    VectorFieldsBuffer<Cluster> cluster_buf;
 
     TFile file(filename, "READ");
     TTree* tree = nullptr;
@@ -193,7 +193,7 @@ void read_demo(const char* filename) {
 void column_access_demo() {
     std::cout << "\n=== COLUMN ACCESS ===\n";
 
-    SoABuffer<Track> buf;
+    VectorFieldsBuffer<Track> buf;
     TRandom3 rng(7);
 
     for (int i = 0; i < 5; ++i) {
@@ -213,7 +213,7 @@ void column_access_demo() {
     std::cout << '\n';
 
     // Field names at compile time
-    auto names = SoABuffer<Track>::field_names();
+    auto names = VectorFieldsBuffer<Track>::field_names();
     std::cout << "Field names: ";
     for (auto n : names) std::cout << n << ' ';
     std::cout << '\n';
@@ -225,9 +225,9 @@ void column_access_demo() {
 void scalar_demo(const char* filename) {
     std::cout << "\n=== SCALAR WRITE ===\n";
 
-    ScalarBuffer<EventHeader> hdr;
-    SoABuffer<Track>          track_writer(64);
-    SoABuffer<Cluster>        cluster_writer(16);
+    ScalarFieldsBuffer<EventHeader> hdr;
+    VectorFieldsBuffer<Track>          track_writer(64);
+    VectorFieldsBuffer<Cluster>        cluster_writer(16);
 
     hdr.print_summary();
 
@@ -267,7 +267,7 @@ void scalar_demo(const char* filename) {
     // --- read back ---
     std::cout << "\n=== SCALAR READ BACK ===\n";
 
-    ScalarBuffer<EventHeader> hdr_in;
+    ScalarFieldsBuffer<EventHeader> hdr_in;
     TFile rfile(filename, "READ");
     TTree* rtree = nullptr;
     rfile.GetObject("events", rtree);

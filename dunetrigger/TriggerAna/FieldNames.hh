@@ -2,7 +2,7 @@
 #define TRG_FIELD_NAMES_HH
 // =============================================================================
 //  FieldNames.hpp
-//  Shared field-name reflection used by SoABuffer and ScalarBuffer.
+//  Shared field-name reflection used by VectorFieldsBuffer and ScalarFieldsBuffer.
 //
 //  Provides:
 //    FieldNames<Struct>               -- specialisable trait
@@ -90,11 +90,13 @@ private:                                                                        
 namespace trg_detail {
 
 #if __cplusplus >= 202002L
-// Forward-declare before get_field_names to satisfy all compilers.
 template<typename Struct, typename NamesArray, std::size_t... Is>
 std::array<std::string, sizeof...(Is)>
-get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>);
+get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
+    return { std::string(pfr_names[Is])... };
+}
 #endif
+
 
 template<typename Struct>
 std::array<std::string, boost::pfr::tuple_size_v<Struct>>
@@ -111,14 +113,6 @@ get_field_names() {
     return FieldNames<Struct>::get();
 #endif
 }
-
-#if __cplusplus >= 202002L
-template<typename Struct, typename NamesArray, std::size_t... Is>
-std::array<std::string, sizeof...(Is)>
-get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
-    return { std::string(pfr_names[Is])... };
-}
-#endif
 
 } // namespace trg_detail
 

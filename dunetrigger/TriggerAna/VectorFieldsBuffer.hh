@@ -1,7 +1,7 @@
-#ifndef SOA_BUFFER_HH
-#define SOA_BUFFER_HH
+#ifndef VECTOR_FIELDS_BUFFER_HH
+#define VECTOR_FIELDS_BUFFER_HH
 // =============================================================================
-//  SoABuffer.hpp
+//  VectorFieldsBuffer.hh
 //  Automatic Structure-of-Arrays buffer from a C++ struct,
 //  with ROOT TTree branch registration and clear support.
 //
@@ -62,7 +62,7 @@ struct TupleToVectorPtrs<std::tuple<Ts...>> {
 } // namespace soa_detail
 
 // ---------------------------------------------------------------------------
-//  SoABuffer<Struct>
+//  VectorFieldsBuffer<Struct>
 //  ---
 //  Wraps one std::vector<T> per field of Struct, reflecting the layout
 //  automatically through Boost.PFR.
@@ -95,13 +95,13 @@ struct TupleToVectorPtrs<std::tuple<Ts...>> {
 //    enable(bool) / operator bool()  -- enable/disable write operations
 // ---------------------------------------------------------------------------
 template<typename Struct>
-class SoABuffer {
+class VectorFieldsBuffer {
     static_assert(std::is_default_constructible_v<Struct>,
-                  "SoABuffer requires a default-constructible struct");
+                  "VectorFieldsBuffer requires a default-constructible struct");
     static_assert(std::is_copy_constructible_v<Struct>,
-                  "SoABuffer requires a copy-constructible struct");
+                  "VectorFieldsBuffer requires a copy-constructible struct");
     static_assert(boost::pfr::tuple_size_v<Struct> > 0,
-                  "SoABuffer does not support empty structs");
+                  "VectorFieldsBuffer does not support empty structs");
 
 public:
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
@@ -111,28 +111,28 @@ public:
     using PtrsTuple   = typename soa_detail::TupleToVectorPtrs<FieldTuple>::type;
 
     /// Staging row -- fill fields here, then call push_back().
-    /// Mirrors ScalarBuffer::data.
+    /// Mirrors ScalarFieldsBuffer::data.
     Struct row{};
 
     // ------------------------------------------------------------------
     // Construction
     // ------------------------------------------------------------------
-    SoABuffer() : ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
+    VectorFieldsBuffer() : ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
-    explicit SoABuffer(std::size_t reserve_n) : SoABuffer() {
+    explicit VectorFieldsBuffer(std::size_t reserve_n) : VectorFieldsBuffer() {
         reserve(reserve_n);
     }
 
     // Copying would leave ptrs_ pointing at the source's arrays_ -- disallow.
-    SoABuffer(const SoABuffer&)            = delete;
-    SoABuffer& operator=(const SoABuffer&) = delete;
+    VectorFieldsBuffer(const VectorFieldsBuffer&)            = delete;
+    VectorFieldsBuffer& operator=(const VectorFieldsBuffer&) = delete;
 
     // Move is safe: re-initialise ptrs_ to point at the new arrays_.
-    SoABuffer(SoABuffer&& o) noexcept
+    VectorFieldsBuffer(VectorFieldsBuffer&& o) noexcept
         : arrays_(std::move(o.arrays_))
         , ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
-    SoABuffer& operator=(SoABuffer&& o) noexcept {
+    VectorFieldsBuffer& operator=(VectorFieldsBuffer&& o) noexcept {
         if (this != &o) {
             arrays_ = std::move(o.arrays_);
             ptrs_   = make_ptrs(std::make_index_sequence<kNFields>{});
@@ -190,7 +190,7 @@ public:
     Struct get(std::size_t i) const {
         if (i >= size())
             throw std::out_of_range(
-                "SoABuffer::get: index " + std::to_string(i) +
+                "VectorFieldsBuffer::get: index " + std::to_string(i) +
                 " out of range (size=" + std::to_string(size()) + ")");
         return get_impl(i, std::make_index_sequence<kNFields>{});
     }
@@ -257,9 +257,9 @@ public:
 
     void print_summary(std::ostream& os = std::cout) const { os << *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const SoABuffer& buf) {
+    friend std::ostream& operator<<(std::ostream& os, const VectorFieldsBuffer& buf) {
         auto names = trg_detail::get_field_names<Struct>();
-        os << "SoABuffer<" << typeid(Struct).name()
+        os << "VectorFieldsBuffer<" << typeid(Struct).name()
            << ">  rows=" << buf.size()
            << "  fields=" << kNFields
            << "  enabled=" << std::boolalpha << buf.enabled_ << '\n';
@@ -306,9 +306,9 @@ private:
     static void check_set_address(Int_t status, const std::string& branch_name) {
         if (status < 0)
             throw std::runtime_error(
-                "SoABuffer::set_branch_addresses: failed to bind branch \"" +
+                "VectorFieldsBuffer::set_branch_addresses: failed to bind branch \"" +
                 branch_name + "\" (ROOT error code " + std::to_string(status) + ")");
     }
 };
 
-#endif // SOA_BUFFER_HH
+#endif // VECTOR_FIELDS_BUFFER_HH
