@@ -126,18 +126,20 @@ public:
         return trg_detail::get_field_names<Struct>();
     }
 
-    void print_summary(std::ostream& os = std::cout) const {
+    void print_summary(std::ostream& os = std::cout) const { os << *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const ScalarBuffer& buf) {
         auto names = trg_detail::get_field_names<Struct>();
         os << "ScalarBuffer<" << typeid(Struct).name()
-           << ">  fields=" << kNFields << '\n';
+           << ">  fields=" << kNFields
+           << "  enabled=" << std::boolalpha << buf.enabled_ << '\n';
         std::size_t i = 0;
         std::apply([&](const auto&... fields) {
             ([&](const auto& field) {
-                os << "  [" << i << "] " << names[i]
-                   << "  addr=" << static_cast<const void*>(&field) << '\n';
-                ++i;
+                os << "  " << names[i++] << ": " << field << '\n';
             }(fields), ...);
-        }, boost::pfr::structure_tie(data));
+        }, boost::pfr::structure_tie(buf.data));
+        return os;
     }
 
 private:

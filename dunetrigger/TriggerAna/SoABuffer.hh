@@ -255,18 +255,26 @@ public:
         return trg_detail::get_field_names<Struct>();
     }
 
-    void print_summary(std::ostream& os = std::cout) const {
+    void print_summary(std::ostream& os = std::cout) const { os << *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const SoABuffer& buf) {
         auto names = trg_detail::get_field_names<Struct>();
         os << "SoABuffer<" << typeid(Struct).name()
-           << ">  rows=" << size()
-           << "  fields=" << kNFields << '\n';
+           << ">  rows=" << buf.size()
+           << "  fields=" << kNFields
+           << "  enabled=" << std::boolalpha << buf.enabled_ << '\n';
         std::size_t i = 0;
         std::apply([&](const auto&... vecs) {
             ([&](const auto& vec) {
-                os << "  [" << i << "] " << names[i] << "  size=" << vec.size() << '\n';
-                ++i;
+                os << "  " << names[i++] << ": [";
+                for (std::size_t j = 0; j < vec.size(); ++j) {
+                    if (j) os << ", ";
+                    os << vec[j];
+                }
+                os << "]\n";
             }(vecs), ...);
-        }, arrays_);
+        }, buf.arrays_);
+        return os;
     }
 
 private:
