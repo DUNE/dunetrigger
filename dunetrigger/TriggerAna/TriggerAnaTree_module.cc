@@ -774,7 +774,7 @@ void dunetrigger::TriggerPrimitiveRow::from_tp(const dunedaq::trgdataformats::Tr
 void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
     const std::vector<sim::IDE> &ides,
     const std::unordered_map<int, int> &trkid_to_truth_block,
-    std::unordered_map<int, std::string> &truth_id_to_gen) {
+    const std::unordered_map<int, std::string> &truth_id_to_gen) {
   bt_primary_track_id = INVALID;
   bt_primary_track_numelectron_frac = INVALID;
   bt_primary_track_energy_frac = INVALID;
