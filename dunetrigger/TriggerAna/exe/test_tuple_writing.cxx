@@ -136,7 +136,7 @@ void write_demo(const char* filename) {
                       << "  clusters=" << cluster_writer.size() << '\n';
 
             if (track_writer.size() > 0) {
-                Track t0 = track_writer.buffer().get(0);
+                Track t0 = track_writer.get(0);
                 std::cout << "    track[0]: px=" << t0.px
                           << " py=" << t0.py
                           << " pdg=" << t0.pdg_id << '\n';
