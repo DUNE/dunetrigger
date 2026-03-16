@@ -1,6 +1,7 @@
 include_directories("${dunedetdataformats_DIR}/../../../include") # there's a neater way?
 
 add_subdirectory(fcl)
+add_subdirectory(exe)
 
 art_make(BASENAME_ONLY MODULE_LIBRARIES
   larcore::Geometry_Geometry_service

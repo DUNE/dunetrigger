@@ -111,9 +111,9 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
       this_timestamp = default_timestamp_;
 
     tpalg_->process_waveform(
-        digit.ADCs(), digit.Channel(),
-        (uint16_t)(dunedaq::detdataformats::DetID::Subdetector::kHD_TPC),
-        this_timestamp, *tp_col_ptr);
+      digit.ADCs(), digit.Channel(),
+      (uint16_t)(dunedaq::detdataformats::DetID::Subdetector::kHD_TPC),
+      this_timestamp, *tp_col_ptr);
   }
 
   e.put(std::move(tp_col_ptr));
