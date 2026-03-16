@@ -16,20 +16,16 @@
 #include "art_root_io/TFileService.h"
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Utilities/InputTag.h"
-#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include "detdataformats/trigger/TriggerActivityData.hpp"
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
-#include "detdataformats/trigger/TriggerPrimitive.hpp"
 
 #include "larcore/Geometry/Geometry.h"
 #include "larcore/Geometry/WireReadout.h"
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "lardataobj/Simulation/SimChannel.h"
-#include "larsim/MCCheater/BackTrackerService.h"
-#include "larsim/MCCheater/ParticleInventoryService.h"
 
 #include "nusimdata/SimulationBase/MCParticle.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
@@ -41,509 +37,28 @@
 #include <TTree.h>
 
 
-#include "SoABuffer.hpp"
-#include "ScalarBuffer.hpp"
+#include "VectorFieldsBuffer.hh"
+#include "ScalarFieldsBuffer.hh"
+#include "TriggerAnaTree_module.hh"
+
+#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
+#include "larsim/MCCheater/BackTrackerService.h"
+#include "larsim/MCCheater/ParticleInventoryService.h"
+
+#include <algorithm>
+#include <iostream>
+#include <map>
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+using dunedaq::trgdataformats::TriggerPrimitive;
 using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
-using dunedaq::trgdataformats::TriggerPrimitive;
 
-// #define INVALID -99999
-constexpr int INVALID=-99999;
 
-namespace dunetrigger {
-class TriggerAnaTree;
 
-struct ChannelInfo {
-  unsigned int rop_id;
-  int view;
-  unsigned int tpcset_id;
-};
 
-struct EventMetaData {
-  // buffer data members
-  int event = -1;
-  int run = -1;
-  int subrun = -1;
-
-};
-
-struct EventSummaryData {
-  int mctruths_count = -1;
-  int mcparticles_count = -1;
-  int mcneutrinos_count = -1;
-  int simides_count = -1;
-  double tot_visible_energy_rop0 = 0.;
-  double tot_visible_energy_rop1 = 0.;
-  double tot_visible_energy_rop2 = 0.;
-  double tot_visible_energy_rop3 = 0.;
-  double tot_numelectrons_rop0 = 0.;
-  double tot_numelectrons_rop1 = 0.;
-  double tot_numelectrons_rop2 = 0.;
-  double tot_numelectrons_rop3 = 0.;
-};
-
-
-struct MCTruthRow {
-  /**
-   * Buffer of MCTruth data members
-   */
-  
-  int pdg = -1;
-  std::string process = "undef";
-  int status_code = -1;
-  int block_id = -1;
-  int truth_track_id = -1;
-  std::string generator_name = "undef";
-  double x = 0.;
-  double y = 0.;
-  double z = 0.;
-  double t = 0.;
-  double px = 0.;
-  double py = 0.;
-  double pz = 0.;
-  double p = 0.;
-  double energy = 0.;
-  double kinetic_energy = 0.;
-
-  MCTruthRow() = default;
-
-};
-
-struct MCNeutrinoRow {
-
-  int block_id = -1;
-  std::string generator_name = "undef";
-  int nupdg = -1;
-  int leptonpdg = -1;
-  int ccnc = -1;
-  int mode = -1;
-  int interactionType = -1;
-  int target = -1;
-  int hitnuc = -1;
-  int hitquark = -1;
-  double w = 0.;
-  double x = 0.;
-  double y = 0.;
-  double qsqr = 0.;
-  double pt = 0.;
-  double theta = 0.;
-
-  MCNeutrinoRow() = default;
-
-};
-
-struct MCParticleRow {
-  int pdg = -1;
-  std::string generator_name = "undef";
-  int status_code = -1;
-  int g4_track_id = -1;
-  int mother = -1;
-  int truth_block_id = -1;
-  double x = 0.;
-  double y = 0.;
-  double z = 0.;
-  double t = 0.;
-  double end_x = 0.;
-  double end_y = 0.;
-  double end_z = 0.;
-  double end_t = 0.;
-  double px = 0.;
-  double py = 0.;
-  double pz = 0.;
-  double energy = 0.;
-  double kinetic_energy = 0.;
-  double edep = 0.;
-  double numelectrons = 0.;
-  double shower_edep = 0.;
-  double shower_numelectrons = 0.;
-  std::string process = "undef";
-
-  MCParticleRow() = default;
-};
-
-struct SimIDERow {
-  unsigned int channel = 0;
-  int timestamp = -1;
-  float numelectrons = 0.f;
-  float energy = 0.f;
-  float x = 0.f;
-  float y = 0.f;
-  float z = 0.f;
-  int trackID = -1;
-  float origTrackID = 0.f;
-  float readout_plane_id = 0.f;
-  float readout_view = 0.f;
-  float detector_element = 0.f;
-
-  SimIDERow() = default;
-};
-
-struct TriggerPrimitiveRow {
-  uint8_t version = 0;
-  uint8_t flag = 0;
-  uint8_t detid = 0;
-  uint32_t channel = 0;
-  uint16_t samples_over_threshold = 0;
-  uint64_t time_start = 0;
-  uint16_t samples_to_peak = 0;
-  uint32_t adc_integral = 0;
-  uint16_t adc_peak = 0;
-  unsigned int readout_plane_id = 0;
-  int readout_view = 0;
-  unsigned int TPCSetID = 0;
-
-  void from_tp(const TriggerPrimitive &tp);
-
-  TriggerPrimitiveRow() = default;
-};
-
-struct TriggerPrimitiveBacktrackingRow {
-  int bt_primary_track_id = INVALID;
-  double bt_primary_track_numelectron_frac = INVALID;
-  double bt_primary_track_energy_frac = INVALID;
-  double bt_edep = 0.;
-  double bt_numelectrons = 0.;
-  double bt_x = INVALID;
-  double bt_y = INVALID;
-  double bt_z = INVALID;
-  double bt_primary_x = INVALID;
-  double bt_primary_y = INVALID;
-  double bt_primary_z = INVALID;
-  int bt_truth_block_id = INVALID;
-  std::string bt_generator_name = "undef";
-
-  void populate_backtracking_info(const std::vector<sim::IDE> &ides,
-                                  const std::unordered_map<int, int> &trkid_to_truth_block,
-                                  std::unordered_map<int, std::string> &truth_id_to_gen);
-
-  TriggerPrimitiveBacktrackingRow() = default;
-};
-
-struct TriggerPrimitiveAssociationRow {
-
-  int ta_number = -1;
-
-  TriggerPrimitiveAssociationRow() = default;
-};
-
-void dunetrigger::TriggerPrimitiveRow::from_tp(const TriggerPrimitive &tp) {
-  version = 2; // temp, since variables below are converted to v2 version while the TP version in TriggerSim is still 1.
-               // Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
-  flag = 0;
-  detid = tp.detid;
-  channel = tp.channel;
-  samples_over_threshold = tp.time_over_threshold / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-  time_start = tp.time_start;
-  samples_to_peak = (tp.time_peak - tp.time_start) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-  adc_integral = tp.adc_integral;
-  adc_peak = tp.adc_peak;
-}
-
-void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
-    const std::vector<sim::IDE> &ides,
-    const std::unordered_map<int, int> &trkid_to_truth_block,
-    std::unordered_map<int, std::string> &truth_id_to_gen) {
-  bt_primary_track_id = INVALID;
-  bt_primary_track_numelectron_frac = INVALID;
-  bt_primary_track_energy_frac = INVALID;
-  bt_edep = 0.;
-  bt_numelectrons = 0.;
-  bt_x = INVALID;
-  bt_y = INVALID;
-  bt_z = INVALID;
-  bt_primary_x = INVALID;
-  bt_primary_y = INVALID;
-  bt_primary_z = INVALID;
-  bt_truth_block_id = INVALID;
-  bt_generator_name.clear();
-
-  if (ides.empty()) {
-    return;
-  }
-
-  std::vector<sim::IDE> bt_ides;
-  bt_ides.reserve(ides.capacity());
-  std::copy_if(ides.begin(),
-               ides.end(),
-               std::back_inserter(bt_ides),
-               [](const sim::IDE &ide) { return ide.trackID != 0; });
-
-  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
-  art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
-
-  std::map<int, double> track_numelectrons;
-  std::map<int, double> track_energies;
-
-  if (bt_ides.empty()) {
-    std::cout << "Empty IDEs set!" << std::endl;
-    return;
-  }
-
-  for (const sim::IDE &ide : bt_ides) {
-    int mc_track_id = pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId();
-    track_numelectrons[mc_track_id] += ide.numElectrons;
-    track_energies[mc_track_id] += ide.energy;
-    bt_numelectrons += ide.numElectrons;
-    bt_edep += ide.energy;
-  }
-
-  bt_primary_track_id =
-      std::max_element(track_numelectrons.begin(), track_numelectrons.end(), [](const auto &a, const auto &b) {
-        return a.second < b.second;
-      })->first;
-
-  std::vector<sim::IDE> primary_ides;
-  for (const sim::IDE &ide : bt_ides) {
-    if (pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId() == bt_primary_track_id) {
-      primary_ides.push_back(ide);
-    }
-  }
-
-  bt_primary_track_numelectron_frac = track_numelectrons[bt_primary_track_id] / bt_numelectrons;
-  bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
-
-  std::vector<double> bt_position = bt_serv->SimIDEsToXYZ(ides);
-  std::vector<double> primary_bt_position = bt_serv->SimIDEsToXYZ(primary_ides);
-
-  bt_x = bt_position[0];
-  bt_y = bt_position[1];
-  bt_z = bt_position[2];
-  bt_primary_x = primary_bt_position[0];
-  bt_primary_y = primary_bt_position[1];
-  bt_primary_z = primary_bt_position[2];
-
-  bt_truth_block_id = trkid_to_truth_block.at(bt_primary_track_id);
-  bt_generator_name = truth_id_to_gen.at(bt_truth_block_id);
-}
-
-} // namespace dunetrigger
-
-
-//
-// C++17 SOA and Scalar fields registration
-// To be removed when LArSoft switches to C++20 standard.
-//
-REGISTER_SOA_FIELD_NAMES(dunetrigger::MCTruthRow,
-                         pdg,
-                         process,
-                         status_code,
-                         block_id,
-                         truth_track_id,
-                         generator_name,
-                         x,
-                         y,
-                         z,
-                         t,
-                         px,
-                         py,
-                         pz,
-                         p,
-                         energy,
-                         kinetic_energy)
-
-REGISTER_SOA_FIELD_NAMES(dunetrigger::MCNeutrinoRow,
-                         block_id,
-                         generator_name,
-                         nupdg,
-                         leptonpdg,
-                         ccnc,
-                         mode,
-                         interactionType,
-                         target,
-                         hitnuc,
-                         hitquark,
-                         w,
-                         x,
-                         y,
-                         qsqr,
-                         pt,
-                         theta)
-
-REGISTER_SOA_FIELD_NAMES(dunetrigger::MCParticleRow,
-                         pdg,
-                         generator_name,
-                         status_code,
-                         g4_track_id,
-                         mother,
-                         truth_block_id,
-                         x,
-                         y,
-                         z,
-                         t,
-                         end_x,
-                         end_y,
-                         end_z,
-                         end_t,
-                         px,
-                         py,
-                         pz,
-                         energy,
-                         kinetic_energy,
-                         edep,
-                         numelectrons,
-                         shower_edep,
-                         shower_numelectrons,
-                         process)
-
-REGISTER_SOA_FIELD_NAMES(dunetrigger::SimIDERow,
-                         channel,
-                         timestamp,
-                         numelectrons,
-                         energy,
-                         x,
-                         y,
-                         z,
-                         trackID,
-                         origTrackID,
-                         readout_plane_id,
-                         readout_view,
-                         detector_element)
-
-REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveRow,
-                         version,
-                         flag,
-                         detid,
-                         channel,
-                         samples_over_threshold,
-                         time_start,
-                         samples_to_peak,
-                         adc_integral,
-                         adc_peak,
-                         readout_plane_id,
-                         readout_view,
-                         TPCSetID)
-
-REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveBacktrackingRow,
-                         bt_primary_track_id,
-                         bt_primary_track_numelectron_frac,
-                         bt_primary_track_energy_frac,
-                         bt_edep,
-                         bt_numelectrons,
-                         bt_x,
-                         bt_y,
-                         bt_z,
-                         bt_primary_x,
-                         bt_primary_y,
-                         bt_primary_z,
-                         bt_truth_block_id,
-                         bt_generator_name)
-
-REGISTER_SOA_FIELD_NAMES(dunetrigger::TriggerPrimitiveAssociationRow,
-                         ta_number)
-
-REGISTER_SCALAR_FIELD_NAMES(dunetrigger::EventMetaData,
-                            event,
-                            run,
-                            subrun)
-
-REGISTER_SCALAR_FIELD_NAMES(dunetrigger::EventSummaryData,
-                            mctruths_count,
-                            mcparticles_count,
-                            mcneutrinos_count,
-                            simides_count,
-                            tot_visible_energy_rop0,
-                            tot_visible_energy_rop1,
-                            tot_visible_energy_rop2,
-                            tot_visible_energy_rop3,
-                            tot_numelectrons_rop0,
-                            tot_numelectrons_rop1,
-                            tot_numelectrons_rop2,
-                            tot_numelectrons_rop3)
-
-
-class dunetrigger::TriggerAnaTree : public art::EDAnalyzer {
-public:
-  explicit TriggerAnaTree(fhicl::ParameterSet const &p);
-  // The compiler-generated destructor is fine for non-base
-  // classes without bare pointers or other resource use.
-
-  // Plugins should not be copied or assigned.
-  TriggerAnaTree(TriggerAnaTree const &) = delete;
-  TriggerAnaTree(TriggerAnaTree &&) = delete;
-  TriggerAnaTree &operator=(TriggerAnaTree const &) = delete;
-  TriggerAnaTree &operator=(TriggerAnaTree &&) = delete;
-
-  // Required functions.
-  void beginJob() override;
-  void analyze(art::Event const &e) override;
-  void endJob() override;
-
-private:
-
-  using TriggerPrimitiveWriter = SoAWriter<TriggerPrimitiveRow>;
-  using TriggerPrimitiveBacktrackingWriter = SoAWriter<TriggerPrimitiveBacktrackingRow>;
-  using TriggerPrimitiveAssociationWriter = SoAWriter<TriggerPrimitiveAssociationRow>;
-
-
-  art::ServiceHandle<art::TFileService> tfs;
-  std::map<std::string, TTree *> tree_map;
-  // buffers for writing to ROOT Trees
-
-  ScalarBuffer<EventMetaData> ev_sbuf;
-
-  size_t fAssnIdx;
-
-  std::unordered_map<int, int> trkId_to_truthBlockId;
-  std::unordered_map<int, std::string> truthBlockId_to_generator_name;
-  std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
-
-  std::map<std::string, TriggerActivityData> ta_bufs;
-  std::map<std::string, TriggerCandidateData> tc_bufs;
-  std::map<int, double> track_en_sums;
-  std::map<int, double> track_electron_sums;
-
-  bool dump_tp, dump_ta, dump_tc;
-  std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
-  
-
-  bool tp_backtracking;
-
-  void make_tp_tree_if_needed(std::string tag, bool assn = false);
-  void make_ta_tree_if_needed(std::string tag, bool assn = false);
-  void make_tc_tree_if_needed(std::string tag);
-
-  std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveRow &tp, const std::string &tool_type) const;
-
-  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
-
-
-  bool dump_summary_info;
-  // visible energy for the event
-
-  TTree *summary_tree;
-  ScalarBuffer<EventSummaryData> evsummary_buf;
-
-
-  // MCTruth
-  bool dump_mctruths;
-
-  TTree* mctruth_tree;
-  SoAWriter<MCTruthRow> mctruth_writer;
-  
-
-  TTree* mcneutrino_tree;
-  SoAWriter<MCNeutrinoRow> mcneutrino_writer;
-
-  bool dump_mcparticles;
-
-  TTree* mcparticle_tree;
-  SoAWriter<MCParticleRow> mcparticle_writer;
-
-  std::map<std::string, std::array<int, 3>> bt_view_offsets;
-
-  bool dump_simides;
-  std::string simchannel_tag;
-  TTree* simide_tree;
-  SoAWriter<SimIDERow> simide_writer;
-  
-  // JSON metadata
-  json info_data;
-  bool first_event_flag;
-};
 
 dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, 
@@ -561,6 +76,7 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 // More initializers here.
 {
+  // FIXME: rename `window_offsets` to `bt_window_offsets`
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
@@ -666,7 +182,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     }
 
 
-    mctruth_writer.buffer().reserve(mctruth_collection_size);
+    mctruth_writer.reserve(mctruth_collection_size);
 
     for (auto const &mctruthHandle : mctruthHandles) {
       // Extract the generator name from the truth handle input label
@@ -674,19 +190,15 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       // Store generator name for TP backtracking
       truthBlockId_to_generator_name[truth_block_counter] = generator_name;
 
-      // mctruth_buf_leg.id = truth_block_counter;
       // NOTE: here we are making an assumption that the geant4 stage's process
       // name is largeant. This should be safe mostly.
       art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
       for (size_t i = 0; i < mctruthHandle->size(); i++) {
         const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
-
-
         std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
         for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
           trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
         }
-
         if (truthblock.NeutrinoSet()) {
 
           const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
@@ -897,7 +409,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         tp_writer.push_back();
 
         if (tpbt_writer) {
-          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row(), tp_tool_type);
+          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type);
           tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
           tpbt_writer.push_back();
         }
@@ -950,7 +462,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
             tp_writer->readout_view = chinfo.view;
             tp_writer->TPCSetID = chinfo.tpcset_id;
             tp_writer.push_back();
-            if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID) row — backtracking not computed for association TPs
+            if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID) row -- backtracking not computed for association TPs
             tpass_writer->ta_number = fAssnIdx;
             tpass_writer.push_back();
           }
@@ -1145,5 +657,232 @@ std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const Tr
   std::vector<sim::IDE> matched_ides = sim_channel->TrackIDsAndEnergies(sample_start, sample_end);
   return matched_ides;
 }
+
+// ---------------------------------------------------------------------------
+// Out-of-line method implementations for structs declared in
+// TriggerAnaTree_module.hh
+// ---------------------------------------------------------------------------
+
+void dunetrigger::TriggerPrimitiveRow::from_tp(const dunedaq::trgdataformats::TriggerPrimitive &tp) {
+  version = 2; // temp, since variables below are converted to v2 version while the TP version in TriggerSim is still 1.
+               // Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
+  flag = 0;
+  detid = tp.detid;
+  channel = tp.channel;
+  samples_over_threshold = tp.time_over_threshold / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  time_start = tp.time_start;
+  samples_to_peak = (tp.time_peak - tp.time_start) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
+  adc_integral = tp.adc_integral;
+  adc_peak = tp.adc_peak;
+}
+
+void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
+    const std::vector<sim::IDE> &ides,
+    const std::unordered_map<int, int> &trkid_to_truth_block,
+    const std::unordered_map<int, std::string> &truth_id_to_gen) {
+  bt_primary_track_id = INVALID;
+  bt_primary_track_numelectron_frac = INVALID;
+  bt_primary_track_energy_frac = INVALID;
+  bt_edep = 0.;
+  bt_numelectrons = 0.;
+  bt_x = INVALID;
+  bt_y = INVALID;
+  bt_z = INVALID;
+  bt_primary_x = INVALID;
+  bt_primary_y = INVALID;
+  bt_primary_z = INVALID;
+  bt_truth_block_id = INVALID;
+  bt_generator_name.clear();
+
+  if (ides.empty()) {
+    return;
+  }
+
+  std::vector<sim::IDE> bt_ides;
+  bt_ides.reserve(ides.capacity());
+  std::copy_if(ides.begin(),
+               ides.end(),
+               std::back_inserter(bt_ides),
+               [](const sim::IDE &ide) { return ide.trackID != 0; });
+
+  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
+  art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
+
+  std::map<int, double> track_numelectrons;
+  std::map<int, double> track_energies;
+
+  if (bt_ides.empty()) {
+    std::cout << "Empty IDEs set!" << std::endl;
+    return;
+  }
+
+  for (const sim::IDE &ide : bt_ides) {
+    int mc_track_id = pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId();
+    track_numelectrons[mc_track_id] += ide.numElectrons;
+    track_energies[mc_track_id] += ide.energy;
+    bt_numelectrons += ide.numElectrons;
+    bt_edep += ide.energy;
+  }
+
+  bt_primary_track_id =
+      std::max_element(track_numelectrons.begin(), track_numelectrons.end(), [](const auto &a, const auto &b) {
+        return a.second < b.second;
+      })->first;
+
+  std::vector<sim::IDE> primary_ides;
+  for (const sim::IDE &ide : bt_ides) {
+    if (pi_serv->TrackIdToParticle_P(ide.trackID)->TrackId() == bt_primary_track_id) {
+      primary_ides.push_back(ide);
+    }
+  }
+
+  bt_primary_track_numelectron_frac = track_numelectrons[bt_primary_track_id] / bt_numelectrons;
+  bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
+
+  std::vector<double> bt_position = bt_serv->SimIDEsToXYZ(ides);
+  std::vector<double> primary_bt_position = bt_serv->SimIDEsToXYZ(primary_ides);
+
+  bt_x = bt_position[0];
+  bt_y = bt_position[1];
+  bt_z = bt_position[2];
+  bt_primary_x = primary_bt_position[0];
+  bt_primary_y = primary_bt_position[1];
+  bt_primary_z = primary_bt_position[2];
+
+  bt_truth_block_id = trkid_to_truth_block.at(bt_primary_track_id);
+  bt_generator_name = truth_id_to_gen.at(bt_truth_block_id);
+}
+
+// ---------------------------------------------------------------------------
+// C++17 field name registration.
+// To be removed when LArSoft switches to C++20 standard.
+// ---------------------------------------------------------------------------
+
+REGISTER_FIELD_NAMES(dunetrigger::MCTruthRow,
+                         pdg,
+                         process,
+                         status_code,
+                         block_id,
+                         truth_track_id,
+                         generator_name,
+                         x,
+                         y,
+                         z,
+                         t,
+                         px,
+                         py,
+                         pz,
+                         p,
+                         energy,
+                         kinetic_energy)
+
+REGISTER_FIELD_NAMES(dunetrigger::MCNeutrinoRow,
+                         block_id,
+                         generator_name,
+                         nupdg,
+                         leptonpdg,
+                         ccnc,
+                         mode,
+                         interactionType,
+                         target,
+                         hitnuc,
+                         hitquark,
+                         w,
+                         x,
+                         y,
+                         qsqr,
+                         pt,
+                         theta)
+
+REGISTER_FIELD_NAMES(dunetrigger::MCParticleRow,
+                         pdg,
+                         generator_name,
+                         status_code,
+                         g4_track_id,
+                         mother,
+                         truth_block_id,
+                         x,
+                         y,
+                         z,
+                         t,
+                         end_x,
+                         end_y,
+                         end_z,
+                         end_t,
+                         px,
+                         py,
+                         pz,
+                         energy,
+                         kinetic_energy,
+                         edep,
+                         numelectrons,
+                         shower_edep,
+                         shower_numelectrons,
+                         process)
+
+REGISTER_FIELD_NAMES(dunetrigger::SimIDERow,
+                         channel,
+                         timestamp,
+                         numelectrons,
+                         energy,
+                         x,
+                         y,
+                         z,
+                         trackID,
+                         origTrackID,
+                         readout_plane_id,
+                         readout_view,
+                         detector_element)
+
+REGISTER_FIELD_NAMES(dunetrigger::TriggerPrimitiveRow,
+                         version,
+                         flag,
+                         detid,
+                         channel,
+                         samples_over_threshold,
+                         time_start,
+                         samples_to_peak,
+                         adc_integral,
+                         adc_peak,
+                         readout_plane_id,
+                         readout_view,
+                         TPCSetID)
+
+REGISTER_FIELD_NAMES(dunetrigger::TriggerPrimitiveBacktrackingRow,
+                         bt_primary_track_id,
+                         bt_primary_track_numelectron_frac,
+                         bt_primary_track_energy_frac,
+                         bt_edep,
+                         bt_numelectrons,
+                         bt_x,
+                         bt_y,
+                         bt_z,
+                         bt_primary_x,
+                         bt_primary_y,
+                         bt_primary_z,
+                         bt_truth_block_id,
+                         bt_generator_name)
+
+REGISTER_FIELD_NAMES(dunetrigger::TriggerPrimitiveAssociationRow,
+                         ta_number)
+
+REGISTER_FIELD_NAMES(dunetrigger::EventMetaData,
+                            event,
+                            run,
+                            subrun)
+
+REGISTER_FIELD_NAMES(dunetrigger::EventSummaryData,
+                            mctruths_count,
+                            mcparticles_count,
+                            mcneutrinos_count,
+                            simides_count,
+                            tot_visible_energy_rop0,
+                            tot_visible_energy_rop1,
+                            tot_visible_energy_rop2,
+                            tot_visible_energy_rop3,
+                            tot_numelectrons_rop0,
+                            tot_numelectrons_rop1,
+                            tot_numelectrons_rop2,
+                            tot_numelectrons_rop3)
 
 DEFINE_ART_MODULE(dunetrigger::TriggerAnaTree)
