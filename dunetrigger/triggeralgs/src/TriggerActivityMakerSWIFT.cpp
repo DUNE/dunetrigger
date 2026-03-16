@@ -99,7 +99,7 @@ namespace triggeralgs {
 
       // Safety guard so we don't run forever in simulations
       if (m_window_start >= kMaxTime) {
-	return;
+        return;
       }
     }
 
@@ -166,8 +166,8 @@ namespace triggeralgs {
      points.reserve(tps.size());
      for (const auto& tp : tps) {
        points.push_back({tp.channel * m_wire_pitch,
-	     (tp.time_start - m_window_start) * m_cm_per_tick,
-	     tp.adc_integral});
+             (tp.time_start - m_window_start) * m_cm_per_tick,
+             tp.adc_integral});
      }
 
 
@@ -193,17 +193,17 @@ namespace triggeralgs {
       const float ti = points[i].t;
 
       for (int j = 0; j < N; ++j) {
-	float dz = points[j].z - zi;
-	float dt = points[j].t - ti;
-	if (dz*dz + dt*dt <= eps2) {
-	  neigh.push_back(j);
-	}
+        float dz = points[j].z - zi;
+        float dt = points[j].t - ti;
+        if (dz*dz + dt*dt <= eps2) {
+          neigh.push_back(j);
+        }
       }
       
       //valid cluster only if min. number of points is reached
       if (neigh.size() < static_cast<size_t>(min_samples)) {
-	labels[i] = -1;  // noise
-	continue;
+        labels[i] = -1;  // noise
+        continue;
       }
 
       // starting new cluster
@@ -212,41 +212,41 @@ namespace triggeralgs {
 
       size_t k = 0;
       while (k < neigh.size()) {
-	int j = neigh[k];
+        int j = neigh[k];
 
-	if (!visited[j]) {
-	  visited[j] = 1;
+        if (!visited[j]) {
+          visited[j] = 1;
 
-	  // expand neighbors of j
-	  std::vector<int> neigh2;
-	  const float zj = points[j].z;
-	  const float tj = points[j].t;
+          // expand neighbors of j
+          std::vector<int> neigh2;
+          const float zj = points[j].z;
+          const float tj = points[j].t;
 
-	  for (int m = 0; m < N; ++m) {
-	    float dz = points[m].z - zj;
-	    float dt = points[m].t - tj;
-	    if (dz*dz + dt*dt <= eps2) {
-	      neigh2.push_back(m);
-	    }
-	  }
+          for (int m = 0; m < N; ++m) {
+            float dz = points[m].z - zj;
+            float dt = points[m].t - tj;
+            if (dz*dz + dt*dt <= eps2) {
+              neigh2.push_back(m);
+            }
+          }
 
-	  if (neigh2.size() >= static_cast<size_t>(min_samples)) {
-	    for (int m : neigh2) {
-	      if (std::find(neigh.begin(), neigh.end(), m) == neigh.end()) {
-		neigh.push_back(m);
-	      }
-	    }
-	  }
-	}
+          if (neigh2.size() >= static_cast<size_t>(min_samples)) {
+            for (int m : neigh2) {
+              if (std::find(neigh.begin(), neigh.end(), m) == neigh.end()) {
+                neigh.push_back(m);
+              }
+            }
+          }
+        }
 
-	if (labels[j] == -1) {
-	  labels[j] = cluster_id;
-	  cluster_energy += points[j].adc;
-	} else if (labels[j] == cluster_id) {
-	  cluster_energy += points[j].adc;
-	}
+        if (labels[j] == -1) {
+          labels[j] = cluster_id;
+          cluster_energy += points[j].adc;
+        } else if (labels[j] == cluster_id) {
+          cluster_energy += points[j].adc;
+        }
 
-	++k;
+        ++k;
       }
 
       cluster_sums.push_back(cluster_energy);
@@ -285,9 +285,9 @@ namespace triggeralgs {
       if (tp.channel > max_ch) max_ch = tp.channel;
 
       if (tp.adc_peak > m_current_ta.adc_peak) {
-	m_current_ta.adc_peak = tp.adc_peak;
-	m_current_ta.channel_peak = tp.channel;
-	m_current_ta.time_peak = tp.time_peak;
+        m_current_ta.adc_peak = tp.adc_peak;
+        m_current_ta.channel_peak = tp.channel;
+        m_current_ta.time_peak = tp.time_peak;
       }
     }
 
