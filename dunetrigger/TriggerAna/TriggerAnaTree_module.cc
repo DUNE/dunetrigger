@@ -384,8 +384,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
-      is_tpc_tp_collection = tool_type.startswith("TPAlgTPC")
-      is_pds_tp_collection = tool_type.startswith("TPAlgPDS")
+      bool is_tpc_tp_collection = (tp_tool_type.find("TPAlgTPC") == 0);
+      // bool is_pds_tp_collection = (tp_tool_type.find("TPAlgPDS") == 0);
 
       if ( first_event_flag ) {
         info_data["tpg"][tag]["tool"] = tp_tool_type;
