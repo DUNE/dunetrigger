@@ -384,11 +384,17 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
+      is_tpc_tp_collection = tool_type.startswith("TPAlgTPC")
+      is_pds_tp_collection = tool_type.startswith("TPAlgPDS")
+
       if ( first_event_flag ) {
         info_data["tpg"][tag]["tool"] = tp_tool_type;
-        info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
-        info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
-        info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+
+        if (is_tpc_tp_collection) {
+          info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
+          info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
+          info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+        }
       }
 
 
@@ -408,7 +414,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         tp_writer->TPCSetID = chinfo.tpcset_id;
         tp_writer.push_back();
 
-        if (tpbt_writer) {
+        // TPC TP backtracking
+        if (tpbt_writer and is_tpc_tp_collection) {
           std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type);
           tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
           tpbt_writer.push_back();
