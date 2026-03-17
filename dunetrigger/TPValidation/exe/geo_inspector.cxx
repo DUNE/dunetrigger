@@ -26,8 +26,10 @@ int main(int argc, char** argv) {
     std::cout << "Geometry Inspector" << std::endl;
 
     std::map<std::string, std::string> geo_shortcuts = {
-        {"1x8x6", "dunevd10kt_1x8x6_3view_30deg_geo"},
-        {"1x8x14", "dunevd10kt_1x8x14_3view_30deg_geo"}
+        {"vd_1x8x6", "dunevd10kt_1x8x6_3view_30deg_geo"},
+        {"vd_1x8x14", "dunevd10kt_1x8x14_3view_30deg_geo"},
+        {"hd_1x2x6", "dune10kt_1x2x6_geo"},
+        {"hd_10k", "dune10kt_geo"}
     };
 
     std::string geo_id(argv[1]);
@@ -64,6 +66,8 @@ int main(int argc, char** argv) {
     std::cout << " - y-range = [" << cryogeo.MinY() << ", " << cryogeo.MaxY() << "]" << std::endl;
     std::cout << " - z-range = [" << cryogeo.MinZ() << ", " << cryogeo.MaxZ() << "]" << std::endl;
 
+    j_geo["detector_name"] = geo->DetectorName();
+
     j_geo["cryostat"] = {
         {"origin", {
             {"x", cryogeo.GetCenter().x()},
@@ -86,15 +90,16 @@ int main(int argc, char** argv) {
 
     std::cout<<"Total number of TPCs "<<pgeo->NTPC()<<std::endl;
     for (geo::TPCGeo const& tpc: pgeo->Iterate<geo::TPCGeo>(geo::CryostatID{0})) {
-        size_t const t = tpc.ID().TPC;
-        std::cout << "TPC ID : " << t << std::endl;
+        size_t const id = tpc.ID().TPC;
+        std::cout << "TPC ID : " << id << std::endl;
         std::cout << " - origin = " << tpc.GetCenter() << std::endl;
         std::cout << " - x-range = [" << tpc.MinX() << ", " << tpc.MaxX() << "]" << std::endl;
         std::cout << " - y-range = [" << tpc.MinY() << ", " << tpc.MaxY() << "]" << std::endl;
         std::cout << " - z-range = [" << tpc.MinZ() << ", " << tpc.MaxZ() << "]" << std::endl;
 
 
-        j_geo["tpcs"][t] = {
+        j_geo["tpcs"][id] = {
+            {"id", id},
             {"origin", {
                 {"x", tpc.GetCenter().x()},
                 {"y", tpc.GetCenter().y()},
@@ -129,6 +134,43 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "MaxTPCSet " << wireReadout.MaxTPCsets() << std::endl;
+
+
+    std::cout << "-----------" << std::endl;
+
+    int nOpDets = pgeo->NOpDets();
+
+    std::cout<<"Total number of OptDet "<<nOpDets<<std::endl;
+
+    for (int i=0; i<nOpDets; i++) {
+        const geo::OpDetGeo& od = pgeo->Cryostat(geo::CryostatID{0}).OpDet(i);
+        size_t const id = od.ID().OpDet;
+        std::cout << "OpDet ID : " << id << std::endl;
+        std::cout << " - origin = " << od.GetCenter() << std::endl;
+        std::cout << " - width =" << od.Width() << std::endl;
+        std::cout << " - height ="  << od.Height() << std::endl;
+        std::cout << " - length ="  << od.Length() << std::endl;
+
+
+        j_geo["opdets"][i] = {
+            {"id", id},
+            {"origin", {
+                {"x", od.GetCenter().x()},
+                {"y", od.GetCenter().y()},
+                {"z", od.GetCenter().z()}
+            }},
+            {"width", od.Width()},
+            {"height", od.Height()},
+            {"length", od.Length()}
+        };
+    }
+
+    // for (geo::OpDetGeo const& od: pgeo->Iterate<geo::OpDetGeo>(geo::CryostatID{0})) {
+    //         // size_t const t = od.ID().OpDet;
+
+    // }
+
+
 
 
     std::cout << "-----------" << std::endl;
