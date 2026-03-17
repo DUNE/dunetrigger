@@ -34,6 +34,10 @@ struct ChannelInfo {
   unsigned int rop_id;
   int view;
   unsigned int tpcset_id;
+
+  bool operator<(const ChannelInfo& other) const {
+    if (rop_id != other.rop_id) return rop_id < other.rop_id;
+    return tpcset_id < other.tpcset_id; }
 };
 
 struct EventMetaData {
@@ -145,6 +149,17 @@ struct SimIDERow {
   SimIDERow() = default;
 };
 
+struct SimIDESummaryRow {
+  int readout_plane_id = -1;
+  int detector_element = -1;
+  double energy_per_tpc = 0.;
+  double numelectrons_per_tpc = 0.;
+  double total_visible_energy = 0.;
+  double total_numelectrons = 0.;
+
+  SimIDESummaryRow() = default;
+};
+
 struct TriggerPrimitiveRow {
   uint8_t version = 0;
   uint8_t flag = 0;
@@ -231,6 +246,8 @@ private:
   std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
   std::map<int, double> track_en_sums;
   std::map<int, double> track_electron_sums;
+  // map for tracking true visible energy deposited on each apa rop (for ROI studies).
+  std::map<ChannelInfo, std::pair<double,double>> simide_energy_map;
 
   bool dump_tp, dump_ta, dump_tc;
   std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
@@ -245,9 +262,7 @@ private:
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
-  bool dump_summary_info;
   // visible energy for the event
-
   TTree *summary_tree;
   ScalarFieldsBuffer<EventSummaryData> evsummary_buf;
 
@@ -271,6 +286,9 @@ private:
   std::string simchannel_tag;
   TTree* simide_tree;
   VectorFieldsBuffer<SimIDERow> simide_writer;
+
+  TTree* simide_summary_tree;
+  VectorFieldsBuffer<SimIDESummaryRow> simide_summary_writer;
 
   // JSON metadata
   nlohmann::json info_data;
