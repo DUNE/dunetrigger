@@ -111,13 +111,15 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     simide_writer.make_branches(*simide_tree);
   }
 
+  // Summary Trees - always created
   summary_tree = tfs->make<TTree>("event_summary", "event_summary");
   ev_sbuf.make_branches(*summary_tree);
   evsummary_buf.make_branches(*summary_tree);
 
   simide_summary_tree = tfs->make<TTree>("simide_summary", "simide_summary");
   ev_sbuf.make_branches(*simide_summary_tree);
-  simide_summary_writer.make_branches(*simide_summary_tree);
+  simide_summary_buffer.make_branches(*simide_summary_tree);
+  simide_tpc_buffer.make_branches(*simide_summary_tree);
 
   // Save detector settings
   auto const &geo = art::ServiceHandle<geo::Geometry>();
@@ -150,10 +152,11 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   mcneutrino_writer.clear();
   mcparticle_writer.clear();
   simide_writer.clear();
-  simide_summary_writer.clear();
+  simide_summary_buffer.reset();
+  simide_tpc_buffer.clear();
   track_en_sums.clear();
   track_electron_sums.clear();
-  simide_energy_map.clear();
+  simide_tpc_energy_map.clear();
 
   // Clear all TP writers
   for( auto& [tag, tpw] : tp_writers) {
@@ -285,8 +288,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
           // save visible energy only in collection views (for ROI studies)
           if (chinfo.view == geo::kW) {
-            simide_energy_map[chinfo].first  += ide.energy;
-            simide_energy_map[chinfo].second += ide.numElectrons;
+            simide_tpc_energy_map[chinfo].energy  += ide.energy;
+            simide_tpc_energy_map[chinfo].num_electrons += ide.numElectrons;
           }
 
           // populate per-plane visible energy counters
@@ -333,18 +336,18 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   // Fill simide_summary_tree: one row per {rop, tpcset} for collection-view channels
   double total_visible_energy = 0.;
   double total_numelectrons = 0.;
-  for (const auto& [chinfo, edep] : simide_energy_map) {
-    total_visible_energy += edep.first;
-    total_numelectrons   += edep.second;
+  for (const auto& [chinfo, edep] : simide_tpc_energy_map) {
+    total_visible_energy += edep.energy;
+    total_numelectrons   += edep.num_electrons;
   }
-  for (const auto& [chinfo, edep] : simide_energy_map) {
-    simide_summary_writer->readout_plane_id     = chinfo.rop_id;
-    simide_summary_writer->detector_element     = chinfo.tpcset_id;
-    simide_summary_writer->energy_per_tpc       = edep.first;
-    simide_summary_writer->numelectrons_per_tpc = edep.second;
-    simide_summary_writer->total_visible_energy = total_visible_energy;
-    simide_summary_writer->total_numelectrons   = total_numelectrons;
-    simide_summary_writer.push_back();
+  for (const auto& [chinfo, edep] : simide_tpc_energy_map) {
+    simide_summary_buffer->total_visible_energy = total_visible_energy;
+    simide_summary_buffer->total_numelectrons   = total_numelectrons;
+    simide_tpc_buffer->readout_plane_id     = chinfo.rop_id;
+    simide_tpc_buffer->detector_element     = chinfo.tpcset_id;
+    simide_tpc_buffer->energy_per_tpc       = edep.energy;
+    simide_tpc_buffer->numelectrons_per_tpc = edep.num_electrons;
+    simide_tpc_buffer.push_back();
   }
   simide_summary_tree->Fill();
 
@@ -859,12 +862,14 @@ REGISTER_FIELD_NAMES(dunetrigger::SimIDERow,
                          detector_element)
 
 REGISTER_FIELD_NAMES(dunetrigger::SimIDESummaryRow,
+                         total_visible_energy,
+                         total_numelectrons)
+
+REGISTER_FIELD_NAMES(dunetrigger::SimIDETPCRow,
                          readout_plane_id,
                          detector_element,
                          energy_per_tpc,
-                         numelectrons_per_tpc,
-                         total_visible_energy,
-                         total_numelectrons)
+                         numelectrons_per_tpc)
 
 REGISTER_FIELD_NAMES(dunetrigger::TriggerPrimitiveRow,
                          version,

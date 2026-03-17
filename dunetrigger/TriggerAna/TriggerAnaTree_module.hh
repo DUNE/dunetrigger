@@ -150,14 +150,20 @@ struct SimIDERow {
 };
 
 struct SimIDESummaryRow {
-  int readout_plane_id = -1;
-  int detector_element = -1;
-  double energy_per_tpc = 0.;
-  double numelectrons_per_tpc = 0.;
   double total_visible_energy = 0.;
   double total_numelectrons = 0.;
 
   SimIDESummaryRow() = default;
+};
+
+
+struct SimIDETPCRow {
+  int readout_plane_id = -1;
+  int detector_element = -1;
+  double energy_per_tpc = 0.;
+  double numelectrons_per_tpc = 0.;
+
+  SimIDETPCRow() = default;
 };
 
 struct TriggerPrimitiveRow {
@@ -247,7 +253,14 @@ private:
   std::map<int, double> track_en_sums;
   std::map<int, double> track_electron_sums;
   // map for tracking true visible energy deposited on each apa rop (for ROI studies).
-  std::map<ChannelInfo, std::pair<double,double>> simide_energy_map;
+
+  struct TPCEnergyData
+  {
+    double energy;
+    double num_electrons;
+  };
+  
+  std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
 
   bool dump_tp, dump_ta, dump_tc;
   std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
@@ -288,7 +301,8 @@ private:
   VectorFieldsBuffer<SimIDERow> simide_writer;
 
   TTree* simide_summary_tree;
-  VectorFieldsBuffer<SimIDESummaryRow> simide_summary_writer;
+  ScalarFieldsBuffer<SimIDESummaryRow> simide_summary_buffer;
+  VectorFieldsBuffer<SimIDETPCRow> simide_tpc_buffer;
 
   // JSON metadata
   nlohmann::json info_data;
