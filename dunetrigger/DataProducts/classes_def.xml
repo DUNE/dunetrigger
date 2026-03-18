@@ -1,0 +1,19 @@
+<lcgdict>
+
+  <!-- The product itself -->
+  <class name="dunetrigger::MyProduct"             ClassVersion="10" >
+   <version ClassVersion="10" checksum="1321818287"/>
+  </class>
+
+  <!-- art wraps every product in art::Wrapper for I/O -->
+  <class name="art::Wrapper<dunetrigger::MyProduct>"               />
+
+  <!-- A collection of products (the most common form stored in events) -->
+  <class name="std::vector<dunetrigger::MyProduct>"                />
+  <class name="art::Wrapper<std::vector<dunetrigger::MyProduct>>"  />
+
+  <!-- art::Ptr — needed if other modules will hold pointers to your product -->
+  <class name="art::Ptr<dunetrigger::MyProduct>"                   />
+  <class name="std::vector<art::Ptr<dunetrigger::MyProduct>>"      />
+
+</lcgdict>
