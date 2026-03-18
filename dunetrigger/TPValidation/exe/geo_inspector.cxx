@@ -88,8 +88,11 @@ int main(int argc, char** argv) {
         }}
     };
 
-    std::cout<<"Total number of TPCs "<<pgeo->NTPC()<<std::endl;
-    for (geo::TPCGeo const& tpc: pgeo->Iterate<geo::TPCGeo>(geo::CryostatID{0})) {
+    int nTPC = pgeo->NTPC();
+    std::cout<<"Total number of TPCs "<< nTPC <<std::endl;
+    for (int i=0; i<nTPC; i++) {
+        const auto& tpc = pgeo->Cryostat(geo::CryostatID{0}).TPC(i);
+
         size_t const id = tpc.ID().TPC;
         std::cout << "TPC ID : " << id << std::endl;
         std::cout << " - origin = " << tpc.GetCenter() << std::endl;
@@ -116,7 +119,7 @@ int main(int argc, char** argv) {
             {"z_range", {
                 {"min", tpc.MinZ()},
                 {"max", tpc.MaxZ()}
-            }}
+            }},
         };
 
         std::vector<raw::ChannelID_t> channels;
