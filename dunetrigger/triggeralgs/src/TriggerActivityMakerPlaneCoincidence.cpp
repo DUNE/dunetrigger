@@ -187,7 +187,7 @@ TriggerActivityMakerPlaneCoincidence::check_adjacency(TPWindow window) const
     // If next channel is not on the next hit, but the 'second next', increase adjacency 
     // but also tally up with the tolerance counter.
     else if ((next_channel == channel + 2 || next_channel == channel + 3) && (tol_count < m_adj_tolerance)) { 
-	++adj;
+        ++adj;
         for (size_t i = 0 ; i < next_channel-channel ; ++i) ++tol_count;
     }
 

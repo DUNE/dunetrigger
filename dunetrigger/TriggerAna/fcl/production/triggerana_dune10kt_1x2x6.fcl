@@ -4,11 +4,11 @@
 process_name: TriggerAna
 
 services: {
-	@table::services_triggerana_tree
-	@table::dunefd_1x2x6_reco_services
+    @table::services_triggerana_tree
+    @table::dunefd_1x2x6_reco_services
 }
 
-source:	@local::source_triggerana_tree
+source:  @local::source_triggerana_tree
 outputs: @local::outputs_triggerana_tree
 
 physics: {

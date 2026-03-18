@@ -26,7 +26,8 @@
 #include <unordered_map>
 #include <vector>
 
-constexpr int INVALID = -99999;
+constexpr int INVALID_NUM = -99999;
+constexpr char INVALID_STR[] = "undef";
 
 namespace dunetrigger {
 
@@ -41,16 +42,16 @@ struct ChannelInfo {
 };
 
 struct EventMetaData {
-  int event = -1;
-  int run = -1;
-  int subrun = -1;
+  int event = INVALID_NUM;
+  int run = INVALID_NUM;
+  int subrun = INVALID_NUM;
 };
 
 struct EventSummaryData {
-  int mctruths_count = -1;
-  int mcparticles_count = -1;
-  int mcneutrinos_count = -1;
-  int simides_count = -1;
+  int mctruths_count = INVALID_NUM;
+  int mcparticles_count = INVALID_NUM;
+  int mcneutrinos_count = INVALID_NUM;
+  int simides_count = INVALID_NUM;
   double tot_visible_energy_rop0 = 0.;
   double tot_visible_energy_rop1 = 0.;
   double tot_visible_energy_rop2 = 0.;
@@ -62,12 +63,12 @@ struct EventSummaryData {
 };
 
 struct MCTruthRow {
-  int pdg = -1;
-  std::string process = "undef";
-  int status_code = -1;
-  int block_id = -1;
-  int truth_track_id = -1;
-  std::string generator_name = "undef";
+  int pdg = INVALID_NUM;
+  std::string process = INVALID_STR;
+  int status_code = INVALID_NUM;
+  int block_id = INVALID_NUM;
+  int truth_track_id = INVALID_NUM;
+  std::string generator_name = INVALID_STR;
   double x = 0.;
   double y = 0.;
   double z = 0.;
@@ -83,16 +84,16 @@ struct MCTruthRow {
 };
 
 struct MCNeutrinoRow {
-  int block_id = -1;
-  std::string generator_name = "undef";
-  int nupdg = -1;
-  int leptonpdg = -1;
-  int ccnc = -1;
-  int mode = -1;
-  int interactionType = -1;
-  int target = -1;
-  int hitnuc = -1;
-  int hitquark = -1;
+  int block_id = INVALID_NUM;
+  std::string generator_name = INVALID_STR;
+  int nupdg = INVALID_NUM;
+  int leptonpdg = INVALID_NUM;
+  int ccnc = INVALID_NUM;
+  int mode = INVALID_NUM;
+  int interactionType = INVALID_NUM;
+  int target = INVALID_NUM;
+  int hitnuc = INVALID_NUM;
+  int hitquark = INVALID_NUM;
   double w = 0.;
   double x = 0.;
   double y = 0.;
@@ -104,12 +105,12 @@ struct MCNeutrinoRow {
 };
 
 struct MCParticleRow {
-  int pdg = -1;
-  std::string generator_name = "undef";
-  int status_code = -1;
-  int g4_track_id = -1;
-  int mother = -1;
-  int truth_block_id = -1;
+  int pdg = INVALID_NUM;
+  std::string generator_name = INVALID_STR;
+  int status_code = INVALID_NUM;
+  int g4_track_id = INVALID_NUM;
+  int mother = INVALID_NUM;
+  int truth_block_id = INVALID_NUM;
   double x = 0.;
   double y = 0.;
   double z = 0.;
@@ -127,20 +128,20 @@ struct MCParticleRow {
   double numelectrons = 0.;
   double shower_edep = 0.;
   double shower_numelectrons = 0.;
-  std::string process = "undef";
+  std::string process = INVALID_STR;
 
   MCParticleRow() = default;
 };
 
 struct SimIDERow {
   unsigned int channel = 0;
-  int timestamp = -1;
+  int timestamp = INVALID_NUM;
   float numelectrons = 0.f;
   float energy = 0.f;
   float x = 0.f;
   float y = 0.f;
   float z = 0.f;
-  int trackID = -1;
+  int trackID = INVALID_NUM;
   float origTrackID = 0.f;
   float readout_plane_id = 0.f;
   float readout_view = 0.f;
@@ -158,8 +159,8 @@ struct SimIDESummaryRow {
 
 
 struct SimIDETPCRow {
-  int readout_plane_id = -1;
-  int detector_element = -1;
+  int readout_plane_id = INVALID_NUM;
+  int detector_element = INVALID_NUM;
   double energy_per_tpc = 0.;
   double numelectrons_per_tpc = 0.;
 
@@ -186,19 +187,19 @@ struct TriggerPrimitiveRow {
 };
 
 struct TriggerPrimitiveBacktrackingRow {
-  int bt_primary_track_id = INVALID;
-  double bt_primary_track_numelectron_frac = INVALID;
-  double bt_primary_track_energy_frac = INVALID;
-  double bt_edep = 0.;
-  double bt_numelectrons = 0.;
-  double bt_x = INVALID;
-  double bt_y = INVALID;
-  double bt_z = INVALID;
-  double bt_primary_x = INVALID;
-  double bt_primary_y = INVALID;
-  double bt_primary_z = INVALID;
-  int bt_truth_block_id = INVALID;
-  std::string bt_generator_name = "undef";
+  int bt_primary_track_id = INVALID_NUM;
+  double bt_primary_track_numelectron_frac = INVALID_NUM;
+  double bt_primary_track_energy_frac = INVALID_NUM;
+  double bt_edep = INVALID_NUM;
+  double bt_numelectrons = INVALID_NUM;
+  double bt_x = INVALID_NUM;
+  double bt_y = INVALID_NUM;
+  double bt_z = INVALID_NUM;
+  double bt_primary_x = INVALID_NUM;
+  double bt_primary_y = INVALID_NUM;
+  double bt_primary_z = INVALID_NUM;
+  int bt_truth_block_id = INVALID_NUM;
+  std::string bt_generator_name = INVALID_STR;
 
   void populate_backtracking_info(const std::vector<sim::IDE> &ides,
                                   const std::unordered_map<int, int> &trkid_to_truth_block,
@@ -208,7 +209,7 @@ struct TriggerPrimitiveBacktrackingRow {
 };
 
 struct TriggerPrimitiveAssociationRow {
-  int ta_number = -1;
+  int ta_number = INVALID_NUM;
 
   TriggerPrimitiveAssociationRow() = default;
 };
@@ -238,11 +239,8 @@ private:
 
   art::ServiceHandle<art::TFileService> tfs;
   std::map<std::string, TTree *> tree_map;
-  // buffers for writing to ROOT Trees
 
-  ScalarFieldsBuffer<EventMetaData> ev_sbuf;
-
-  size_t fAssnIdx;
+  size_t m_tc_number = 0;  // TC index bound to the "TCnumber" ROOT branch in TA-in-TC trees
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
@@ -275,6 +273,9 @@ private:
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
+  // Event meta data buffer  
+  ScalarFieldsBuffer<EventMetaData> ev_sbuf;
+
   // visible energy for the event
   TTree *summary_tree;
   ScalarFieldsBuffer<EventSummaryData> evsummary_buf;
@@ -283,22 +284,22 @@ private:
   bool dump_mctruths;
 
   TTree* mctruth_tree;
-  VectorFieldsBuffer<MCTruthRow> mctruth_writer;
+  VectorFieldsBuffer<MCTruthRow> mctruth_buffer;
 
   TTree* mcneutrino_tree;
-  VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_writer;
+  VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_buffer;
 
   bool dump_mcparticles;
 
   TTree* mcparticle_tree;
-  VectorFieldsBuffer<MCParticleRow> mcparticle_writer;
+  VectorFieldsBuffer<MCParticleRow> mcparticle_buffer;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
   bool dump_simides;
   std::string simchannel_tag;
   TTree* simide_tree;
-  VectorFieldsBuffer<SimIDERow> simide_writer;
+  VectorFieldsBuffer<SimIDERow> simide_buffer;
 
   TTree* simide_summary_tree;
   ScalarFieldsBuffer<SimIDESummaryRow> simide_summary_buffer;
