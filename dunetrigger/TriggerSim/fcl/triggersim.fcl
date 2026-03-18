@@ -41,8 +41,8 @@ producers_triggersim_simpleThr_simpleWin_simpleWin: {
 
 # Run both AbsRS and SimpleThreshold TPG
 producers_triggersim_simpleThr_absRS: {
-	tpmakerTPCsimpleThr: @local::tpmakerTPC_ADCSimpleThreshold
-	tpmakerTPCabsRS: @local::tpmakerTPC_ABSRunningSum
+    tpmakerTPCsimpleThr: @local::tpmakerTPC_ADCSimpleThreshold
+    tpmakerTPCabsRS: @local::tpmakerTPC_ABSRunningSum
 }
 
 # this does not have analyzers! Add them

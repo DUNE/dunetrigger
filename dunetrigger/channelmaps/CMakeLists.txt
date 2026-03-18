@@ -6,7 +6,7 @@ basic_plugin(OfflineTPCChannelMap module
             lardataobj::RawData
             dunecore::DuneObj
             lardata::ArtDataHelper
-            nusimdata::SimulationBase	
+            nusimdata::SimulationBase
             # ${ART_FRAMEWORK_CORE}
             # ${ART_FRAMEWORK_PRINCIPAL}
             # ${ART_FRAMEWORK_SERVICES_REGISTRY}
