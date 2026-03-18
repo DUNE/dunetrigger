@@ -26,7 +26,8 @@
 #include <TH1D.h>
 #include <art/Framework/Services/Registry/ServiceHandle.h>
 #include <fcntl.h>
-#include <larcore/Geometry/Geometry.h>
+#include "larcore/Geometry/WireReadout.h"
+
 
 namespace dunetrigger{
   class TriggerActivityTxtDump;
@@ -35,8 +36,6 @@ namespace dunetrigger{
 class dunetrigger::TriggerActivityTxtDump : public art::EDAnalyzer {
 public:
   explicit TriggerActivityTxtDump(fhicl::ParameterSet const& p);
-  // The compiler-generated destructor is fine for non-base
-  // classes without bare pointers or other resource use.
 
   // Plugins should not be copied or assigned.
   TriggerActivityTxtDump(TriggerActivityTxtDump const&) = delete;
@@ -51,8 +50,8 @@ public:
 private:
 
   art::InputTag sim_ta_tag;
-
   std::ofstream sim_out;
+  geo::WireReadoutGeom const *geom_;
 
 
 };
@@ -60,7 +59,8 @@ private:
 
 dunetrigger::TriggerActivityTxtDump::TriggerActivityTxtDump(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
-    sim_ta_tag(p.get<art::InputTag>("sim_ta_tag"))
+  sim_ta_tag(p.get<art::InputTag>("sim_ta_tag")),
+  geom_(&art::ServiceHandle<geo::WireReadout>()->Get())
     // ,
   // More initializers here.
 {
@@ -86,22 +86,27 @@ void dunetrigger::TriggerActivityTxtDump::analyze(art::Event const& e)
 
   // order is time_start, time_peak, time_activity, adc_peak, channel_peak,
   // channel_start, adc_int, event, time_end
+  for (auto s : sim_tas) {
+    readout::ROPID rop    = geom_->ChannelToROP(s.channel_start);
+    readout::TPCsetID tpcset = rop.asTPCsetID();
 
-  for(auto s : sim_tas){
-    sim_out << "(" 
-        << s.adc_integral <<  "," 
-        << s.adc_peak << ","
-        << (uint16_t)s.algorithm << ","
-        << s.channel_end << ","
-        << s.channel_peak << ","
-        << s.channel_start << ","
-        << (uint16_t)s.detid << ","
-        << s.time_activity << "," 
-        << s.time_end << "," 
-        << s.time_peak << "," 
-        << s.time_start << "," 
-        << (uint16_t)s.type
-        << ")" << std::endl;
+    sim_out << e.event()       << ","
+            << e.run()         << ","
+            << e.subRun()      << ","
+            << s.time_start    << ","
+            << s.time_peak     << ","
+            << s.time_end      << ","
+            << s.time_activity << ","
+            << s.channel_start << ","
+            << s.channel_peak  << ","
+            << s.channel_end   << ","
+            << s.adc_integral  << ","
+            << s.adc_peak      << ","
+            << (uint16_t)s.algorithm << ","
+            << (uint16_t)s.detid     << ","
+            << (uint16_t)s.type      << ","
+            << rop.ROP               << ","
+            << tpcset.TPCset         << std::endl;
   }
 
 }
