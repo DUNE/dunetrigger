@@ -498,7 +498,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
             tp_writer->readout_view = chinfo.view;
             tp_writer->TPCSetID = chinfo.tpcset_id;
             tp_writer.push_back();
-            if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID) row -- backtracking not computed for association TPs
+            if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID_NUM) row -- backtracking not computed for association TPs
             tpass_writer->ta_number = ta_idx;
             tpass_writer.push_back();
           }
@@ -714,18 +714,18 @@ void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
     const std::vector<sim::IDE> &ides,
     const std::unordered_map<int, int> &trkid_to_truth_block,
     const std::unordered_map<int, std::string> &truth_id_to_gen) {
-  bt_primary_track_id = INVALID;
-  bt_primary_track_numelectron_frac = INVALID;
-  bt_primary_track_energy_frac = INVALID;
+  bt_primary_track_id = INVALID_NUM;
+  bt_primary_track_numelectron_frac = INVALID_NUM;
+  bt_primary_track_energy_frac = INVALID_NUM;
   bt_edep = 0.;
   bt_numelectrons = 0.;
-  bt_x = INVALID;
-  bt_y = INVALID;
-  bt_z = INVALID;
-  bt_primary_x = INVALID;
-  bt_primary_y = INVALID;
-  bt_primary_z = INVALID;
-  bt_truth_block_id = INVALID;
+  bt_x = INVALID_NUM;
+  bt_y = INVALID_NUM;
+  bt_z = INVALID_NUM;
+  bt_primary_x = INVALID_NUM;
+  bt_primary_y = INVALID_NUM;
+  bt_primary_z = INVALID_NUM;
+  bt_truth_block_id = INVALID_NUM;
   bt_generator_name.clear();
 
   if (ides.empty()) {
