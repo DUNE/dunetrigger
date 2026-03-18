@@ -195,16 +195,16 @@ void dunetrigger::TriggerTPCInfoComparator::analyze(art::Event const& e)
     for (long unsigned int j = 0; j < fTriggerPrimitiveDAQ.size(); j++) {
       // Compare TPs and set comparison result
       if (fTriggerPrimitive[i].channel == fTriggerPrimitiveDAQ[j].channel &&
-	  fTriggerPrimitive[i].time_start == fTriggerPrimitiveDAQ[j].time_start &&
-	  fTriggerPrimitive[i].time_over_threshold == fTriggerPrimitiveDAQ[j].time_over_threshold &&
-	  fTriggerPrimitive[i].time_peak == fTriggerPrimitiveDAQ[j].time_peak &&
-	  fTriggerPrimitive[i].adc_integral == fTriggerPrimitiveDAQ[j].adc_integral &&
-	  fTriggerPrimitive[i].adc_peak == fTriggerPrimitiveDAQ[j].adc_peak &&
-	  fTriggerPrimitive[i].detid == fTriggerPrimitiveDAQ[j].detid &&
-	  fTriggerPrimitive[i].type == fTriggerPrimitiveDAQ[j].type &&
-	  fTriggerPrimitive[i].algorithm == fTriggerPrimitiveDAQ[j].algorithm) {
-	foundMatch = true;
-	break; // Break the loop if a match is found
+          fTriggerPrimitive[i].time_start == fTriggerPrimitiveDAQ[j].time_start &&
+          fTriggerPrimitive[i].time_over_threshold == fTriggerPrimitiveDAQ[j].time_over_threshold &&
+          fTriggerPrimitive[i].time_peak == fTriggerPrimitiveDAQ[j].time_peak &&
+          fTriggerPrimitive[i].adc_integral == fTriggerPrimitiveDAQ[j].adc_integral &&
+          fTriggerPrimitive[i].adc_peak == fTriggerPrimitiveDAQ[j].adc_peak &&
+          fTriggerPrimitive[i].detid == fTriggerPrimitiveDAQ[j].detid &&
+          fTriggerPrimitive[i].type == fTriggerPrimitiveDAQ[j].type &&
+          fTriggerPrimitive[i].algorithm == fTriggerPrimitiveDAQ[j].algorithm) {
+        foundMatch = true;
+        break; // Break the loop if a match is found
       }
     }
     fTPComparison[i] = foundMatch; // Set comparison result
