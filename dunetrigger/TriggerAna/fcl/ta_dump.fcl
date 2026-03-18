@@ -1,0 +1,27 @@
+#include "services_dune.fcl"
+#include "tools_dune.fcl"
+
+process_name: DumpTAText
+
+services:
+{
+  @table::dunefd_1x2x6_reco_services
+  message: @local::dune_message_services_prod
+}
+
+source: {
+  module_type: RootInput
+  fileNames: [ "triggersim.root" ]
+}
+
+physics: {
+  analyzers: {
+    taTxtDump: {
+      module_type: TriggerActivityTxtDump
+      sim_ta_tag:  "tamakerTPC"
+      file_name:   "trigger_activities.txt"
+    }
+  }
+  ana: [ taTxtDump ]
+  end_paths: [ ana ]
+}
