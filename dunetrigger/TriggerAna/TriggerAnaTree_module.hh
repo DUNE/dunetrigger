@@ -238,11 +238,8 @@ private:
 
   art::ServiceHandle<art::TFileService> tfs;
   std::map<std::string, TTree *> tree_map;
-  // buffers for writing to ROOT Trees
 
-  ScalarFieldsBuffer<EventMetaData> ev_sbuf;
-
-  size_t fAssnIdx;
+  size_t m_tc_number = 0;  // TC index bound to the "TCnumber" ROOT branch in TA-in-TC trees
 
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
@@ -275,6 +272,9 @@ private:
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
+  // Event meta data buffer  
+  ScalarFieldsBuffer<EventMetaData> ev_sbuf;
+
   // visible energy for the event
   TTree *summary_tree;
   ScalarFieldsBuffer<EventSummaryData> evsummary_buf;
@@ -283,22 +283,22 @@ private:
   bool dump_mctruths;
 
   TTree* mctruth_tree;
-  VectorFieldsBuffer<MCTruthRow> mctruth_writer;
+  VectorFieldsBuffer<MCTruthRow> mctruth_buffer;
 
   TTree* mcneutrino_tree;
-  VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_writer;
+  VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_buffer;
 
   bool dump_mcparticles;
 
   TTree* mcparticle_tree;
-  VectorFieldsBuffer<MCParticleRow> mcparticle_writer;
+  VectorFieldsBuffer<MCParticleRow> mcparticle_buffer;
 
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
   bool dump_simides;
   std::string simchannel_tag;
   TTree* simide_tree;
-  VectorFieldsBuffer<SimIDERow> simide_writer;
+  VectorFieldsBuffer<SimIDERow> simide_buffer;
 
   TTree* simide_summary_tree;
   ScalarFieldsBuffer<SimIDESummaryRow> simide_summary_buffer;
