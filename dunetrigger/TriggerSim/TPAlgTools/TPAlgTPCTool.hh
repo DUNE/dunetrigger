@@ -18,10 +18,10 @@ namespace dunetrigger {
 
     //take in a waveform, add trigger primitives to it
     virtual void process_waveform(std::vector<short> const& adcs,
-				  dunedaq::trgdataformats::channel_t const channel,
-				  dunedaq::trgdataformats::detid_t const detid,
-				  dunedaq::trgdataformats::timestamp_t const start_time,
-				  std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) = 0;
+                                  dunedaq::trgdataformats::channel_t const channel,
+                                  dunedaq::trgdataformats::detid_t const detid,
+                                  dunedaq::trgdataformats::timestamp_t const start_time,
+                                  std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) = 0;
 
     inline int16_t avx2_divide(const int16_t& a, const int16_t& b) {
       int16_t vb = (1 << 15) / b;         //  1 / b * 2^15

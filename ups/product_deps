@@ -23,9 +23,9 @@ defaultqual e26
 # gdmldir -  
 # fwdir   -  
 #
-incdir	product_dir	include
-libdir	fq_dir		lib
-bindir	fq_dir		bin
+incdir  product_dir     include
+libdir  fq_dir          lib
+bindir  fq_dir          bin
 fcldir  product_dir     fcl
 
 # With "product  version" table below, we now define depdendencies

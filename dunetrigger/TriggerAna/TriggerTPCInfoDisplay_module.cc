@@ -250,7 +250,7 @@ void dunetrigger::TriggerTPCInfoDisplay::analyze(art::Event const& e)
       ta_adc_int = fTAfromTPTA[i].first->adc_integral;
       ta_count++;
       if(verbosity_ >= Verbosity::kInfo)
-	std::cout<<"For TA number "<<ta_count<<", the channel_start, start_time and adc_integral are  "<<ta_channel_start<<", "<<fTAfromTPTA[i].first->time_start<<" and "<<ta_adc_int<<"\n";
+        std::cout<<"For TA number "<<ta_count<<", the channel_start, start_time and adc_integral are  "<<ta_channel_start<<", "<<fTAfromTPTA[i].first->time_start<<" and "<<ta_adc_int<<"\n";
     }
     
     fTAnumber = ta_count;
