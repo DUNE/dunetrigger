@@ -35,7 +35,7 @@ namespace triggeralgs {
 
     //TP pre-processing
     uint16_t m_min_adc_peak = 80;
-    uint16_t m_min_samples_over_threshold = 256; // 8 * 32
+    uint16_t m_min_samples_over_threshold = 256; // 8 readout ticks * 32 DTS ticks
 
        
     //clustering 
