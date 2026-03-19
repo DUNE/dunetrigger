@@ -50,16 +50,22 @@ namespace triggeralgs {
 
   //TP refinement 
   bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp){
-    if ((input_tp.adc_peak < m_min_adc_peak) & (input_tp.time_over_threshold < m_min_samples_over_threshold * 32 )){ //FIXME - old TP format still using time over threshold, should be samples 
+    if ((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold )) { //FIXME: not using time cut atm since old TP format still relies on TOT not  SOT 
       return false;
     }
-    return true;
+    return true; 
   }
 
 
   //main window categorisation 
   void TriggerActivityMakerSWIFT::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_tas)
   {
+
+    // Apply TP filtering
+    if (!preprocess(input_tp)) {
+      return;
+    }
+
     // Initialise global window clock
     if (!m_initialised) {
       // absolute window alignment across APA planes (wouldn't be the case if we used first tp time). This should probably be set to run start time FIXME
@@ -74,10 +80,6 @@ namespace triggeralgs {
 
     }
 
-    // Apply TP filtering
-    if (!preprocess(input_tp)) {
-      return;
-    }
 
     // Determine which window this TP belongs to
     const uint64_t tp_window_start = (input_tp.time_start / m_window_length) * m_window_length;
@@ -109,49 +111,35 @@ namespace triggeralgs {
     ++m_tp_count;
   }
 
-  /*
   void TriggerActivityMakerSWIFT::close_window(std::vector<TriggerActivity>& output_tas) {
-    int flag = 0;
 
-    if (m_window_energy > m_accept_energy_threshold)
-      flag = 2;
-    else if (m_window_energy > m_inspect_energy_threshold)
-      flag = 1;
+    if (m_current_ta.inputs.empty()) return;
 
-    // Emit TA only if window passes thresholds
-    if (flag > 0 && !m_current_ta.inputs.empty()) {
-      set_ta_attributes();
-      output_tas.push_back(m_current_ta);
+
+    //Prompt window categorisatoin : immidiate accept, inspect, reject based on local energy in window
+    WindowDecision decision;
+    if (m_window_energy >= m_accept_energy_threshold) decision = WindowDecision::Accept;
+    else if (m_window_energy >= m_inspect_energy_threshold) decision = WindowDecision::Inspect;
+    else  return; // Reject
+
+
+    // cluster inspect cases 
+    if (decision == WindowDecision::Inspect) {
+    const uint64_t max_cluster_energy =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
+    if (max_cluster_energy <= m_cluster_energy_cut) return; // reject window if it didn't pass inspection
+    //for the time being, not updating the flag to keep track of which windows went through the inspect-->accept pipeline. FIXME? 
     }
 
-  }
-  */
 
-  //HERE 
-
-  void TriggerActivityMakerSWIFT::close_window(std::vector<TriggerActivity>& output_tas) {
-    int flag = 0;
-
-    if (m_window_energy > m_accept_energy_threshold)
-      flag = 2;
-    else if (m_window_energy > m_inspect_energy_threshold)
-      flag = 1;
-    
-    if (flag == 1) { // window requires inspection
-      uint64_t max_cluster_energy = extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
-
-      if (max_cluster_energy > m_cluster_energy_cut)
-        flag = 2; // upgrade window
-    }
-
-    // Emit TA only if window passes thresholds
-    if (flag ==2  && !m_current_ta.inputs.empty()) {
-      set_ta_attributes();
-      output_tas.push_back(m_current_ta);
-    }
-
+    // Emit TA: should only reach this step if dealing with  Accept, or Inspect windows that passed clustering
+    std::cout << "EMIT TA: window_start=" << m_window_start << " energy=" << m_window_energy
+              << " decision=" << (decision == WindowDecision::Accept ? 2 : 1)  << " n_tps=" << m_current_ta.inputs.size()<< "\n";
+    set_ta_attributes();
+    output_tas.push_back(m_current_ta);
   }
   
+
+
   //clustering - keeping only necessary for info for now, but might want to consider storing other properties & clusters themselves, not just max eng.   
   uint64_t TriggerActivityMakerSWIFT::extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples){
     
@@ -165,9 +153,7 @@ namespace triggeralgs {
      std::vector<Point> points;
      points.reserve(tps.size());
      for (const auto& tp : tps) {
-       points.push_back({tp.channel * m_wire_pitch,
-	     (tp.time_start - m_window_start) * m_cm_per_tick,
-	     tp.adc_integral});
+       points.push_back({tp.channel * m_wire_pitch, (tp.time_start - m_window_start) * m_cm_per_tick,  tp.adc_integral});
      }
 
 
@@ -195,9 +181,7 @@ namespace triggeralgs {
       for (int j = 0; j < N; ++j) {
 	float dz = points[j].z - zi;
 	float dt = points[j].t - ti;
-	if (dz*dz + dt*dt <= eps2) {
-	  neigh.push_back(j);
-	}
+	if (dz*dz + dt*dt <= eps2) neigh.push_back(j);
       }
       
       //valid cluster only if min. number of points is reached

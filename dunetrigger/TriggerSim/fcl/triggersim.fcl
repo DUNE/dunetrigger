@@ -54,4 +54,9 @@ physics_triggersim_simpleThr_simpleWin_simpleWin: {
     end_paths: [ stream1 ]
 }
 
+producers_triggersim_swift: {
+                             tamakerTPC: @local::tamakerTPC_SWIFT
+                             }
+
+
 END_PROLOG

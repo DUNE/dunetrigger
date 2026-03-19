@@ -26,6 +26,7 @@ namespace triggeralgs {
     TriggerActivity m_current_ta;
 
     // -- configuration --
+    //these are set once at the start of run and then kept fixed 
 
     //activity windows 
     uint64_t m_window_length = 32000; // fixed window size in DTS ticks (32 * 1k readout ticks @ 500ns/tick)
@@ -34,7 +35,7 @@ namespace triggeralgs {
 
     //TP pre-processing
     uint16_t m_min_adc_peak = 80;
-    uint16_t m_min_samples_over_threshold = 8;
+    uint16_t m_min_samples_over_threshold = 256; // 8 * 32
 
        
     //clustering 
@@ -45,6 +46,7 @@ namespace triggeralgs {
     float m_db_eps = 2; //nearest neighbour search radius in cm 
     uint64_t m_cluster_energy_cut = 22000;
 
+    // --  variables which get updated during running -- 
     //window state
     bool     m_initialised = false;
     uint64_t m_window_start = 0;
@@ -53,6 +55,7 @@ namespace triggeralgs {
 
     const timestamp_t kMaxTime = 6000 * 32;  //  maximum simulation time otherwise the windows keep rolling forever. Hardcoded for HD FIXME
 
+    enum class WindowDecision { Reject, Inspect, Accept };
     void close_window(std::vector<TriggerActivity>& output_tas); 
     uint64_t extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples);
 
