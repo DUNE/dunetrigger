@@ -56,8 +56,17 @@ namespace triggeralgs {
     return true; 
   }
 
+  // Reset window state 
+  void TriggerActivityMakerSWIFT::reset_window_state(uint64_t new_window_start) {
+    m_window_start  = new_window_start;
+    m_window_energy = 0;
+    m_tp_count      = 0;
+    m_current_ta    = TriggerActivity();
+    m_current_ta.time_start = m_window_start;
+  }
 
-  //main window categorisation 
+  //main function for binning TPs into fixed-size time windows
+  //assumes TPs are strictly time-ordered 
   void TriggerActivityMakerSWIFT::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_tas)
   {
 
@@ -66,51 +75,32 @@ namespace triggeralgs {
       return;
     }
 
-    // Initialise global window clock
-    if (!m_initialised) {
-      // absolute window alignment across APA planes (wouldn't be the case if we used first tp time). This should probably be set to run start time FIXME
-      m_window_start = 0;  
-      m_initialised = true;
-
-      //reset window state
-      m_window_energy = 0;
-      m_tp_count = 0;
-      m_current_ta = TriggerActivity();
-      m_current_ta.time_start = m_window_start;
-
-    }
-
-
-    // Determine which window this TP belongs to
+    // If TP is valid, determine which window this TP belongs to
     const uint64_t tp_window_start = (input_tp.time_start / m_window_length) * m_window_length;
-    
-    // Advance windows until TP fits
-    while (m_window_start < tp_window_start) {
-      
-      // Close current window (even if empty)
+   
+
+    // Initialise on first TP
+    if (!m_initialised) {
+      //reset window state
+      reset_window_state(tp_window_start);
+      m_initialised = true;
+    }
+ 
+    //if TP belongs to future window, close current and jump ahead 
+    if (tp_window_start > m_window_start){
       close_window(output_tas);
-      
-      // Reset state for next window
-      m_window_energy = 0;
-      m_tp_count = 0;
-      m_current_ta = TriggerActivity();
-      m_current_ta.time_start = m_window_start;
+      reset_window_state(tp_window_start);
 
-      // Advance "global" clock
-      m_window_start += m_window_length;
-
-      // Safety guard so we don't run forever in simulations
-      if (m_window_start >= kMaxTime) {
-	return;
-      }
     }
 
-    // If TP belongs to the current window, add it. 
+    //If we got here, the TP belongs to the current window --> add it
     m_current_ta.inputs.push_back(input_tp);
     m_window_energy += input_tp.adc_integral;
     ++m_tp_count;
   }
 
+  //function which gets called when the window is closed. 
+  //main window categorisation & TA generation happens here
   void TriggerActivityMakerSWIFT::close_window(std::vector<TriggerActivity>& output_tas) {
 
     if (m_current_ta.inputs.empty()) return;
@@ -127,7 +117,7 @@ namespace triggeralgs {
     if (decision == WindowDecision::Inspect) {
     const uint64_t max_cluster_energy =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
     if (max_cluster_energy <= m_cluster_energy_cut) return; // reject window if it didn't pass inspection
-    //for the time being, not updating the flag to keep track of which windows went through the inspect-->accept pipeline. FIXME? 
+    //for the time being, not updating the flag to keep track of what  went through the inspect-->accept pipeline. FIXME? 
     }
 
 
@@ -138,7 +128,9 @@ namespace triggeralgs {
   
 
 
-  //clustering - keeping only necessary for info for now, but might want to consider storing other properties & clusters themselves, not just max eng.   
+  //Clustering function: density-based clustering in t-z, where both coordinates are expressed in cm.   
+  //returns only max eng. for now, as that's the param. based on which decision is made.    
+  //FIXME eventually want this step to return nclusrers, mean cluster eng. etc. 
   uint64_t TriggerActivityMakerSWIFT::extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples){
     
     struct Point {
@@ -147,17 +139,18 @@ namespace triggeralgs {
       uint64_t adc;
     };
 
+    //since time and channel are in different units, express TPs as points in unified coordinate system (z,t)
     std::vector<Point> points;
     points.reserve(tps.size());
     for (const auto& tp : tps) {
       points.push_back({tp.channel * m_wire_pitch, (tp.time_start - m_window_start) * m_cm_per_tick, tp.adc_integral});
     }
 
-    const int N = points.size();
+    const int N = points.size(); //number of elements to cluster
     int cluster_id = 0;
-    std::vector<int> labels(N, -1);
+    std::vector<int> labels(N, -1); // initialise all labels to noise for now 
     std::vector<uint8_t> visited(N, 0);
-    float eps2 = eps * eps;
+    float eps2 = eps * eps; //clustering radius 
 
     for (int i = 0; i < N; ++i) {
       if (visited[i]) continue;
@@ -210,12 +203,12 @@ namespace triggeralgs {
       ++cluster_id;
     }
 
-    // cluster energy sums
+    // once clusters are formed, calculate the energies 
     std::vector<uint64_t> cluster_sums(cluster_id, 0);
     for (int i = 0; i < N; ++i) {
       if (labels[i] >= 0) cluster_sums[labels[i]] += points[i].adc;
     }
-    //return dominant energy in TA window 
+    //return dominant cluster energy in window 
     if (cluster_sums.empty()) return 0;
     return *std::max_element(cluster_sums.begin(), cluster_sums.end());
   }
@@ -257,13 +250,10 @@ namespace triggeralgs {
 
   }
 
-
-
-  void TriggerActivityMakerSWIFT::flush(std::vector<TriggerActivity>& output_tas)
+  
+  void TriggerActivityMakerSWIFT::flush(timestamp_t /*until*/, std::vector<TriggerActivity>& output_tas)
   {
-    if (!m_initialised)
-      return;
-
+    if (!m_initialised) return;
     close_window(output_tas);
   }
 

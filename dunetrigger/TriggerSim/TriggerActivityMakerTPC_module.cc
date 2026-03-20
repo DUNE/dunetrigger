@@ -211,7 +211,8 @@ namespace dunetrigger {
 
       // Optionally flush the algorithm window with a dummy TP, ensuring the
       // final in-progress window is evaluated before the event closes.
-      if (flush_) (*alg)(TriggerPrimitive{}, created_tas);
+      //if (flush_) (*alg)(TriggerPrimitive{}, created_tas);
+      if (flush_) alg->flush(std::numeric_limits<uint64_t>::max(), created_tas);//here
 
       if (verbosity_ >= Verbosity::kInfo && !created_tas.empty())
         std::cout << "Created " << created_tas.size() << " TAs on scope " << scope << "\n";
