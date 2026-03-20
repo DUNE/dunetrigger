@@ -61,7 +61,7 @@ namespace triggeralgs {
     m_window_start  = new_window_start;
     m_window_energy = 0;
     m_tp_count      = 0;
-    m_current_ta    = TriggerActivity();
+    m_current_ta.inputs.clear();  // reuse existing TA heap allocation
     m_current_ta.time_start = m_window_start;
   }
 
@@ -81,6 +81,10 @@ namespace triggeralgs {
 
     // Initialise on first TP
     if (!m_initialised) {
+
+      //create TA instance once at run start 
+      m_current_ta = TriggerActivity();
+
       //reset window state
       reset_window_state(tp_window_start);
       m_initialised = true;
