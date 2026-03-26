@@ -50,7 +50,8 @@ namespace triggeralgs {
 
   //TP refinement 
   bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp){
-    if ((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold )) { //FIXME: OR logic, and change TOT -> SOT
+    //FIXME: OR logic, and change TOT -> SOT after updating to TP v2. 
+    if ((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold )) { 
       return false;
     }
     return true; 
@@ -77,7 +78,6 @@ namespace triggeralgs {
 
     // If TP is valid, determine which window this TP belongs to
     const uint64_t tp_window_start = (input_tp.time_start / m_window_length) * m_window_length;
-   
 
     // Initialise on first TP
     if (!m_initialised) {
@@ -90,14 +90,13 @@ namespace triggeralgs {
       m_initialised = true;
     }
  
-    //if TP belongs to future window, close current and jump ahead 
+    //if TP belongs to future window, close existing TA and start a new one at current time 
     if (tp_window_start > m_window_start){
       close_window(output_tas);
       reset_window_state(tp_window_start);
-
     }
 
-    //If we got here, the TP belongs to the current window --> add it
+    //If we got here, the TP belongs to the current window
     m_current_ta.inputs.push_back(input_tp);
     m_window_energy += input_tp.adc_integral;
     ++m_tp_count;
@@ -109,7 +108,6 @@ namespace triggeralgs {
 
     if (m_current_ta.inputs.empty()) return;
 
-
     //Prompt window categorisatoin : immidiate accept, inspect, reject based on local energy in window
     WindowDecision decision;
     if (m_window_energy >= m_accept_energy_threshold) decision = WindowDecision::Accept;
@@ -119,19 +117,15 @@ namespace triggeralgs {
 
     // cluster inspect cases 
     if (decision == WindowDecision::Inspect) {
-    const uint64_t max_cluster_energy =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
-    if (max_cluster_energy <= m_cluster_energy_cut) return; // reject window if it didn't pass inspection
-    //for the time being, not updating the flag to keep track of what  went through the inspect-->accept pipeline. FIXME? 
+      const uint64_t max_cluster_energy =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
+      if (max_cluster_energy <= m_cluster_energy_cut) return; // reject window if it didn't pass inspection
     }
-
 
     // Emit TA: should only reach this step if dealing with  Accept, or Inspect windows that passed clustering
     set_ta_attributes();
     output_tas.push_back(m_current_ta);
   }
   
-
-
   //Clustering function: density-based clustering in t-z, where both coordinates are expressed in cm.   
   //returns only max eng. for now, as that's the param. based on which decision is made.    
   //FIXME eventually want this step to return nclusrers, mean cluster eng. etc. 
