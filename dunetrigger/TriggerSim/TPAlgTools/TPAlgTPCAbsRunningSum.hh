@@ -106,8 +106,8 @@ public:
 
 
   void process_waveform(std::vector<short> const &adcs, dunedaq::trgdataformats::channel_t const channel,
-			dunedaq::trgdataformats::detid_t const detid,  dunedaq::trgdataformats::timestamp_t const start_time,
-			std::vector<dunedaq::trgdataformats::TriggerPrimitive> &tps_out) {
+                        dunedaq::trgdataformats::detid_t const detid,  dunedaq::trgdataformats::timestamp_t const start_time,
+                        std::vector<dunedaq::trgdataformats::TriggerPrimitive> &tps_out) {
 
     // setup a TP and initialize it with the common things for this
     // algorithm/channel

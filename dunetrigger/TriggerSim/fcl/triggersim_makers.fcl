@@ -27,14 +27,14 @@ tpmakerTPC_ABSRunningSum:
     module_type: TriggerPrimitiveMakerTPC
     rawdigit_tag: "tpcrawdecoder:daq"
     tpalg: {
-	tool_type: TPAlgTPCAbsRunningSum
-	accum_limit: 10
-	scale_factor: 5
-	r_value: 8
-	threshold_tpg_plane0: 80 
-	threshold_tpg_plane1: 80
-	threshold_tpg_plane2: 65
-	verbosity: 0
+    tool_type: TPAlgTPCAbsRunningSum
+    accum_limit: 10
+    scale_factor: 5
+    r_value: 8
+    threshold_tpg_plane0: 80 
+    threshold_tpg_plane1: 80
+    threshold_tpg_plane2: 65
+    verbosity: 0
     }
  }
 
@@ -43,15 +43,15 @@ tpmakerTPC_ABSRunningSum:
 
 ta_algconfig_simplewindow:
 {
-	window_length: 6000
-	adc_threshold: 2000
+    window_length: 6000
+    adc_threshold: 2000
 }
 
 ta_algconfig_adjacencyplugin:
 {
-	window_length: 4000
+    window_length: 4000
   adjacency_threshold: 15 # from triggeralgs default
-	adj_tolerance: 3        # from triggeralgs default
+    adj_tolerance: 3  # from triggeralgs default
 }
 
 # more ta configs...
@@ -74,7 +74,7 @@ tamakerTPC_ADCSimpleWindow:
     nmodules: @local::nmodules_protodunehd # just a default
     mergecollwires: true
     flush: true
-	  prescale: 1
+    prescale: 1
     print_tp_info: false
     verbosity: 1
   }
