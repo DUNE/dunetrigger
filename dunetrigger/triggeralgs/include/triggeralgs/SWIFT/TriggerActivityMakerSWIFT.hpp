@@ -29,13 +29,13 @@ namespace triggeralgs {
     // static variables which get set once at run start & kept fixed afterwards 
 
     //Window settings
-    uint64_t m_window_length = 32000; // fixed window size in DTS ticks (32 * 1k readout ticks @ 500ns/tick)
+    uint64_t m_window_length = 32768; // fixed window size in DTS ticks (32 * 1024 readout ticks @ 500ns/tick)
     uint64_t m_inspect_energy_threshold = 15000;
     uint64_t m_accept_energy_threshold = 55000;
 
     //TP pre-processing
     uint16_t m_min_adc_peak = 80;
-    uint16_t m_min_samples_over_threshold = 256; // 8 readout ticks * 32 DTS ticks
+    uint16_t m_min_samples_over_threshold = 256; // 8 readout ticks * 32 DTS ticks while still using TPv1. 
 
     //Clustering settings 
     //these depend on detector properties. default values for HD

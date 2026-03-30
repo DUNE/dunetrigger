@@ -77,7 +77,8 @@ namespace triggeralgs {
     }
 
     // If TP is valid, determine which window this TP belongs to
-    const uint64_t tp_window_start = (input_tp.time_start / m_window_length) * m_window_length;
+    // const uint64_t tp_window_start = (input_tp.time_start / m_window_length) * m_window_length;
+    const uint64_t tp_window_start = input_tp.time_start & ~(m_window_length - 1);
 
     // Initialise on first TP
     if (!m_initialised) {
@@ -89,7 +90,12 @@ namespace triggeralgs {
       reset_window_state(tp_window_start);
       m_initialised = true;
     }
- 
+
+    //if TP is tardy and belongs to past window - reject it for now                                                                                                                                             
+    if (tp_window_start < m_window_start){
+      return;
+    }
+
     //if TP belongs to future window, close existing TA and start a new one at current time 
     if (tp_window_start > m_window_start){
       close_window(output_tas);
