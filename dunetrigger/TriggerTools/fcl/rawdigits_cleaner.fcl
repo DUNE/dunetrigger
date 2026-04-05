@@ -1,0 +1,53 @@
+#include "services_dune.fcl"
+#include "tools_dune.fcl"
+
+process_name: detsim
+
+source:
+{
+  module_type: RootInput
+  maxEvents:   -1
+}
+
+services:
+{
+  @table::dunefd_services
+  Geometry:       @local::dunevd10kt_1x8x14_3view_30deg_geo
+  AuxDetGeometry: @local::dunevd10kt_1x8x14_3view_30deg_auxdet_geo
+}
+
+physics:
+{
+  producers:
+  {
+    tpcrawdecoder:
+    {
+      module_type: RawDigitsCleaner
+      ncrm: 112
+    }
+  }
+
+
+  stream1:  [ out1 ]
+  clean_path:     [tpcrawdecoder]
+  end_paths: [stream1]
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: RootOutput
+    fileName:    "rawdigits_clean_%ifb.root"
+    # dataTier:    "simulated"
+    compressionLevel: 1
+    saveMemoryObjectThreshold: 0 
+    outputCommands :   [
+      # <friendly-type>_<module-label>_<instance-name>_<process-name>
+        "keep *_*_*_*",
+        "drop *_*_*_detsim*",
+        "keep *_*_*_detsim"
+    ]
+
+  }
+}
