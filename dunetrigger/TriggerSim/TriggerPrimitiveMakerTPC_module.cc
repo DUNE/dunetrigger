@@ -30,6 +30,7 @@
 
 #include <iostream>
 #include <memory>
+#include <regex>
 
 namespace dunetrigger {
 class TriggerPrimitiveMakerTPC;
@@ -53,7 +54,8 @@ public:
 
 private:
   // Declare member data here.
-  art::InputTag rawdigit_tag_;
+  // art::InputTag rawdigit_tag_;
+  std::string rawdigit_tag_;
   std::unique_ptr<TPAlgTPCTool> tpalg_;
   uint64_t default_timestamp_;
   int verbosity_;
@@ -63,7 +65,8 @@ dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
     fhicl::ParameterSet const &p)
     : EDProducer{p} // ,
       ,
-      rawdigit_tag_(p.get<art::InputTag>("rawdigit_tag")),
+      // rawdigit_tag_(p.get<art::InputTag>("rawdigit_tag")),
+      rawdigit_tag_(p.get<std::string>("rawdigit_tag")),
       tpalg_{art::make_tool<TPAlgTPCTool>(p.get<fhicl::ParameterSet>("tpalg"))},
       default_timestamp_(p.get<uint64_t>("default_timestamp", 0)),
       verbosity_(p.get<int>("verbosity", 0)) {
@@ -71,8 +74,8 @@ dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
   // Call appropriate consumes<>() for any products to be retrieved by this
   // module.
   produces<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>();
-  consumes<std::vector<raw::RawDigit>>(rawdigit_tag_);
-  consumes<art::Assns<raw::RDTimeStamp, raw::RawDigit>>(rawdigit_tag_);
+  consumesMany<std::vector<raw::RawDigit>>();
+  consumesMany<art::Assns<raw::RDTimeStamp, raw::RawDigit>>();
 }
 
 void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
@@ -82,41 +85,112 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   auto tp_col_ptr = std::make_unique<
       std::vector<dunedaq::trgdataformats::TriggerPrimitive>>();
 
-  // readout raw digits from event
-  auto rawdigit_handle =
-      e.getValidHandle<std::vector<raw::RawDigit>>(rawdigit_tag_);
 
-  // try to get the associated timestamps to our rawdigit objects
-  const art::FindOneP<raw::RDTimeStamp> rdtimestamp_per_rd(rawdigit_handle, e,
-                                                           rawdigit_tag_);
+  // std::regex rawdigi_regex(rawdigit_tag_.instance());
+  // std::regex rawdigi_regex(rawdigit_tag_);
+  // std::regex rawdigi_regex("daq.*");
+  // art::SelectorByFunction s(
+  //     [rawdigi_regex](art::BranchDescription const& p){
+  //         return std::regex_match(p.inputTag().instance(), rawdigi_regex);
+  //     },
+  //     "DAQ RawDigit Selector"
+  // );
 
-  // store a bool for whether it is valid or not to use inside the loop
-  auto rd_assn_is_valid = rdtimestamp_per_rd.isValid();
 
-  auto rawdigit_vec = *rawdigit_handle;
 
-  if (verbosity_ >= Verbosity::kInfo)
-    std::cout << "Found " << rawdigit_vec.size() << " raw::RawDigits"
-              << std::endl;
+  std::regex instance_regex("daq.*");
+  std::regex label_regex("tpcrawdecoder");
 
-  uint64_t this_timestamp = default_timestamp_;
-  for (size_t i_digit = 0; i_digit < rawdigit_vec.size(); ++i_digit) {
-    auto const &digit = rawdigit_vec[i_digit];
+  art::SelectorByFunction re_inputtags_selector(
+      [instance_regex, label_regex](art::BranchDescription const& p){
+          return (
+            std::regex_match(p.inputTag().label(), label_regex) &
+            std::regex_match(p.inputTag().instance(), instance_regex)
+          );
+      },
+      "InputTag Regex Instance Selector"
+  );
 
-    if (rd_assn_is_valid) {
-      auto rdts = rdtimestamp_per_rd.at(i_digit);
-      if (rdts)
-        this_timestamp = rdts->GetTimeStamp();
-    } else
-      this_timestamp = default_timestamp_;
+  auto rawdigit_handles = e.getMany<std::vector<raw::RawDigit>>(re_inputtags_selector);
+  for( auto rawdigit_handle : rawdigit_handles) {
 
-    tpalg_->process_waveform(
-      digit.ADCs(), digit.Channel(),
-      (uint16_t)(dunedaq::detdataformats::DetID::Subdetector::kHD_TPC),
-      this_timestamp, *tp_col_ptr);
+    auto i = rawdigit_handle.provenance()->inputTag();
+    std::cout << "Processing: " << i.label() << "   " << i.instance() << "   " << i.process() << ", size=" << rawdigit_handle->size() << std::endl;
+
+
+    std::string rawdigit_tag = rawdigit_handle.provenance()->inputTag().instance();
+
+    // try to get the associated timestamps to our rawdigit objects
+    const art::FindOneP<raw::RDTimeStamp> rdtimestamp_per_rd(rawdigit_handle, e,
+                                                            rawdigit_tag);
+    // store a bool for whether it is valid or not to use inside the loop
+    auto rd_assn_is_valid = rdtimestamp_per_rd.isValid();
+
+    auto rawdigit_vec = *rawdigit_handle;
+
+    if (verbosity_ >= Verbosity::kInfo)
+      std::cout << "Found " << rawdigit_vec.size() << " raw::RawDigits"
+                << std::endl;
+
+    uint64_t this_timestamp = default_timestamp_;
+    for (size_t i_digit = 0; i_digit < rawdigit_vec.size(); ++i_digit) {
+      auto const &digit = rawdigit_vec[i_digit];
+
+      if (rd_assn_is_valid) {
+        auto rdts = rdtimestamp_per_rd.at(i_digit);
+        if (rdts)
+          this_timestamp = rdts->GetTimeStamp();
+      } else
+        this_timestamp = default_timestamp_;
+
+      tpalg_->process_waveform(
+        digit.ADCs(), digit.Channel(),
+        (uint16_t)(dunedaq::detdataformats::DetID::Subdetector::kHD_TPC),
+        this_timestamp, *tp_col_ptr
+      );
+
+    }
+
   }
 
   e.put(std::move(tp_col_ptr));
+
+
+  // // readout raw digits from event
+  // auto rawdigit_handle =
+  //     e.getValidHandle<std::vector<raw::RawDigit>>(rawdigit_tag_);
+
+  // // try to get the associated timestamps to our rawdigit objects
+  // const art::FindOneP<raw::RDTimeStamp> rdtimestamp_per_rd(rawdigit_handle, e,
+  //                                                          rawdigit_tag_);
+
+  // // store a bool for whether it is valid or not to use inside the loop
+  // auto rd_assn_is_valid = rdtimestamp_per_rd.isValid();
+
+  // auto rawdigit_vec = *rawdigit_handle;
+
+  // if (verbosity_ >= Verbosity::kInfo)
+  //   std::cout << "Found " << rawdigit_vec.size() << " raw::RawDigits"
+  //             << std::endl;
+
+  // uint64_t this_timestamp = default_timestamp_;
+  // for (size_t i_digit = 0; i_digit < rawdigit_vec.size(); ++i_digit) {
+  //   auto const &digit = rawdigit_vec[i_digit];
+
+  //   if (rd_assn_is_valid) {
+  //     auto rdts = rdtimestamp_per_rd.at(i_digit);
+  //     if (rdts)
+  //       this_timestamp = rdts->GetTimeStamp();
+  //   } else
+  //     this_timestamp = default_timestamp_;
+
+  //   tpalg_->process_waveform(
+  //     digit.ADCs(), digit.Channel(),
+  //     (uint16_t)(dunedaq::detdataformats::DetID::Subdetector::kHD_TPC),
+  //     this_timestamp, *tp_col_ptr);
+  // }
+
+  // e.put(std::move(tp_col_ptr));
 }
 
 DEFINE_ART_MODULE(dunetrigger::TriggerPrimitiveMakerTPC)

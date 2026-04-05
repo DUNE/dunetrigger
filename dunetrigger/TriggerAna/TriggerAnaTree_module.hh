@@ -12,6 +12,7 @@
 #include "larcore/Geometry/WireReadout.h"
 #include "lardataobj/Simulation/SimChannel.h"
 
+#include "MiniBackTracker.hh"
 #include "ScalarFieldsBuffer.hh"
 #include "VectorFieldsBuffer.hh"
 
@@ -31,6 +32,7 @@ constexpr char INVALID_STR[] = "undef";
 
 namespace dunetrigger {
 
+//-----------------------------------------------------------------------
 struct ChannelInfo {
   unsigned int rop_id;
   int view;
@@ -41,12 +43,14 @@ struct ChannelInfo {
     return tpcset_id < other.tpcset_id; }
 };
 
+//-----------------------------------------------------------------------
 struct EventMetaData {
   int event = INVALID_NUM;
   int run = INVALID_NUM;
   int subrun = INVALID_NUM;
 };
 
+//-----------------------------------------------------------------------
 struct EventSummaryData {
   int mctruths_count = INVALID_NUM;
   int mcparticles_count = INVALID_NUM;
@@ -62,6 +66,7 @@ struct EventSummaryData {
   double tot_numelectrons_rop3 = 0.;
 };
 
+//-----------------------------------------------------------------------
 struct MCTruthRow {
   int pdg = INVALID_NUM;
   std::string process = INVALID_STR;
@@ -83,6 +88,7 @@ struct MCTruthRow {
   MCTruthRow() = default;
 };
 
+//-----------------------------------------------------------------------
 struct MCNeutrinoRow {
   int block_id = INVALID_NUM;
   std::string generator_name = INVALID_STR;
@@ -104,6 +110,7 @@ struct MCNeutrinoRow {
   MCNeutrinoRow() = default;
 };
 
+//-----------------------------------------------------------------------
 struct MCParticleRow {
   int pdg = INVALID_NUM;
   std::string generator_name = INVALID_STR;
@@ -133,6 +140,7 @@ struct MCParticleRow {
   MCParticleRow() = default;
 };
 
+//-----------------------------------------------------------------------
 struct SimIDERow {
   unsigned int channel = 0;
   int timestamp = INVALID_NUM;
@@ -150,6 +158,7 @@ struct SimIDERow {
   SimIDERow() = default;
 };
 
+//-----------------------------------------------------------------------
 struct SimIDESummaryRow {
   double total_visible_energy = 0.;
   double total_numelectrons = 0.;
@@ -158,6 +167,7 @@ struct SimIDESummaryRow {
 };
 
 
+//-----------------------------------------------------------------------
 struct SimIDETPCRow {
   int readout_plane_id = INVALID_NUM;
   int detector_element = INVALID_NUM;
@@ -167,6 +177,7 @@ struct SimIDETPCRow {
   SimIDETPCRow() = default;
 };
 
+//-----------------------------------------------------------------------
 struct TriggerPrimitiveRow {
   uint8_t version = 0;
   uint8_t flag = 0;
@@ -186,6 +197,7 @@ struct TriggerPrimitiveRow {
   TriggerPrimitiveRow() = default;
 };
 
+//-----------------------------------------------------------------------
 struct TriggerPrimitiveBacktrackingRow {
   int bt_primary_track_id = INVALID_NUM;
   double bt_primary_track_numelectron_frac = INVALID_NUM;
@@ -203,17 +215,22 @@ struct TriggerPrimitiveBacktrackingRow {
 
   void populate_backtracking_info(const std::vector<sim::IDE> &ides,
                                   const std::unordered_map<int, int> &trkid_to_truth_block,
-                                  const std::unordered_map<int, std::string> &truth_id_to_gen);
+                                  const std::unordered_map<int, std::string> &truth_id_to_gen,
+                                  const MiniBackTracker& bt
+                                );
 
   TriggerPrimitiveBacktrackingRow() = default;
 };
 
+//-----------------------------------------------------------------------
 struct TriggerPrimitiveAssociationRow {
   int ta_number = INVALID_NUM;
 
   TriggerPrimitiveAssociationRow() = default;
 };
 
+
+//-----------------------------------------------------------------------
 class TriggerAnaTree : public art::EDAnalyzer {
 public:
   explicit TriggerAnaTree(fhicl::ParameterSet const &p);
@@ -259,6 +276,8 @@ private:
   };
   
   std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
+  std::map<int, MiniBackTracker> bt_map;
+
 
   bool dump_tp, dump_ta, dump_tc;
   std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
@@ -269,7 +288,7 @@ private:
   void make_ta_tree_if_needed(std::string tag, bool assn = false);
   void make_tc_tree_if_needed(std::string tag);
 
-  std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveRow &tp, const std::string &tool_type) const;
+  std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveRow &tp, const std::string &tool_type, const MiniBackTracker& bt) const;
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 

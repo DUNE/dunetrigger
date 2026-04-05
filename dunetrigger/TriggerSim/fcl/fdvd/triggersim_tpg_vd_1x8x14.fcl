@@ -1,0 +1,30 @@
+##include "services_dune.fcl"
+#include "triggersim.fcl"
+#include "triggersim_makers_vd.fcl"
+#include "tools_dune.fcl"
+
+
+process_name: TriggerPrimitiveMaker
+
+services: {
+  @table::services_triggersim
+	@table::dunefdvd_1x8x14_3view_30deg_reco_services
+}
+
+source:	@local::source_triggersim
+outputs: @local::outputs_triggersim
+
+physics:
+{
+  producers: {
+    tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold_vd    
+  }
+  makers: [ tpmakerTPCSimpleThreshold ]
+  trigger_paths: [makers]
+  stream1:  [ out1 ]
+  end_paths: [stream1]
+}
+
+outputs.out1.outputCommands: ["keep *_*_*_*", "drop raw::RawDigit*_*_*_*"] 
+
+

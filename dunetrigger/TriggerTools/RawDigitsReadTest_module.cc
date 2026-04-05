@@ -13,8 +13,43 @@
 #include "larcore/Geometry/WireReadout.h"
 
 #include <regex>    
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 namespace duneana {
+
+nlohmann::json parse_to_json(const std::string &str) {
+  auto j = nlohmann::json::parse(str, nullptr, false);
+  if (j.is_discarded()) {
+    return str;
+  }
+  return j;
+}
+
+nlohmann::json fhicl_to_json(const fhicl::ParameterSet &pset) {
+  nlohmann::json j;
+  for (const std::string &key : pset.get_names
+    ()) {
+//   for (const std::string &key : pset.get_all_keys()) {
+    // std::cout << " >>> " << key << std::endl;
+    if (pset.is_key_to_atom(key)) {
+      std::string field_str = pset.get<std::string>(key);
+      j[key] = parse_to_json(field_str);
+    } else if (pset.is_key_to_sequence(key)) {
+      std::vector<std::string> field_vec =
+          pset.get<std::vector<std::string>>(key);
+      std::vector<json> json_vec;
+      for (const std::string &val : field_vec) {
+        json_vec.push_back(parse_to_json(val));
+      }
+      j[key] = json_vec;
+    } else if (pset.is_key_to_table(key)) {
+      fhicl::ParameterSet sub_pset = pset.get<fhicl::ParameterSet>(key);
+      j[key] = fhicl_to_json(sub_pset);
+    }
+  }
+  return j;
+}
 
 class RawDigitsReadTest : public art::EDAnalyzer {
 public:
@@ -66,11 +101,14 @@ void RawDigitsReadTest::analyze(art::Event const& e) {
 
     for( auto h : vec_h) {
         auto i = h.provenance()->inputTag();
-
+        
 
         auto ropid = geom->ChannelToROP(h->front().Channel());
 
         std::cout << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << h->size() << ", tpcset=" << ropid.asTPCsetID() << std::endl;
+        // std::cout << "Provenance: " << *(h.provenance()) << std::endl;
+        // std::cout << "PSet: " << fhicl_to_json(h.provenance()->parameterSet()).dump(4) << std::endl;
+        std::cout << "wcls_main.structs.process_apa_index : " <<h.provenance()->parameterSet().get<int>("wcls_main.structs.process_apa_index") << std::endl;
     }
 
     std::cout << "------------------------------------------------------------------------" << std::endl;
