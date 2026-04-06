@@ -11,9 +11,20 @@
 #include <numeric>
 
 namespace dunetrigger {
-typedef std::tuple<dunedaq::trgdataformats::timestamp_t,
-                   dunedaq::trgdataformats::timestamp_t, double>
-    TPWindow;
+struct MFWindow {
+  dunedaq::trgdataformats::timestamp_t start_time;
+  dunedaq::trgdataformats::timestamp_t end_time;
+  dunedaq::trgdataformats::timestamp_t peak_time;
+  double peak_value;
+  double integral;
+
+  MFWindow(dunedaq::trgdataformats::timestamp_t start = 0,
+           dunedaq::trgdataformats::timestamp_t end = 0,
+           dunedaq::trgdataformats::timestamp_t peak_time = 0,
+           double peak_value = 0, double integral = 0)
+      : start_time(start), end_time(end), peak_time(peak_time),
+        peak_value(peak_value), integral(integral) {}
+};
 
 class TPAlgPDSMatchedFilter : public TPAlgPDSTool {
 
@@ -44,8 +55,7 @@ public:
   }
 
   std::vector<double> correlate(std::vector<double> const &adcs);
-  std::vector<TPWindow>
-  find_tp_windows(std::vector<double> const &xcorr);
+  std::vector<MFWindow> make_mf_windows(std::vector<double> const &xcorr);
 
   dunedaq::trgdataformats::TriggerPrimitive initalize_tp() const {
     dunedaq::trgdataformats::TriggerPrimitive result;
