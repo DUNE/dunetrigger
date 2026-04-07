@@ -5,7 +5,7 @@
 
 #include <cassert>
 #include <iostream>
-#include <cmath> 
+#include <cmath>
 
 namespace triggeralgs {
 
@@ -27,9 +27,9 @@ namespace triggeralgs {
       m_min_adc_peak = config["min_adc_peak"];
 
     if (config.contains("min_samples_over_threshold"))
-      m_min_samples_over_threshold = config["min_samples_over_threshold"]; 
-    
-    //clustering 
+      m_min_samples_over_threshold = config["min_samples_over_threshold"];
+
+    //clustering
     if (config.contains("cm_per_tick"))
       m_cm_per_tick = config["cm_per_tick"];
 
@@ -39,7 +39,7 @@ namespace triggeralgs {
     if (config.contains("min_samples"))
       m_db_min_samples = config["min_samples"];
 
-    if (config.contains("epsilon")) // NN search radius 
+    if (config.contains("epsilon")) // NN search radius
       m_db_eps = config["epsilon"];
 
     if (config.contains("cluster_energy_cut"))
@@ -48,16 +48,16 @@ namespace triggeralgs {
     assert(m_window_length > 0);
   }
 
-  //TP refinement 
+  //TP refinement
   bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp){
-    //FIXME: OR logic, and change TOT -> SOT after updating to TP v2. 
-    if ((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold )) { 
+    //FIXME: OR logic, and change TOT -> SOT after updating to TP v2.
+    if ((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold )) {
       return false;
     }
-    return true; 
+    return true;
   }
 
-  // Reset window state 
+  // Reset window state
   void TriggerActivityMakerSWIFT::reset_window_state(uint64_t new_window_start) {
     m_window_start  = new_window_start;
     m_window_energy = 0;
@@ -67,36 +67,34 @@ namespace triggeralgs {
   }
 
   //main function for binning TPs into fixed-size time windows
-  //assumes TPs are strictly time-ordered 
+  //assumes TPs are strictly time-ordered
   void TriggerActivityMakerSWIFT::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_tas)
   {
-
     // Apply TP filtering
     if (!preprocess(input_tp)) {
       return;
     }
 
     // If TP is valid, determine which window this TP belongs to
-    // const uint64_t tp_window_start = (input_tp.time_start / m_window_length) * m_window_length;
-    const uint64_t tp_window_start = input_tp.time_start & ~(m_window_length - 1);
+    const uint64_t tp_window_start = (input_tp.time_start / m_window_length) * m_window_length;
 
     // Initialise on first TP
     if (!m_initialised) {
 
-      //create TA instance once at run start 
-      m_current_ta = TriggerActivity();
+      //create TA instance once at run start
+       m_current_ta = TriggerActivity();
 
       //reset window state
       reset_window_state(tp_window_start);
       m_initialised = true;
     }
 
-    //if TP is tardy and belongs to past window - reject it for now                                                                                                                                             
+    //if TP belongs to past window (already closed), reject it (not ideal)
     if (tp_window_start < m_window_start){
       return;
     }
 
-    //if TP belongs to future window, close existing TA and start a new one at current time 
+    //if TP belongs to future window, close existing TA and start a new one at current time
     if (tp_window_start > m_window_start){
       close_window(output_tas);
       reset_window_state(tp_window_start);
@@ -108,7 +106,7 @@ namespace triggeralgs {
     ++m_tp_count;
   }
 
-  //function which gets called when the window is closed. 
+  //function which gets called when the window is closed.
   //main window categorisation & TA generation happens here
   void TriggerActivityMakerSWIFT::close_window(std::vector<TriggerActivity>& output_tas) {
 
@@ -120,23 +118,22 @@ namespace triggeralgs {
     else if (m_window_energy >= m_inspect_energy_threshold) decision = WindowDecision::Inspect;
     else  return; // Reject
 
-
-    // cluster inspect cases 
+    // cluster inspect cases
     if (decision == WindowDecision::Inspect) {
       const uint64_t max_cluster_energy =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
       if (max_cluster_energy <= m_cluster_energy_cut) return; // reject window if it didn't pass inspection
     }
 
-    // Emit TA: should only reach this step if dealing with  Accept, or Inspect windows that passed clustering
+    // Emit TA: should only reach this step if dealing with immidiate or conditional accept cases.
     set_ta_attributes();
     output_tas.push_back(m_current_ta);
   }
-  
-  //Clustering function: density-based clustering in t-z, where both coordinates are expressed in cm.   
-  //returns only max eng. for now, as that's the param. based on which decision is made.    
-  //FIXME eventually want this step to return nclusrers, mean cluster eng. etc. 
+
+  //Clustering function: density-based clustering in t-z, where both coordinates are expressed in cm.
+  //returns only max eng. for now, as that's the param. based on which decision is made.
+  //FIXME eventually want this step to return nclusrers, mean cluster eng. etc.
   uint64_t TriggerActivityMakerSWIFT::extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples){
-    
+
     struct Point {
       float z;
       float t;
@@ -152,9 +149,9 @@ namespace triggeralgs {
 
     const int N = points.size(); //number of elements to cluster
     int cluster_id = 0;
-    std::vector<int> labels(N, -1); // initialise all labels to noise for now 
+    std::vector<int> labels(N, -1); // initialise all labels to noise for now
     std::vector<uint8_t> visited(N, 0);
-    float eps2 = eps * eps; //clustering radius 
+    float eps2 = eps * eps; //clustering radius
 
     for (int i = 0; i < N; ++i) {
       if (visited[i]) continue;
@@ -163,6 +160,7 @@ namespace triggeralgs {
       std::vector<int> neigh;
       const float zi = points[i].z;
       const float ti = points[i].t;
+
       for (int j = 0; j < N; ++j) {
         float dz = points[j].z - zi;
         float dt = points[j].t - ti;
@@ -207,19 +205,19 @@ namespace triggeralgs {
       ++cluster_id;
     }
 
-    // once clusters are formed, calculate the energies 
+    // once clusters are formed, calculate the energies
     std::vector<uint64_t> cluster_sums(cluster_id, 0);
     for (int i = 0; i < N; ++i) {
       if (labels[i] >= 0) cluster_sums[labels[i]] += points[i].adc;
     }
-    //return dominant cluster energy in window 
+    //return dominant cluster energy in window
     if (cluster_sums.empty()) return 0;
     return *std::max_element(cluster_sums.begin(), cluster_sums.end());
   }
- 
 
 
-  //TA feature extraction - FIXME most of these fields are somewhat useless 
+
+  //TA feature extraction - FIXME most of these fields are somewhat useless
   void TriggerActivityMakerSWIFT::set_ta_attributes()
   {
     m_current_ta.time_start = m_window_start;
@@ -231,7 +229,7 @@ namespace triggeralgs {
     m_current_ta.type = TriggerActivity::Type::kTPC;
     m_current_ta.algorithm = TriggerActivity::Algorithm::kUnknown;
 
-   
+
     dunedaq::trgdataformats::channel_t min_ch = first_tp.channel;
     dunedaq::trgdataformats::channel_t max_ch = first_tp.channel;
 
@@ -242,9 +240,9 @@ namespace triggeralgs {
       if (tp.channel > max_ch) max_ch = tp.channel;
 
       if (tp.adc_peak > m_current_ta.adc_peak) {
-	m_current_ta.adc_peak = tp.adc_peak;
-	m_current_ta.channel_peak = tp.channel;
-	m_current_ta.time_peak = tp.time_peak;
+        m_current_ta.adc_peak = tp.adc_peak;
+        m_current_ta.channel_peak = tp.channel;
+        m_current_ta.time_peak = tp.time_peak;
       }
     }
 
@@ -254,7 +252,7 @@ namespace triggeralgs {
 
   }
 
-  
+
   void TriggerActivityMakerSWIFT::flush(timestamp_t /*until*/, std::vector<TriggerActivity>& output_tas)
   {
     if (!m_initialised) return;
