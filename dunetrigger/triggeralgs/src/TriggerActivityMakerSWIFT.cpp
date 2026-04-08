@@ -13,48 +13,28 @@ namespace triggeralgs {
   void TriggerActivityMakerSWIFT::configure(const nlohmann::json& config)
   {
     //window settings
-    if (config.contains("window_length"))
-      m_window_length = config["window_length"];
-
-    if (config.contains("inspect_energy_threshold"))
-      m_inspect_energy_threshold = config["inspect_energy_threshold"];
-
-    if (config.contains("accept_energy_threshold"))
-      m_accept_energy_threshold = config["accept_energy_threshold"];
+    m_window_length            = config.value("window_length", 32000);
+    m_inspect_energy_threshold = config.value("inspect_energy_threshold", 15000);
+    m_accept_energy_threshold  = config.value("accept_energy_threshold", 55000);
 
     //tp filtering settings
-    if (config.contains("min_adc_peak"))
-      m_min_adc_peak = config["min_adc_peak"];
-
-    if (config.contains("min_samples_over_threshold"))
-      m_min_samples_over_threshold = config["min_samples_over_threshold"];
+    m_min_adc_peak             = config.value("min_adc_peak", 80);
+    m_min_samples_over_threshold = config.value("min_samples_over_threshold", 256);
 
     //clustering
-    if (config.contains("cm_per_tick"))
-      m_cm_per_tick = config["cm_per_tick"];
-
-    if (config.contains("wire_pitch"))
-      m_wire_pitch = config["wire_pitch"];
-
-    if (config.contains("min_samples"))
-      m_db_min_samples = config["min_samples"];
-
-    if (config.contains("epsilon")) // NN search radius
-      m_db_eps = config["epsilon"];
-
-    if (config.contains("cluster_energy_cut"))
-      m_cluster_energy_cut = config["cluster_energy_cut"];
+    m_cm_per_tick              = config.value("cm_per_tick", 0.016 * 0.16);
+    m_wire_pitch               = config.value("wire_pitch", 0.48);
+    m_db_min_samples           = config.value("min_samples", 2);
+    m_db_eps                   = config.value("epsilon", 2);
+    m_cluster_energy_cut       = config.value("cluster_energy_cut", 22000);
 
     assert(m_window_length > 0);
   }
 
   //TP refinement
-  bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp){
+  bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp) const{
     //FIXME: OR logic, and change TOT -> SOT after updating to TP v2.
-    if ((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold )) {
-      return false;
-    }
-    return true;
+    return !((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold));
   }
 
   // Reset window state
@@ -114,12 +94,12 @@ namespace triggeralgs {
 
     //Prompt window categorisatoin : immidiate accept, inspect, reject based on local energy in window
     WindowDecision decision;
-    if (m_window_energy >= m_accept_energy_threshold) decision = WindowDecision::Accept;
-    else if (m_window_energy >= m_inspect_energy_threshold) decision = WindowDecision::Inspect;
+    if (m_window_energy >= m_accept_energy_threshold) decision = WindowDecision::kAccept;
+    else if (m_window_energy >= m_inspect_energy_threshold) decision = WindowDecision::kInspect;
     else  return; // Reject
 
     // cluster inspect cases
-    if (decision == WindowDecision::Inspect) {
+    if (decision == WindowDecision::kInspect) {
       const uint64_t max_cluster_energy =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
       if (max_cluster_energy <= m_cluster_energy_cut) return; // reject window if it didn't pass inspection
     }
@@ -147,7 +127,7 @@ namespace triggeralgs {
       points.push_back({tp.channel * m_wire_pitch, (tp.time_start - m_window_start) * m_cm_per_tick, tp.adc_integral});
     }
 
-    const int N = points.size(); //number of elements to cluster
+    const size_t N = points.size(); //number of elements to cluster
     int cluster_id = 0;
     std::vector<int> labels(N, -1); // initialise all labels to noise for now
     std::vector<uint8_t> visited(N, 0);
