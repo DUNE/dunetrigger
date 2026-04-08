@@ -54,7 +54,15 @@ ta_algconfig_adjacencyplugin:
     adj_tolerance: 3  # from triggeralgs default
 }
 
-# more ta configs...
+ta_algconfig_swift:
+{
+  window_length: 32000
+  inspect_energy_threshold: 15000
+  accept_energy_threshold: 55000
+  min_adc_peak: 80
+  min_samples_over_threshold: 256
+  cluster_energy_cut: 22000
+}
 
 # drop these?
 nmodules_protodunehd: 4     # protoDUNE HD 2024
@@ -78,6 +86,8 @@ tamakerTPC_ADCSimpleWindow:
     print_tp_info: false
     verbosity: 1
   }
+
+
 
 #======================================================================
 # TC makers
