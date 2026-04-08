@@ -13,20 +13,21 @@ namespace triggeralgs {
   void TriggerActivityMakerSWIFT::configure(const nlohmann::json& config)
   {
     //window settings
-    m_window_length            = config.value("window_length", 32000);
-    m_inspect_energy_threshold = config.value("inspect_energy_threshold", 15000);
-    m_accept_energy_threshold  = config.value("accept_energy_threshold", 55000);
+    m_window_length            = config.value("window_length", 32000); // in DTS ticks (32 * 1000 readout ticks @ 500ns/tick)
+    m_inspect_energy_threshold = config.value("inspect_energy_threshold", 15000); // SADC
+    m_accept_energy_threshold  = config.value("accept_energy_threshold", 55000); // SADC
 
     //tp filtering settings
-    m_min_adc_peak             = config.value("min_adc_peak", 80);
-    m_min_samples_over_threshold = config.value("min_samples_over_threshold", 256);
+    m_min_adc_peak             = config.value("min_adc_peak", 80); //ADC
+    m_min_samples_over_threshold = config.value("min_samples_over_threshold", 256); // 8 * 32 DTS ticks while still using TPv1 FIXME
 
     //clustering
-    m_cm_per_tick              = config.value("cm_per_tick", 0.016 * 0.16);
-    m_wire_pitch               = config.value("wire_pitch", 0.48);
-    m_db_min_samples           = config.value("min_samples", 2);
-    m_db_eps                   = config.value("epsilon", 2);
-    m_cluster_energy_cut       = config.value("cluster_energy_cut", 22000);
+    //these depend on detector properties. default values for HD
+    m_cm_per_tick              = config.value("cm_per_tick", 0.016 * 0.16); // sampling rate [us/tick] * drift velocity [cm/us]
+    m_wire_pitch               = config.value("wire_pitch", 0.48); // cm
+    m_db_min_samples           = config.value("min_samples", 2); //min. number of TPs for valid cluster
+    m_db_eps                   = config.value("epsilon", 2); //dbscan search radius in cm
+    m_cluster_energy_cut       = config.value("cluster_energy_cut", 22000); // min energy of dominant cluster eng. in window for acceptance in SADC
 
     assert(m_window_length > 0);
   }
