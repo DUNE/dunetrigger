@@ -293,13 +293,25 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     // getValidHandle("simpleSC{i_tpcset}")
     // if doesn't exist -> handle
     // else continue as it is
+
+    // for ( int tpcset_id{0}; tpcset_id < num_tpcsets; ++tpcset_id) {
+    //   // std::string m_inputTag = simide_label + std::to_string();
+    //   // art::Handle<std::vector<sim::SimChannel> sedvh;
+    //   // bool okay = e.getByLabel(m_inputTag, sedvh);
+    // }
     for ( auto simchannels : simchannels_many ) {
+
+      // std::string m_inputTag = "IonAndScint";
+      // art::Handle<std::vector<sim::SimChannel> sedvh;
+      // bool okay = e.getByLabel(m_inputTag, sedvh);
+
+      // book okay = e.getValidHandle<std::vector<sim::SimChannel>>(
       // auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
 
       int elem_id = simchannels.provenance()->parameterSet().get<int>("wcls_main.structs.process_apa_index");
       auto i = simchannels.provenance()->inputTag();
 
-      std::cout << "AAAAAAAAA " << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << simchannels->size() <<  std::endl;
+      std::cout << "Processing " << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << simchannels->size() <<  std::endl;
 
 
       bt_map.emplace(elem_id, simchannels);

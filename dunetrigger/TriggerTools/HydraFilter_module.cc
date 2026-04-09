@@ -67,11 +67,8 @@ bool dunetrigger::HydraFilter::filter(art::Event& e)
     geo->TPC(tpcid);
   }
 
-  
-
 
   // std::cout << "Num TPCs in TPCSet 0 : " << tpcid_vec.size() << std::endl;
-
 
   std::string m_inputTag = "IonAndScint";
   art::Handle<std::vector<sim::SimEnergyDeposit>> sedvh;

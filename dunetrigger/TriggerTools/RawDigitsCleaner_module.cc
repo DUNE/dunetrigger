@@ -12,6 +12,8 @@
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
+#include "larcore/Geometry/WireReadout.h"
+
 #include "lardataobj/RawData/RawDigit.h"
 #include "lardataobj/Simulation/SimChannel.h"
 
@@ -36,23 +38,26 @@ public:
 private:
 
   // TODO: rename n_tpsets
-  int ncrm;
+  int num_tpcset;
 
   std::string get_prodid(std::string prod_base, int i) {
     // C++20 where are you?
     std::ostringstream oss;
     oss << prod_base << i;
-    return oss.str();;
+    return oss.str();
+    // return prod_base+std::to_string(i);
   }
 };
 
 dunetrigger::RawDigitsCleaner::RawDigitsCleaner(fhicl::ParameterSet const& p)
-    : EDProducer{p},
-    ncrm(p.get<int>("ncrm"))
+    : EDProducer{p}
 {
 
-  int ncrm = p.get<int>("ncrm");
-  for(int i(0); i<ncrm; ++i) {
+  // get a service handle for geometry
+  geo::WireReadoutGeom const *wrgeom = &art::ServiceHandle<geo::WireReadout>()->Get();
+  
+  int num_tpcset = wrgeom->MaxTPCsets();
+  for(int i(0); i<num_tpcset; ++i) {
 
     // Move to config parameters
     std::string rawdigit_name = get_prodid("daq", i);
@@ -74,7 +79,7 @@ void dunetrigger::RawDigitsCleaner::produce(art::Event& e)
     // getValidHandle("simpleSC{i_tpcset}")
     // if doesn't exist -> handle
     // else continue as it is
-  for(int i(0); i<ncrm; ++i) {
+  for(int i(0); i<num_tpcset; ++i) {
 
     std::string rawdigit_name = get_prodid("daq", i);
     std::string simchan_name = get_prodid("simpleSC", i);
