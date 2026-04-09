@@ -57,11 +57,11 @@ ta_algconfig_adjacencyplugin:
 ta_algconfig_swift:
 {
   window_length: 32000
-  inspect_energy_threshold: 15000
-  accept_energy_threshold: 55000
+  inspect_energy_threshold_sadc: 15000
+  accept_energy_threshold_sadc: 55000
   min_adc_peak: 80
   min_samples_over_threshold: 256
-  cluster_energy_cut: 22000
+  cluster_energy_cut_sadc: 22000
 }
 
 # drop these?

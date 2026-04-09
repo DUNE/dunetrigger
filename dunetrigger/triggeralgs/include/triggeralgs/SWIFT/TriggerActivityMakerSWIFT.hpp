@@ -30,8 +30,8 @@ namespace triggeralgs {
 
     //Window settings
     uint64_t m_window_length;
-    uint64_t m_inspect_energy_threshold; 
-    uint64_t m_accept_energy_threshold;
+    uint64_t m_inspect_energy_threshold_sadc; 
+    uint64_t m_accept_energy_threshold_sadc;
 
     //TP pre-processing
     uint16_t m_min_adc_peak;
@@ -42,7 +42,7 @@ namespace triggeralgs {
     float m_wire_pitch;
     int   m_db_min_samples;
     float m_db_eps;
-    uint64_t m_cluster_energy_cut;
+    uint64_t m_cluster_energy_cut_sadc;
 
 
     // Dynamic vaiables which get updated during running to keep track of alg state. These are non-configurable
@@ -50,7 +50,7 @@ namespace triggeralgs {
     //window state
     bool     m_initialised = false;
     uint64_t m_window_start = 0;
-    uint64_t m_window_energy = 0;
+    uint64_t m_window_energy_sadc = 0;
     uint16_t m_tp_count = 0;
 
     //Additional SWIFT-specific functions and classes

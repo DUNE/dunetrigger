@@ -13,12 +13,12 @@ namespace triggeralgs {
   void TriggerActivityMakerSWIFT::configure(const nlohmann::json& config)
   {
     //window settings
-    m_window_length            = config.value("window_length", 32000); // in DTS ticks (32 * 1000 readout ticks @ 500ns/tick)
-    m_inspect_energy_threshold = config.value("inspect_energy_threshold", 15000); // SADC
-    m_accept_energy_threshold  = config.value("accept_energy_threshold", 55000); // SADC
+    m_window_length                 = config.value("window_length", 32000); // in DTS ticks (32 * 1000 readout ticks @ 500ns/tick)
+    m_inspect_energy_threshold_sadc = config.value("inspect_energy_threshold_sadc", 15000); 
+    m_accept_energy_threshold_sadc  = config.value("accept_energy_threshold_sadc", 55000); 
 
     //tp filtering settings
-    m_min_adc_peak             = config.value("min_adc_peak", 80); //ADC
+    m_min_adc_peak               = config.value("min_adc_peak", 80); //ADC
     m_min_samples_over_threshold = config.value("min_samples_over_threshold", 256); // 8 * 32 DTS ticks while still using TPv1 FIXME
 
     //clustering
@@ -27,7 +27,7 @@ namespace triggeralgs {
     m_wire_pitch               = config.value("wire_pitch", 0.48); // cm
     m_db_min_samples           = config.value("min_samples", 2); //min. number of TPs for valid cluster
     m_db_eps                   = config.value("epsilon", 2); //dbscan search radius in cm
-    m_cluster_energy_cut       = config.value("cluster_energy_cut", 22000); // min energy of dominant cluster eng. in window for acceptance in SADC
+    m_cluster_energy_cut_sadc       = config.value("cluster_energy_cut_sadc", 22000); // min energy of dominant cluster eng. in window for acceptance
 
     assert(m_window_length > 0);
   }
@@ -40,9 +40,9 @@ namespace triggeralgs {
 
   // Reset window state
   void TriggerActivityMakerSWIFT::reset_window_state(uint64_t new_window_start) {
-    m_window_start  = new_window_start;
-    m_window_energy = 0;
-    m_tp_count      = 0;
+    m_window_start       = new_window_start;
+    m_window_energy_sadc = 0;
+    m_tp_count           = 0;
     m_current_ta.inputs.clear();  // reuse existing TA heap allocation
     m_current_ta.time_start = m_window_start;
   }
@@ -83,7 +83,7 @@ namespace triggeralgs {
 
     //If we got here, the TP belongs to the current window
     m_current_ta.inputs.push_back(input_tp);
-    m_window_energy += input_tp.adc_integral;
+    m_window_energy_sadc += input_tp.adc_integral;
     ++m_tp_count;
   }
 
@@ -95,14 +95,14 @@ namespace triggeralgs {
 
     //Prompt window categorisatoin : immidiate accept, inspect, reject based on local energy in window
     WindowDecision decision;
-    if (m_window_energy >= m_accept_energy_threshold) decision = WindowDecision::kAccept;
-    else if (m_window_energy >= m_inspect_energy_threshold) decision = WindowDecision::kInspect;
+    if (m_window_energy_sadc >= m_accept_energy_threshold_sadc) decision = WindowDecision::kAccept;
+    else if (m_window_energy_sadc >= m_inspect_energy_threshold_sadc) decision = WindowDecision::kInspect;
     else  return; // Reject
 
     // cluster inspect cases
     if (decision == WindowDecision::kInspect) {
-      const uint64_t max_cluster_energy =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
-      if (max_cluster_energy <= m_cluster_energy_cut) return; // reject window if it didn't pass inspection
+      const uint64_t max_cluster_energy_sadc =  extract_dominant_cluster_energy(m_current_ta.inputs, m_db_eps, m_db_min_samples);
+      if (max_cluster_energy_sadc <= m_cluster_energy_cut_sadc) return; // reject window if it didn't pass inspection
     }
 
     // Emit TA: should only reach this step if dealing with immidiate or conditional accept cases.
@@ -203,7 +203,7 @@ namespace triggeralgs {
   {
     m_current_ta.time_start = m_window_start;
     m_current_ta.time_end   = m_window_start + m_window_length;
-    m_current_ta.adc_integral = m_window_energy;
+    m_current_ta.adc_integral = m_window_energy_sadc;
 
     const TriggerPrimitive& first_tp = m_current_ta.inputs.front();
     m_current_ta.detid = first_tp.detid;
