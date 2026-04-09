@@ -20,6 +20,7 @@ basic_plugin(triggeralgs module
   src/TriggerActivityMakerPlaneCoincidence.cpp
   src/TriggerActivityMakerPrescale.cpp
   src/TriggerActivityMakerSupernova.cpp
+  src/TriggerActivityMakerSWIFT.cpp
   src/TriggerCandidateMakerADCSimpleWindow.cpp
   src/TriggerCandidateMakerBundleN.cpp
   src/TriggerCandidateMakerChannelAdjacency.cpp
