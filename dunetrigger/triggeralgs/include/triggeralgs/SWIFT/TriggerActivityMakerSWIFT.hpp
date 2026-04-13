@@ -17,7 +17,7 @@ namespace triggeralgs {
   class TriggerActivityMakerSWIFT : public TriggerActivityMaker {
   public:
     void operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_tas);
-    void configure(const nlohmann::json& config);
+    void configure(const nlohmann::json& config) override;`
     void set_ta_attributes();
     void flush(timestamp_t until, std::vector<TriggerActivity>& output_tas) override;
     bool preprocess( const TriggerPrimitive& input_tp) const;
