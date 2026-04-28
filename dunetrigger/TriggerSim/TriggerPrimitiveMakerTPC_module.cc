@@ -54,8 +54,8 @@ public:
 
 private:
   // Declare member data here.
-  // art::InputTag rawdigit_tag_;
-  std::string rawdigit_tag_;
+  art::InputTag rawdigit_tag_;
+  // std::string rawdigit_tag_;
   std::unique_ptr<TPAlgTPCTool> tpalg_;
   uint64_t default_timestamp_;
   int verbosity_;
@@ -65,8 +65,8 @@ dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
     fhicl::ParameterSet const &p)
     : EDProducer{p} // ,
       ,
-      // rawdigit_tag_(p.get<art::InputTag>("rawdigit_tag")),
-      rawdigit_tag_(p.get<std::string>("rawdigit_tag")),
+      rawdigit_tag_(p.get<art::InputTag>("rawdigit_tag")),
+      // rawdigit_tag_(p.get<std::string>("rawdigit_tag")),
       tpalg_{art::make_tool<TPAlgTPCTool>(p.get<fhicl::ParameterSet>("tpalg"))},
       default_timestamp_(p.get<uint64_t>("default_timestamp", 0)),
       verbosity_(p.get<int>("verbosity", 0)) {
@@ -85,21 +85,14 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   auto tp_col_ptr = std::make_unique<
       std::vector<dunedaq::trgdataformats::TriggerPrimitive>>();
 
+  // std::regex instance_regex("daq.*");
+  // std::regex label_regex("tpcrawdecoder");
+  // std::cout << "instance=" << rawdigit_tag_.instance() << std::endl;
+  // std::cout << "label=" << rawdigit_tag_.label() << std::endl;
 
-  // std::regex rawdigi_regex(rawdigit_tag_.instance());
-  // std::regex rawdigi_regex(rawdigit_tag_);
-  // std::regex rawdigi_regex("daq.*");
-  // art::SelectorByFunction s(
-  //     [rawdigi_regex](art::BranchDescription const& p){
-  //         return std::regex_match(p.inputTag().instance(), rawdigi_regex);
-  //     },
-  //     "DAQ RawDigit Selector"
-  // );
-
-
-
-  std::regex instance_regex("daq.*");
-  std::regex label_regex("tpcrawdecoder");
+  std::regex instance_regex(!rawdigit_tag_.instance().empty() ? rawdigit_tag_.instance() : ".*");
+  std::regex label_regex(!rawdigit_tag_.label().empty() ? rawdigit_tag_.label() : ".*");
+  std::regex process_regex(!rawdigit_tag_.process().empty() ? rawdigit_tag_.process() : ".*");
 
   art::SelectorByFunction re_inputtags_selector(
       [instance_regex, label_regex](art::BranchDescription const& p){
