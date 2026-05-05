@@ -93,11 +93,11 @@ private:
   void reset_variables();
 
   // Producer module, configurable from fhicl
-  art::InputTag fRawDigitLabel; // raw digi label
-  std::string fSimChanLabel; // sim channel label
+  art::InputTag rawdigits_tag_; // raw digi label
+  art::InputTag simchans_tag_; // sim channel label
 
-  bool fSaveWaveforms;
-  bool fSaveChannelsWithIDEsOnly;
+  bool save_waveforms_;
+  bool save_channels_with_ides_only_;
 
   //ROOT tree for storing output information 
   TTree* fRawDigisTree = nullptr;
@@ -117,15 +117,42 @@ private:
   std::map<raw::ChannelID_t, raw::RawDigit::ADCvector_t> fWaveformsBuffer;
   std::vector<unsigned int> fActiveChannels;
 
+  static art::SelectorByFunction make_regex_selector(const art::InputTag& tag );
+
 };
+
+art::SelectorByFunction
+duneana::RawDigitAna::make_regex_selector(const art::InputTag& tag) {
+
+  std::regex instance_regex(!tag.instance().empty() ? tag.instance() : ".*");
+  std::regex label_regex(!tag.label().empty() ? tag.label() : ".*");
+  std::regex process_regex(!tag.process().empty() ? tag.process() : ".*");
+
+  art::SelectorByFunction re_inputtags_selector(
+      [instance_regex, label_regex, process_regex](art::BranchDescription const& p){
+          return (
+            std::regex_match(p.inputTag().label(), label_regex) &
+            std::regex_match(p.inputTag().instance(), instance_regex) & 
+            std::regex_match(p.inputTag().process(), process_regex)
+
+          );
+      },
+      "InputTag Regex Instance Selector"
+  );
+
+  return re_inputtags_selector;
+}
+
 
 // -- Constructor --
 duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
-  fRawDigitLabel(p.get<art::InputTag>("rawdigit_tag", "tpcrawdecoder:daq")),
-  fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
-  fSaveWaveforms(p.get<bool>("save_waveforms",true)),
-  fSaveChannelsWithIDEsOnly(p.get<bool>("save_channels_with_ides_only",false))
+  rawdigits_tag_(p.get<art::InputTag>("rawdigits_tag", "tpcrawdecoder:daq.*")),
+  simchans_tag_(p.get<art::InputTag>("simchannels_tag", "tpcrawdecoder:simpleSC.*")),
+  save_waveforms_(p.get<bool>("save_waveforms",true)),
+  save_channels_with_ides_only_(p.get<bool>("save_channels_with_ides_only",false))
+  // TODO: Add histogram range in adc samples
+  // Useful in cases of missing IDEs
   {
   }
 
@@ -152,11 +179,11 @@ void duneana::RawDigitAna::beginJob()
   fRawDigisTree->Branch("run",&fRun,"run/i");
   fRawDigisTree->Branch("subrun",&fSubRun,"subrun/i");
 
-  if (fSaveChannelsWithIDEsOnly) {
+  if (save_channels_with_ides_only_) {
     fRawDigisTree->Branch("active_channels", &fActiveChannels);
   }
 
-  if ( fSaveWaveforms ) {
+  if ( save_waveforms_ ) {
 
     art::ServiceHandle<geo::Geometry> pgeo;
     auto const& wire_readout = art::ServiceHandle<geo::WireReadout>()->Get();
@@ -195,84 +222,128 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
   art::ServiceHandle<cheat::BackTrackerService> bt_serv;
 
-  auto simchans_handle = e.getValidHandle<std::vector<sim::SimChannel>>(fSimChanLabel);
+  // auto simchans_handle = e.getValidHandle<std::vector<sim::SimChannel>>(simchans_tag_);
+
   
   std::set<unsigned int> signal_chans;
-  for (const sim::SimChannel &sc : *simchans_handle) {
-
-    if (!sc.TDCIDEMap().empty())
-      signal_chans.insert(sc.Channel());
+  
+  auto simchans_selector = make_regex_selector(simchans_tag_);
+  auto simchans_many = e.getMany<std::vector<sim::SimChannel>>(simchans_selector);
+  if (simchans_many.empty()) {
+    throw std::runtime_error("Found std::vector<sim::SimChannel> collections matching "+simchans_tag_.instance()+"_"+simchans_tag_.label());
   }
+
+  for( auto simchans_handle : simchans_many) {
+    auto i = simchans_handle.provenance()->inputTag();
+    std::cout << "Reading: " << i.label() << "   " << i.instance() << "   " << i.process() << ", size=" << simchans_handle->size() << std::endl;
+    for (const sim::SimChannel &sc : *simchans_handle) {
+
+      if (!sc.TDCIDEMap().empty())
+        signal_chans.insert(sc.Channel());
+    }
+  }
+
   std::cout << signal_chans.size() << " channels with ides found in this event" << std::endl;
 
   fActiveChannels.reserve(signal_chans.size());  // optional but avoids reallocations
   std::copy(signal_chans.begin(), signal_chans.end(), std::back_inserter(fActiveChannels));
 
-  auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(fRawDigitLabel);
-  auto& digits_in =*digits_handle;
+
+  // Callect rawdigit handles
+  // ------------------------
+  // std::regex instance_regex(!rawdigits_tag_.instance().empty() ? rawdigits_tag_.instance() : ".*");
+  // std::regex label_regex(!rawdigits_tag_.label().empty() ? rawdigits_tag_.label() : ".*");
+  // std::regex process_regex(!rawdigits_tag_.process().empty() ? rawdigits_tag_.process() : ".*");
+
+  // art::SelectorByFunction re_inputtags_selector(
+  //     [instance_regex, label_regex](art::BranchDescription const& p){
+  //         return (
+  //           std::regex_match(p.inputTag().label(), label_regex) &
+  //           std::regex_match(p.inputTag().instance(), instance_regex) & 
+  //           std::regex_match(p.inputTag().process(), process_regex)
+
+  //         );
+  //     },
+  //     "InputTag Regex Instance Selector"
+  // );
+// -------
+  auto rawdigis_selector = make_regex_selector(rawdigits_tag_);
+
+  auto rawdigit_many = e.getMany<std::vector<raw::RawDigit>>(rawdigis_selector);
+  if (rawdigit_many.empty()) {
+    throw std::runtime_error("Found std::vector<raw::RawDigit> collections matching "+rawdigits_tag_.instance()+"_"+rawdigits_tag_.label());
+  }
 
   size_t channel_count(0);
   size_t digi_count(0);
 
-  std::cout << digits_in.size() << " Digits found in this event" << std::endl;
+  // auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(raw_digit_tag_);
+  for( auto rawdigit_handle : rawdigit_many) {
+    auto i = rawdigit_handle.provenance()->inputTag();
+    std::cout << "Reading: " << i.label() << "   " << i.instance() << "   " << i.process() << ", size=" << rawdigit_handle->size() << std::endl;
 
-  for(auto&& digit: digits_in){
+    auto& rawdigits_in = *rawdigit_handle;
 
-    if ( channel_count % 1000 == 0) 
-      std::cout << " >>> " << channel_count << std::endl;
-    ++channel_count;
+    std::cout << rawdigits_in.size() << " Digits found in this event" << std::endl;
 
-    auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(digit.Channel())).at(0).Plane;
-    int plane_idx = -1;
-    TH1I* plane_adc_hist(0x0);
-    TH1I* plane_noise_hist(0x0);
-    switch(plane) {
+    for(auto&& digit: rawdigits_in){
 
-      case geo::kU:
-        plane_adc_hist = fADCsHistogramU;
-        plane_noise_hist = fNoiseADCsHistogramU;
-        plane_idx = 0;
-        break;
-      case geo::kV:
-        plane_adc_hist = fADCsHistogramV;
-        plane_noise_hist = fNoiseADCsHistogramV;
-        plane_idx = 1;
-        break;
-      case geo::kW:
-        plane_adc_hist = fADCsHistogramX;
-        plane_noise_hist = fNoiseADCsHistogramX;
-        plane_idx = 2;
-        break;
-    }
+      if ( channel_count % 1000 == 0) 
+        std::cout << " >>> " << channel_count << std::endl;
+      ++channel_count;
 
-    bool has_signal = (signal_chans.find(digit.Channel()) != signal_chans.end());
-    // Fill histograms
-    for(auto& adc : digit.ADCs() ){
+      auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(digit.Channel())).at(0).Plane;
+      int plane_idx = -1;
+      TH1I* plane_adc_hist(0x0);
+      TH1I* plane_noise_hist(0x0);
+      switch(plane) {
 
-      plane_adc_hist->Fill(adc);
-      fADCsHistogramByPlane->Fill(adc,plane_idx);
-
-      // Fill noise histogram with adcs where there are no IDEs
-      if (!has_signal) {
-        plane_noise_hist->Fill(adc);
-        fNoiseADCsHistogramByPlane->Fill(adc,plane_idx);
+        case geo::kU:
+          plane_adc_hist = fADCsHistogramU;
+          plane_noise_hist = fNoiseADCsHistogramU;
+          plane_idx = 0;
+          break;
+        case geo::kV:
+          plane_adc_hist = fADCsHistogramV;
+          plane_noise_hist = fNoiseADCsHistogramV;
+          plane_idx = 1;
+          break;
+        case geo::kW:
+          plane_adc_hist = fADCsHistogramX;
+          plane_noise_hist = fNoiseADCsHistogramX;
+          plane_idx = 2;
+          break;
       }
 
+      bool has_signal = (signal_chans.find(digit.Channel()) != signal_chans.end());
+      // Fill histograms
+      for(auto& adc : digit.ADCs() ){
+
+        plane_adc_hist->Fill(adc);
+        fADCsHistogramByPlane->Fill(adc,plane_idx);
+
+        // Fill noise histogram with adcs where there are no IDEs
+        if (!has_signal) {
+          plane_noise_hist->Fill(adc);
+          fNoiseADCsHistogramByPlane->Fill(adc,plane_idx);
+        }
+
+      }
+
+      // Save ADCs if they have signals, or only save signals wf is disabled
+      if ( save_waveforms_ and (has_signal or !save_channels_with_ides_only_) ) {
+        fWaveformsBuffer[digit.Channel()]  = digit.ADCs();        
+      }
+
+      digi_count += digit.ADCs().size();
+
     }
-
-    // Save ADCs if they have signals, or only save signals wf is disabled
-    if ( fSaveWaveforms and (has_signal or !fSaveChannelsWithIDEsOnly) ) {
-      fWaveformsBuffer[digit.Channel()]  = digit.ADCs();        
-    }
-
-    digi_count += digit.ADCs().size();
-
   }
 
   std::cout << "Processed channels " << channel_count << std::endl;
   std::cout << "Processed rawdigit samples " << digi_count << std::endl;
 
-  if (fSaveWaveforms)
+  if (save_waveforms_)
     fRawDigisTree->Fill();
 
 }

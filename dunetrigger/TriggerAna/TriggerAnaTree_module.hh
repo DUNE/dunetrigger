@@ -316,7 +316,7 @@ private:
   std::map<std::string, std::array<int, 3>> bt_view_offsets;
 
   bool dump_simides;
-  std::string simchannel_tag;
+  art::InputTag simchannel_tag;
   TTree* simide_tree;
   VectorFieldsBuffer<SimIDERow> simide_buffer;
 

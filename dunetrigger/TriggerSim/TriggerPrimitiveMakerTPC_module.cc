@@ -31,6 +31,35 @@
 #include <iostream>
 #include <memory>
 #include <regex>
+#include <typeinfo>
+
+namespace {
+  template<typename T>
+  std::vector<art::Handle<T>>
+  getManyByRegexTag(art::Event& e, const art::InputTag& tag)
+  {
+    std::regex instance_regex(!tag.instance().empty() ? tag.instance() : ".*");
+    std::regex label_regex   (!tag.label()   .empty() ? tag.label()    : ".*");
+    std::regex process_regex (!tag.process() .empty() ? tag.process()  : ".*");
+
+    art::SelectorByFunction selector(
+      [instance_regex, label_regex, process_regex](art::BranchDescription const& p) {
+        return std::regex_match(p.inputTag().label(),    label_regex)
+             & std::regex_match(p.inputTag().instance(), instance_regex)
+             & std::regex_match(p.inputTag().process(),  process_regex);
+      },
+      "InputTag Regex Selector"
+    );
+
+    auto handles = e.getMany<T>(selector);
+    if (handles.empty()) {
+      throw std::runtime_error(
+        "No " + std::string(typeid(T).name()) +
+        " collections matching " + tag.instance() + "_" + tag.label());
+    }
+    return handles;
+  }
+} // anonymous namespace
 
 namespace dunetrigger {
 class TriggerPrimitiveMakerTPC;
@@ -90,22 +119,9 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   // std::cout << "instance=" << rawdigit_tag_.instance() << std::endl;
   // std::cout << "label=" << rawdigit_tag_.label() << std::endl;
 
-  std::regex instance_regex(!rawdigit_tag_.instance().empty() ? rawdigit_tag_.instance() : ".*");
-  std::regex label_regex(!rawdigit_tag_.label().empty() ? rawdigit_tag_.label() : ".*");
-  std::regex process_regex(!rawdigit_tag_.process().empty() ? rawdigit_tag_.process() : ".*");
+  auto rawdigit_many = getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
 
-  art::SelectorByFunction re_inputtags_selector(
-      [instance_regex, label_regex](art::BranchDescription const& p){
-          return (
-            std::regex_match(p.inputTag().label(), label_regex) &
-            std::regex_match(p.inputTag().instance(), instance_regex)
-          );
-      },
-      "InputTag Regex Instance Selector"
-  );
-
-  auto rawdigit_handles = e.getMany<std::vector<raw::RawDigit>>(re_inputtags_selector);
-  for( auto rawdigit_handle : rawdigit_handles) {
+  for( auto rawdigit_handle : rawdigit_many) {
 
     auto i = rawdigit_handle.provenance()->inputTag();
     std::cout << "Processing: " << i.label() << "   " << i.instance() << "   " << i.process() << ", size=" << rawdigit_handle->size() << std::endl;

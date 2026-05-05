@@ -68,7 +68,7 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     dump_mctruths(p.get<bool>("dump_mctruths", true)),
     dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
     dump_simides(p.get<bool>("dump_simides", true)),
-    simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
+    simchannel_tag(p.get<art::InputTag>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 // More initializers here.
 {
   // FIXME: rename `window_offsets` to `bt_window_offsets`
@@ -271,21 +271,43 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
   {
 
-    // TODO: replace with config parameters
-    std::regex instance_regex("simpleSC.*");
-    std::regex label_regex("tpcrawdecoder");
+    // // TODO: replace with config parameters
+    // std::regex instance_regex("simpleSC.*");
+    // std::regex label_regex("tpcrawdecoder");
 
-    // art::SelectorByFunction s([](art::BranchDescription const& p){ return true;}, "pippo");
+    // // art::SelectorByFunction s([](art::BranchDescription const& p){ return true;}, "pippo");
+    // art::SelectorByFunction re_inputtags_selector(
+    //     [instance_regex, label_regex](art::BranchDescription const& p){
+    //         return (
+    //           std::regex_match(p.inputTag().label(), label_regex) &
+    //           std::regex_match(p.inputTag().instance(), instance_regex)
+    //         );
+    //     },
+    //     "InputTag Regex Instance Selector"
+    // );
+
+
+    // TODO: factoriss this block into an helper object or function
+    std::regex instance_regex(!simchannel_tag.instance().empty() ? simchannel_tag.instance() : ".*");
+    std::regex label_regex(!simchannel_tag.label().empty() ? simchannel_tag.label() : ".*");
+    std::regex process_regex(!simchannel_tag.process().empty() ? simchannel_tag.process() : ".*");
+
     art::SelectorByFunction re_inputtags_selector(
-        [instance_regex, label_regex](art::BranchDescription const& p){
+        [instance_regex, label_regex, process_regex](art::BranchDescription const& p){
             return (
               std::regex_match(p.inputTag().label(), label_regex) &
-              std::regex_match(p.inputTag().instance(), instance_regex)
+              std::regex_match(p.inputTag().instance(), instance_regex) & 
+              std::regex_match(p.inputTag().process(), process_regex)
+
             );
         },
         "InputTag Regex Instance Selector"
     );
+
     auto simchannels_many = e.getMany<std::vector<sim::SimChannel>>(re_inputtags_selector);
+    if (simchannels_many.empty()) {
+      throw std::runtime_error("Found no std::vector<raw::RawDigit> collections matching "+simchannel_tag.instance()+"_"+simchannel_tag.label());
+    }
 
     // TODO: alternative implementation that does not rely on `wcls_main.structs.process_apa_index`
     // Get the number of TPCSets from the wiregeometry
