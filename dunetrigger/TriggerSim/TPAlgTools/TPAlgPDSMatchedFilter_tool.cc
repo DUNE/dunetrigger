@@ -28,6 +28,7 @@ TPAlgPDSMatchedFilter::make_mf_windows(std::vector<double> const &xcorr) {
   std::vector<MFWindow> mf_windows;
   bool window_open = false;
   int extend_counter = 0;
+  size_t peak_index = 0;
   for (size_t i = 0; i < xcorr.size(); ++i) {
     timestamp_t current_time = i * fSubSampleFactor + fWindowDelay;
     bool above_threshold = (xcorr[i] >= fThreshold);
@@ -35,6 +36,7 @@ TPAlgPDSMatchedFilter::make_mf_windows(std::vector<double> const &xcorr) {
       // start a new window
       mf_windows.emplace_back(current_time);
       window_open = true;
+      peak_index = i;
     }
     if (window_open && (above_threshold || extend_counter < fWindowExtend)) {
       // extend the current window
@@ -42,6 +44,7 @@ TPAlgPDSMatchedFilter::make_mf_windows(std::vector<double> const &xcorr) {
       last_window.end_time = current_time;
       last_window.integral += xcorr[i];
       if (xcorr[i] > last_window.peak_value) {
+        peak_index = i;
         last_window.peak_time = current_time;
         last_window.peak_value = xcorr[i];
       }
@@ -52,8 +55,26 @@ TPAlgPDSMatchedFilter::make_mf_windows(std::vector<double> const &xcorr) {
       }
     }
     if (window_open && !above_threshold && extend_counter >= fWindowExtend) {
-      // close existing window
       window_open = false;
+      // refine peak with 3-point parabolic interpolation
+      MFWindow &last_window = mf_windows.back();
+      if (peak_index > 0 && peak_index + 1 < xcorr.size()) {
+        const double y_m1 = xcorr[peak_index - 1];
+        const double y_0  = xcorr[peak_index];
+        const double y_p1 = xcorr[peak_index + 1];
+        const double num  = y_m1 - y_p1;
+        const double den  = y_m1 - 2.0 * y_0 + y_p1;  // < 0 at a true maximum
+        if (den < 0.0) { // interpolation is for a local maximum, otherwise bail.
+          const double delta = 0.5 * num / den;
+          if (delta >= -0.5 && delta <= 0.5) {
+            const double refined_sample =
+                static_cast<double>(peak_index) + delta;
+            last_window.peak_time = static_cast<timestamp_t>(
+                std::llround(refined_sample * fSubSampleFactor)) + fWindowDelay;
+            last_window.peak_value = y_0 - 0.25 * num * delta;
+          }
+        }
+      }
     }
   }
   return mf_windows;
