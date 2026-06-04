@@ -75,8 +75,8 @@ void RawDigitsReadTest::beginJob() {
 
 void RawDigitsReadTest::analyze(art::Event const& e) {
 
-    geo::WireReadoutGeom const *geom =
-        &art::ServiceHandle<geo::WireReadout>()->Get();
+    // geo::WireReadoutGeom const *geom =
+    //     &art::ServiceHandle<geo::WireReadout>()->Get();
 
     std::regex rawdigi_regex("daq.*");
 
@@ -101,14 +101,22 @@ void RawDigitsReadTest::analyze(art::Event const& e) {
 
     for( auto h : vec_h) {
         auto i = h.provenance()->inputTag();
+
+        std::cout << "tag "  << i << " size : " << h->size() <<  std::endl;
+        if (  h->size() == 0 )
+          continue;
         
 
-        auto ropid = geom->ChannelToROP(h->front().Channel());
+        // auto ropid = geom->ChannelToROP(h->front().Channel());
 
-        std::cout << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << h->size() << ", tpcset=" << ropid.asTPCsetID() << std::endl;
+        // std::cout << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << h->size() << ", tpcset=" << ropid.asTPCsetID() << std::endl;
         // std::cout << "Provenance: " << *(h.provenance()) << std::endl;
         // std::cout << "PSet: " << fhicl_to_json(h.provenance()->parameterSet()).dump(4) << std::endl;
-        std::cout << "wcls_main.structs.process_apa_index : " <<h.provenance()->parameterSet().get<int>("wcls_main.structs.process_apa_index") << std::endl;
+        // std::cout << "wcls_main.structs.process_tpc_index : " <<h.provenance()->parameterSet().get<int>("wcls_main.structs.process_tpc_index") << std::endl;
+
+        for( auto digit : *h ) {
+          std::cout << digit.Channel() << " : size = " << digit.Samples() << std::endl;
+        }
     }
 
     std::cout << "------------------------------------------------------------------------" << std::endl;

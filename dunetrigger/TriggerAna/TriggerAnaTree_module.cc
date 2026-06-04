@@ -49,6 +49,10 @@
 #include <iostream>
 #include <map>
 
+#include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/set_algorithm.hpp>
+
+
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -271,22 +275,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
   {
 
-    // // TODO: replace with config parameters
-    // std::regex instance_regex("simpleSC.*");
-    // std::regex label_regex("tpcrawdecoder");
-
-    // // art::SelectorByFunction s([](art::BranchDescription const& p){ return true;}, "pippo");
-    // art::SelectorByFunction re_inputtags_selector(
-    //     [instance_regex, label_regex](art::BranchDescription const& p){
-    //         return (
-    //           std::regex_match(p.inputTag().label(), label_regex) &
-    //           std::regex_match(p.inputTag().instance(), instance_regex)
-    //         );
-    //     },
-    //     "InputTag Regex Instance Selector"
-    // );
-
-
     // TODO: factoriss this block into an helper object or function
     std::regex instance_regex(!simchannel_tag.instance().empty() ? simchannel_tag.instance() : ".*");
     std::regex label_regex(!simchannel_tag.label().empty() ? simchannel_tag.label() : ".*");
@@ -330,17 +318,24 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       // book okay = e.getValidHandle<std::vector<sim::SimChannel>>(
       // auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
 
-      int elem_id = simchannels.provenance()->parameterSet().get<int>("wcls_main.structs.process_apa_index");
-      auto i = simchannels.provenance()->inputTag();
+      // // Unreliable
+      // int elem_id = simchannels.provenance()->parameterSet().get<int>("wcls_main.structs.process_tpc_index");
+      // auto i = simchannels.provenance()->inputTag();
 
-      std::cout << "Processing " << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << simchannels->size() <<  std::endl;
+      // std::cout << "Processing " << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << simchannels->size() <<  std::endl;
 
 
-      bt_map.emplace(elem_id, simchannels);
+
+      std::set<int> tpcset_ids;
 
       for (const sim::SimChannel &sc : *simchannels) {
 
+        
         ChannelInfo chinfo = get_channel_info_for_channel(geom, sc.Channel());
+        // Track what TPC elements are in this collection
+        tpcset_ids.insert(chinfo.tpcset_id);
+        
+        
         sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
 
         for (const sim::TDCIDE &tdcide : tdcidemap) {
@@ -391,6 +386,19 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
             }
           }
         }
+
+        std::vector<int> overlap;
+        boost::set_intersection(tpcset_ids, bt_map | boost::adaptors::map_keys,
+                        std::back_inserter(overlap));
+
+        
+
+        auto mtb = std::make_shared<MiniBackTracker> (simchannels);
+        for( int tpcset_id : tpcset_ids ) {
+          bt_map[tpcset_id] = mtb;
+        }
+
+
       }
     }
 
@@ -510,8 +518,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
         // TPC TP backtracking
         if (tpbt_writer and is_tpc_tp_collection) {
           auto& mbt = bt_map.at(chinfo.tpcset_id);
-          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type, mbt);
-          tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, mbt);
+          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type, *mbt);
+          tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
           tpbt_writer.push_back();
         }
       }
