@@ -276,7 +276,7 @@ private:
   };
   
   std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
-  std::map<int, MiniBackTracker> bt_map;
+  std::map<int, std::shared_ptr<MiniBackTracker>> bt_map;
 
 
   bool dump_tp, dump_ta, dump_tc;
