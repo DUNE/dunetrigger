@@ -44,7 +44,7 @@ tpmakerTPC_ADCSimpleThreshold_vd_3sigma:
     }
   }
 
-tpmakerTPC_ADCSimpleThreshold_vd: @local::tpmakerTPC_ADCSimpleThreshold_vd_5sigma
+tpmakerTPC_ADCSimpleThreshold_vd: @local::tpmakerTPC_ADCSimpleThreshold_vd_4sigma
 
 
 # tpmakerTPC_ABSRunningSum:
