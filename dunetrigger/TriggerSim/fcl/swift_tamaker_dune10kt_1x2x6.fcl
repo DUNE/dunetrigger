@@ -44,6 +44,7 @@ tamakerTPC_SWIFT:
   algconfig_rop2: @local::ta_algconfig_swift # collection rop2
   algconfig_rop3: @local::ta_algconfig_swift # collection rop3
   flush: true
+  verbosity: 0
 }
 
 END_PROLOG
