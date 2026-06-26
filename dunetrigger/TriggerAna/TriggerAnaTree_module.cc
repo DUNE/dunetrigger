@@ -128,6 +128,21 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   info_data["geo"] = {};
   info_data["geo"]["detector"] = geo->DetectorName();
 
+  // Detector Properties
+  auto const detProp =
+      art::ServiceHandle<detinfo::DetectorPropertiesService const>{}
+          ->DataFor(e);
+
+  // Now use it:
+  // double driftV   = detProp.DriftVelocity();          // cm/us
+  // double eField   = detProp.Efield();                  // kV/cm
+  double sampRate = detProp.SamplingRate();             // ns/tick
+  int    readout  = detProp.ReadOutWindowSize();        // ticks
+
+  info_data["detector_properties"]["sampling_rate"] = detProp.SamplingRate();
+  info_data["detector_properties"]["readout_window"] = detProp.ReadOutWindowSize();
+  info_data["detector_properties"]["drift_velocity"] = detProp.DriftVelocity();  
+  // Backtracking
   if (tp_backtracking) {
     for (const auto &[tool, offsets] : bt_view_offsets) {
       info_data["backtracker"][tool]["offset_U"] = offsets[0];
@@ -626,8 +641,13 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 void dunetrigger::TriggerAnaTree::endJob() {
 
   art::ServiceHandle<art::TFileService> tfs;
+
   auto n = tfs->make<TNamed>("info", info_data.dump().c_str());
   n->Write();
+
+  // Additional copy 
+  // auto meta_dir = tfs.mkdir('meta');
+  // meta_dir->WriteObject("info", TObjString(info_data.dump().c_str()))
 }
 
 
