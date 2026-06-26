@@ -133,8 +133,11 @@ void dunetrigger::TriggerAnaTree::beginJob() {
       art::ServiceHandle<detinfo::DetectorPropertiesService const>{}
           ->DataForJob();
 
+  info_data["detector_properties"]["electrons_to_adc"] = detProp.ElectronsToADC();
+  info_data["detector_properties"]["electron_lifetime"] = detProp.ElectronLifetime();
   info_data["detector_properties"]["readout_window"] = detProp.ReadOutWindowSize();
   info_data["detector_properties"]["drift_velocity"] = detProp.DriftVelocity();  
+
   // Backtracking
   if (tp_backtracking) {
     for (const auto &[tool, offsets] : bt_view_offsets) {
