@@ -44,7 +44,7 @@
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "larsim/MCCheater/BackTrackerService.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
-
+#include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -131,15 +131,8 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   // Detector Properties
   auto const detProp =
       art::ServiceHandle<detinfo::DetectorPropertiesService const>{}
-          ->DataFor(e);
+          ->DataForJob();
 
-  // Now use it:
-  // double driftV   = detProp.DriftVelocity();          // cm/us
-  // double eField   = detProp.Efield();                  // kV/cm
-  double sampRate = detProp.SamplingRate();             // ns/tick
-  int    readout  = detProp.ReadOutWindowSize();        // ticks
-
-  info_data["detector_properties"]["sampling_rate"] = detProp.SamplingRate();
   info_data["detector_properties"]["readout_window"] = detProp.ReadOutWindowSize();
   info_data["detector_properties"]["drift_velocity"] = detProp.DriftVelocity();  
   // Backtracking
