@@ -1,5 +1,3 @@
-add_subdirectory(fdvd)
-
 # Install fcl files in /job subdirectory.
 
 install_fhicl()
