@@ -122,7 +122,7 @@ void TPAlgPDSMatchedFilter::process_waveform(
 
     // --- Using matched filter output for peak and integral calculation ---
     // this_tp.adc_integral = static_cast<uint32_t>(mf_window.integral * 10.0);
-    this_tp.time_peak = mf_window.peak_time;
+    this_tp.time_peak = mf_window.peak_time + start_time;
     this_tp.adc_peak = static_cast<uint16_t>(mf_window.peak_value * 10.0);
     // ---
     this_tp.time_peak *= ADC_SAMPLING_RATE_IN_DTS;
