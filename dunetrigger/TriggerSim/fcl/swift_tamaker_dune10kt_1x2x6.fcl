@@ -1,60 +1,11 @@
 #include "services_dune.fcl"
-
-BEGIN_PROLOG
-
-
-services_triggersim: {
-    TFileService:           { fileName: "triggersim_hist.root" }
-    TimeTracker:            @local::dune_time_tracker
-    MemoryTracker:          @local::dune_memory_tracker
-    RandomNumberGenerator:  {} #ART native random number generator
-    message:                @local::dune_message_services_prod
-    #FileCatalogMetadata:    @local::art_file_catalog_mc
-    IFDH:                   {}
-}
-
-source_triggersim: {
-    module_type: RootInput
-    maxEvents:  10        # Number of events to create
-    saveMemoryObjectThreshold: 0
-}
-
-outputs_triggersim: {
-    out1: {
-        module_type: RootOutput
-        fileName: "triggersim.root"
-        compressionLevel: 1
-        saveMemoryObjectThreshold: 0
-    }
-}
-# TA makers
-ta_algconfig_swift:
-{
-  window_length: 32000
-  inspect_energy_threshold: 15000
-  accept_energy_threshold: 55000
-}
-
-tamakerTPC_SWIFT:
-{
-  module_type: TriggerActivityMakerTPC
-  tp_tag: "tpmakerTPCsimpleThr"
-  algorithm: "TriggerActivityMakerSWIFTPlugin"
-  active_rops: [2, 3]
-  algconfig_rop2: @local::ta_algconfig_swift # collection rop2
-  algconfig_rop3: @local::ta_algconfig_swift # collection rop3
-  flush: true
-  verbosity: 0
-}
-
-END_PROLOG
-
+#include "triggersim.fcl"
 #include "tools_dune.fcl"
 
 process_name: TAGen
 
 producers_triggersim_swift: {
-                             tamakerTPC: @local::tamakerTPC_SWIFT
+                             tamakerTPCSWIFT: @local::tamakerTPC_SWIFT
                             }
 
 
@@ -68,7 +19,7 @@ outputs: @local::outputs_triggersim
 
 physics: {
   producers: @local::producers_triggersim_swift
-  makers: [ tamakerTPC]
+  makers: [ tamakerTPCSWIFT ]
   trigger_paths: [ makers ]
   stream1: [ out1 ]
   end_paths: [ stream1 ]

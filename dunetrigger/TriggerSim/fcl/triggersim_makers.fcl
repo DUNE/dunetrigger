@@ -136,6 +136,17 @@ tamakerTPC_ADCSimpleWindow:
   }
 
 
+tamakerTPC_SWIFT:
+{
+  module_type: TriggerActivityMakerTPC
+  tp_tag: "tpmakerTPCsimpleThr"
+  algorithm: "TriggerActivityMakerSWIFTPlugin"
+  active_rops: [2, 3]
+  algconfig_rop2: @local::ta_algconfig_swift # collection rop2
+  algconfig_rop3: @local::ta_algconfig_swift # collection rop3
+  flush: true
+  verbosity: 0
+}
 
 #======================================================================
 # TC makers
