@@ -889,8 +889,8 @@ void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag,
     tree->Branch("adc_peak", &ta.adc_peak);
     tree->Branch("detid", &ta.detid);
     // HACK: assuming enums are ints here
-    tree->Branch("type", &ta.type);
-    tree->Branch("algorithm", &ta.algorithm);
+    tree->Branch("type", &ta.type, "type/I");
+    tree->Branch("algorithm", &ta.algorithm, "algorithm/I");
     if (assn)
       tree->Branch("TCnumber", &fAssnIdx);
   }
