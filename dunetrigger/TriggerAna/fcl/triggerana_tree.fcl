@@ -84,6 +84,8 @@ physics_triggerana_pdsonly.producers: @local::producers_triggersim_pdsonly
 physics_triggerana_pdsonly.makers: [ tpmakerPDSSimpleThreshold, tpmakerPDSLessSimpleThreshold, tpmakerPDSMatchedFilter ]
 physics_triggerana_pdsonly.analyzers: {
     triggerAna: @local::triggerAnaTree_simple
-  }
+}
+# light-only simulation doesn't include SimChannels, so no event info information.
+physics_triggerana_pdsonly.analyzers.triggerAna.dump_summary_info: false
 
 END_PROLOG
