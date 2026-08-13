@@ -117,7 +117,8 @@ struct TriggerPrimitiveBuffer {
 
   uint32_t channel;
   uint16_t samples_over_threshold;
-  uint64_t time_start;
+  // uint64_t time_start;
+  int64_t time_start;  // make this signed for the PDS as half of the eventse have negative times.
   uint16_t samples_to_peak;
   uint32_t adc_integral;
   uint16_t adc_peak;
@@ -126,7 +127,7 @@ struct TriggerPrimitiveBuffer {
   double bt_primary_track_numelectron_frac;
   double bt_primary_track_energy_frac;
   double bt_primary_track_ke;
-  uint64_t bt_primary_pdg;
+  int64_t bt_primary_pdg;
   double bt_edep;
   double bt_numelectrons;
   double bt_x, bt_y, bt_z;
@@ -173,7 +174,7 @@ struct TriggerPrimitiveBuffer {
     bt_primary_track_numelectron_frac = INVALID;
     bt_primary_track_energy_frac = INVALID;
     bt_primary_track_ke = INVALID;
-    bt_primary_pdg = INVALID;
+    bt_primary_pdg = 0;
     bt_edep = 0;
     bt_numelectrons = 0;
     bt_x = INVALID;
@@ -1062,7 +1063,7 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info_pds(
   bt_primary_track_numelectron_frac = INVALID;
   bt_primary_track_energy_frac = INVALID;
   bt_primary_track_ke = INVALID;
-  bt_primary_pdg = INVALID;
+  bt_primary_pdg = 0;
   bt_edep = 0;
   bt_numelectrons = 0;
   bt_x = INVALID;
@@ -1073,9 +1074,9 @@ void dunetrigger::TriggerPrimitiveBuffer::populate_backtracking_info_pds(
   bt_primary_z = INVALID;
   bt_mctruth_block_id = INVALID;
   bt_mctruth_gen_name.clear();
-  if (static_cast<int64_t>(time_start) < 0) {
-    return;
-  }
+  // if (static_cast<int64_t>(time_start) < 0) {
+  //   return;
+  // }
   std::map<int, double> trackid_to_energy;
   std::map<int, double> trackid_to_numphotons;
   std::map<int, std::vector<double>> trackid_to_positions_x;
