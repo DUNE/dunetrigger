@@ -35,7 +35,10 @@ namespace triggeralgs {
   //TP refinement
   bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp) const{
     //FIXME: OR logic, and change TOT -> SOT after updating to TP v2.
-    return !((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold));
+    return (
+        (input_tp.adc_peak > m_min_adc_peak) && 
+        (input_tp.time_over_threshold > m_min_samples_over_threshold)
+    );
   }
 
   // Reset window state
