@@ -7,6 +7,7 @@
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTool.hh"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
+#include <fstream>
 #include <inttypes.h>
 #include <numeric>
 
@@ -14,7 +15,7 @@ namespace dunetrigger {
 struct MFWindow {
   dunedaq::trgdataformats::timestamp_t start_time;
   dunedaq::trgdataformats::timestamp_t end_time;
-  dunedaq::trgdataformats::timestamp_t peak_time;
+  double peak_time;
   double peak_value;
   double integral;
 
@@ -35,14 +36,36 @@ public:
         fFixedPedestal(ps.get<int>("fixed_pedestal", -99999)),
         fThreshold(ps.get<float>("threshold")),
         fSubSampleFactor(ps.get<int>("subsample_factor", 3)),
-        fTemplate(ps.get<std::vector<short>>("template")),
+        fTemplate(ps.get<std::vector<double>>("template", {-99999})),
         fXCorrNormFactor(1.0 / std::accumulate(fTemplate.begin(),
                                                fTemplate.end(), 0.0,
                                                [](double sum, short val) {
                                                  return sum + val * val;
                                                })),
         fWindowDelay(ps.get<int>("window_delay", 0)),
-        fWindowExtend(ps.get<int>("window_extend", 0)) {}
+        fWindowExtend(ps.get<int>("window_extend", 0)) {
+    if (fTemplate.size() == 1 && fTemplate[0] == -99999) {
+      std::string template_file_path;
+      cet::search_path sp("FW_SEARCH_PATH");
+      sp.find_file(ps.get<std::string>("template_file"), template_file_path);
+      std::ifstream template_file;
+      template_file.open(template_file_path);
+      if (template_file.is_open()) {
+        fTemplate.clear();
+        double val;
+        double norm_sum = 0.0;
+        while (template_file >> val) {
+          fTemplate.push_back(val);
+          norm_sum += val * val;
+        }
+        template_file.close();
+        fXCorrNormFactor = 1.0 / norm_sum;
+      } else {
+        throw std::runtime_error("Failed to open template file: " +
+                                 template_file_path);
+      }
+    }
+  }
 
   void set_pedestal(std::vector<short> const &adcs) {
     if (fFixedPedestal != -99999) {
@@ -82,8 +105,8 @@ protected:
   const int fFixedPedestal;
   const float fThreshold;
   const int fSubSampleFactor;
-  const std::vector<short> fTemplate;
-  const double fXCorrNormFactor;
+  std::vector<double> fTemplate;
+  double fXCorrNormFactor;
   const int fWindowDelay;
   const int fWindowExtend;
 

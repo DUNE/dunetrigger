@@ -75,13 +75,22 @@ tpmakerPDS_MatchedFilter:
       verbosity: 0
       threshold: 0.5 # In units of PE
       pedestal_window_length: 3
-      subsample_factor: 3
-      # From https://github.com/marroyav/daphne_mezz_xc_sim/blob/bfaa92d5e35fc10adc2b8e3a211d78914b6c1635/src/st_xc_sim.cpp#L15
+      # ===================
+      # Uses cross-correlation kernel from DAQ emulation:
+      # https://github.com/marroyav/daphne_mezz_xc_sim/blob/bfaa92d5e35fc10adc2b8e3a211d78914b6c1635/src/st_xc_sim.cpp#L15
       # Flip and multiply by -1
-      template: [0, 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 6, 7, 6, 5, 5, 4, 4, 3, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, -1]
-      # Number of samples to delay the waveform with respect to the XCorr.
-      window_delay: 16
-      # Number of samples to hold the trigger window open after XCorr drops below threshold.
+      # Subsample by factor of 3 to fit in 32-tab FIR.
+      # subsample_factor: 3
+      # template: [0, 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 6, 7, 6, 5, 5, 4, 4, 3, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, -1]
+      # window_delay: 27       # Number of samples to delay the waveform with respect to the XCorr.
+      # window_extend: 48      # Number of samples to hold the trigger window open after XCorr drops below threshold.
+      
+      # ===================
+      # Use the full template from the Digitizer simulation.
+      # This is not going to work unless `FullWaveformOutput` is set to True in the Digitizer simulation, which is not the default.
+      template_file: "SPE_DAPHNE2_FBK_2022.dat"
+      subsample_factor: 1
+      window_delay: 8
       window_extend: 48
     }
   }

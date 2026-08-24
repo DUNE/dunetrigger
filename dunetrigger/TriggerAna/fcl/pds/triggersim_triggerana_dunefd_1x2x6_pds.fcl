@@ -12,4 +12,6 @@ services: {
 physics.makers: [ tpmakerPDSLessSimpleThreshold, tpmakerPDSMatchedFilter ]
 physics.producers.tpmakerPDSSimpleThreshold.opdetwaveform_tag: "opdigi"
 physics.producers.tpmakerPDSLessSimpleThreshold.opdetwaveform_tag: "opdigi"
+
 physics.producers.tpmakerPDSMatchedFilter.opdetwaveform_tag: "opdigi"
+physics.producers.tpmakerPDSMatchedFilter.tpalg.fixed_pedestal: 1500

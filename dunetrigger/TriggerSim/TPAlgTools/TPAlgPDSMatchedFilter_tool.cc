@@ -9,6 +9,9 @@ std::vector<double>
 TPAlgPDSMatchedFilter::correlate(std::vector<double> const &adcs) {
   size_t n_samples = adcs.size() / fSubSampleFactor;
   size_t n_taps = fTemplate.size();
+  if (n_samples < n_taps) {
+    return {};
+  }
   size_t n_out = n_samples - n_taps + 1;
   std::vector<double> xcorr(n_out, 0.0);
 
@@ -16,7 +19,7 @@ TPAlgPDSMatchedFilter::correlate(std::vector<double> const &adcs) {
     double sum = 0.0;
     for (size_t j = 0; j < n_taps; ++j) {
       double adc_val = adcs.at(fSubSampleFactor * (i + j));
-      sum += adc_val * static_cast<double>(fTemplate[j]);
+      sum += adc_val * fTemplate[j];
     }
     xcorr[i] = sum * fXCorrNormFactor;
   }
@@ -69,8 +72,7 @@ TPAlgPDSMatchedFilter::make_mf_windows(std::vector<double> const &xcorr) {
           if (delta >= -0.5 && delta <= 0.5) {
             const double refined_sample =
                 static_cast<double>(peak_index) + delta;
-            last_window.peak_time = static_cast<timestamp_t>(
-                std::llround(refined_sample * fSubSampleFactor)) + fWindowDelay;
+            last_window.peak_time = refined_sample * fSubSampleFactor + fWindowDelay;
             last_window.peak_value = y_0 - 0.25 * num * delta;
           }
         }
@@ -122,7 +124,10 @@ void TPAlgPDSMatchedFilter::process_waveform(
 
     // --- Using matched filter output for peak and integral calculation ---
     // this_tp.adc_integral = static_cast<uint32_t>(mf_window.integral * 10.0);
-    this_tp.time_peak = mf_window.peak_time + start_time;
+    double tp_time_peak = mf_window.peak_time + static_cast<int64_t>(start_time);
+    double samples_to_peak = tp_time_peak - static_cast<int64_t>(this_tp.time_start);
+    samples_to_peak *= 16.0;
+    this_tp.time_peak = static_cast<int64_t>(this_tp.time_start) + samples_to_peak;
     this_tp.adc_peak = static_cast<uint16_t>(mf_window.peak_value * 10.0);
     // ---
     this_tp.time_peak *= ADC_SAMPLING_RATE_IN_DTS;
