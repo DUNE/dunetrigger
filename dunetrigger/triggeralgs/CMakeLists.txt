@@ -41,4 +41,5 @@ basic_plugin(triggeralgs module
   src/ProtoDUNEBSMWindow/CompiledModelInterface.cpp
   src/ProtoDUNEBSMWindow/treelitemodel.cpp
   src/ProtoDUNEBSMWindow/models/treelitePDHDmodel.cpp
+  src/ProtoDUNEBSMWindow/models/treelitePDVDmodel.cpp
 )

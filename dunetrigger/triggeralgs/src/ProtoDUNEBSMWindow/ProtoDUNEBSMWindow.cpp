@@ -15,8 +15,6 @@ void ProtoDUNEBSMWindow::add(TriggerPrimitive const &input_tp){
   // the TP list. Also keep running sum of all the samples over threshold
   // and the peak ADC. These are used for samples/peak ratio cut
   adc_integral += input_tp.adc_integral;
-  adc_peak_sum += input_tp.adc_peak;
-  tot_sum += input_tp.time_over_threshold;
   tp_list.push_back(input_tp);
 };
 
@@ -34,8 +32,6 @@ void ProtoDUNEBSMWindow::move(TriggerPrimitive const &input_tp, timestamp_t cons
     if(!(input_tp.time_start-tp.time_start < window_length)){
       n_tps_to_erase++;
       adc_integral -= tp.adc_integral;
-      adc_peak_sum -= tp.adc_peak;
-      tot_sum -= tp.time_over_threshold;
     }
     else break;
   }
@@ -63,16 +59,17 @@ void ProtoDUNEBSMWindow::reset(TriggerPrimitive const &input_tp){
 };
 
 void ProtoDUNEBSMWindow::bin_window(
-    std::vector<float> &input, timestamp_t time_bin_width, 
-    channel_t chan_bin_width, int num_time_bins, 
-    int num_chan_bins, channel_t first_channel,
+    std::vector<float> &input, 
+    int num_time_bins, timestamp_t time_bin_width,
+    int num_chan_bins, channel_t n_channels_on_plane, channel_t first_channel,
     std::unique_ptr<PDVDEffectiveChannelMap> const &effective_channel_mapper, 
     bool use_pdvd_map) {
+  
   std::fill(input.begin(), input.end(), 0.0f);
 
   const float inv_time_bin_width = 1.0f / time_bin_width;
-  const float inv_chan_bin_width = 1.0f / chan_bin_width;
-
+  
+  //const float inv_chan_bin_width = 1.0f / chan_bin_width;
   for (const TriggerPrimitive& tp : tp_list) {
     channel_t temp_tp_channel = tp.channel;
     // If in PD-VD convert to effective channel here
@@ -80,7 +77,9 @@ void ProtoDUNEBSMWindow::bin_window(
       temp_tp_channel = effective_channel_mapper->remapCollectionPlaneChannel(temp_tp_channel);
     }
     size_t time_bin = static_cast<size_t>((tp.time_start - time_start) * inv_time_bin_width);
-    size_t channel_bin = static_cast<size_t>((temp_tp_channel - first_channel) * inv_chan_bin_width);
+    // Channel bin calculation matches model training - remainder channels are appended to 10th channel bin
+    size_t channel_bin = static_cast<size_t>(((temp_tp_channel - first_channel) * num_chan_bins) / n_channels_on_plane);
+    
     if (time_bin < num_time_bins && channel_bin < num_chan_bins) {
       size_t index = channel_bin * num_time_bins + time_bin;
       input[index] += tp.adc_integral;
@@ -93,16 +92,6 @@ void ProtoDUNEBSMWindow::fill_entry_window(std::vector<Entry> &entry_input, std:
   for (size_t i = 0; i < input.size(); i++) {
     entry_input[i].fvalue = input[i];
   }
-}
-
-float ProtoDUNEBSMWindow::mean_sadc() {
-  return static_cast<float>(adc_integral / tp_list.size());;
-}
-float ProtoDUNEBSMWindow::mean_adc_peak() {
-  return static_cast<float>(adc_peak_sum / tp_list.size());
-}
-float ProtoDUNEBSMWindow::mean_tot() {
-  return static_cast<float>(tot_sum / tp_list.size());
 }
 
 std::ostream& operator<<(std::ostream& os, const ProtoDUNEBSMWindow& window){
