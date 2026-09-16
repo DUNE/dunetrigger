@@ -287,58 +287,13 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
   {
 
-    // // TODO: factoriss this block into an helper object or function
-    // std::regex instance_regex(!simchannel_tag.instance().empty() ? simchannel_tag.instance() : ".*");
-    // std::regex label_regex(!simchannel_tag.label().empty() ? simchannel_tag.label() : ".*");
-    // std::regex process_regex(!simchannel_tag.process().empty() ? simchannel_tag.process() : ".*");
-
-    // art::SelectorByFunction re_inputtags_selector(
-    //     [instance_regex, label_regex, process_regex](art::BranchDescription const& p){
-    //         return (
-    //           std::regex_match(p.inputTag().label(), label_regex) &
-    //           std::regex_match(p.inputTag().instance(), instance_regex) & 
-    //           std::regex_match(p.inputTag().process(), process_regex)
-
-    //         );
-    //     },
-    //     "InputTag Regex Instance Selector"
-    // );
-
-    // auto simchannels_many = e.getMany<std::vector<sim::SimChannel>>(re_inputtags_selector);
     auto simchannels_many = lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
 
     if (simchannels_many.empty()) {
       throw std::runtime_error("Found no std::vector<raw::RawDigit> collections matching "+simchannel_tag.instance()+"_"+simchannel_tag.label());
     }
 
-    // TODO: alternative implementation that does not rely on `wcls_main.structs.process_apa_index`
-    // Get the number of TPCSets from the wiregeometry
-    // Loop from 0 to NTPCSets
-    // getValidHandle("simpleSC{i_tpcset}")
-    // if doesn't exist -> handle
-    // else continue as it is
-
-    // for ( int tpcset_id{0}; tpcset_id < num_tpcsets; ++tpcset_id) {
-    //   // std::string m_inputTag = simide_label + std::to_string();
-    //   // art::Handle<std::vector<sim::SimChannel> sedvh;
-    //   // bool okay = e.getByLabel(m_inputTag, sedvh);
-    // }
     for ( auto simchannels : simchannels_many ) {
-
-      // std::string m_inputTag = "IonAndScint";
-      // art::Handle<std::vector<sim::SimChannel> sedvh;
-      // bool okay = e.getByLabel(m_inputTag, sedvh);
-
-      // book okay = e.getValidHandle<std::vector<sim::SimChannel>>(
-      // auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
-
-      // // Unreliable
-      // int elem_id = simchannels.provenance()->parameterSet().get<int>("wcls_main.structs.process_tpc_index");
-      // auto i = simchannels.provenance()->inputTag();
-
-      // std::cout << "Processing " << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << simchannels->size() <<  std::endl;
-
-
 
       std::set<int> tpcset_ids;
 
