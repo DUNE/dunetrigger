@@ -26,7 +26,7 @@
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include "canvas/Persistency/Common/FindOneP.h"
-#include "dunetrigger/TriggerSim/GetManyByRegexTag.hh"
+#include "lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
 #include <iostream>
@@ -90,7 +90,7 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   // std::cout << "instance=" << rawdigit_tag_.instance() << std::endl;
   // std::cout << "label=" << rawdigit_tag_.label() << std::endl;
 
-  auto rawdigit_many = getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
+  auto rawdigit_many = lar::util::getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
 
   for( auto rawdigit_handle : rawdigit_many) {
 

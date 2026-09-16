@@ -45,6 +45,7 @@
 #include "larsim/MCCheater/BackTrackerService.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
+#include "lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -286,24 +287,26 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
   {
 
-    // TODO: factoriss this block into an helper object or function
-    std::regex instance_regex(!simchannel_tag.instance().empty() ? simchannel_tag.instance() : ".*");
-    std::regex label_regex(!simchannel_tag.label().empty() ? simchannel_tag.label() : ".*");
-    std::regex process_regex(!simchannel_tag.process().empty() ? simchannel_tag.process() : ".*");
+    // // TODO: factoriss this block into an helper object or function
+    // std::regex instance_regex(!simchannel_tag.instance().empty() ? simchannel_tag.instance() : ".*");
+    // std::regex label_regex(!simchannel_tag.label().empty() ? simchannel_tag.label() : ".*");
+    // std::regex process_regex(!simchannel_tag.process().empty() ? simchannel_tag.process() : ".*");
 
-    art::SelectorByFunction re_inputtags_selector(
-        [instance_regex, label_regex, process_regex](art::BranchDescription const& p){
-            return (
-              std::regex_match(p.inputTag().label(), label_regex) &
-              std::regex_match(p.inputTag().instance(), instance_regex) & 
-              std::regex_match(p.inputTag().process(), process_regex)
+    // art::SelectorByFunction re_inputtags_selector(
+    //     [instance_regex, label_regex, process_regex](art::BranchDescription const& p){
+    //         return (
+    //           std::regex_match(p.inputTag().label(), label_regex) &
+    //           std::regex_match(p.inputTag().instance(), instance_regex) & 
+    //           std::regex_match(p.inputTag().process(), process_regex)
 
-            );
-        },
-        "InputTag Regex Instance Selector"
-    );
+    //         );
+    //     },
+    //     "InputTag Regex Instance Selector"
+    // );
 
-    auto simchannels_many = e.getMany<std::vector<sim::SimChannel>>(re_inputtags_selector);
+    // auto simchannels_many = e.getMany<std::vector<sim::SimChannel>>(re_inputtags_selector);
+    auto simchannels_many = lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
+
     if (simchannels_many.empty()) {
       throw std::runtime_error("Found no std::vector<raw::RawDigit> collections matching "+simchannel_tag.instance()+"_"+simchannel_tag.label());
     }
