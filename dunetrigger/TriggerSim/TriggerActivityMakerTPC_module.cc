@@ -31,7 +31,7 @@
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityFactory.hpp"
 
 #include <nlohmann/json.hpp>
-
+#include <numeric>
 #include <algorithm>
 #include <map>
 #include <memory>
@@ -101,13 +101,21 @@ namespace dunetrigger {
     // Build the per-ROP config map from FHiCL and the geometry service. Called once during construction. 
     // Only requested ROP IDs specified within "active_rops" list in config fcl are used in TAMaking. 
     static std::map<unsigned int, nlohmann::json> buildAlgConfigs(fhicl::ParameterSet const &p, geo::WireReadoutGeom const &geom) {
-      const auto active_rops = p.get<std::vector<unsigned int>>("active_rops");
+      std::vector<unsigned int> active_rops;
+
+      // If "active_rops" is missing from the FHiCL config, default to all ROPs present in the geo
+      if (!p.get_if_present("active_rops", active_rops)) {
+        active_rops.resize(geom.MaxROPs());
+        std::iota(active_rops.begin(), active_rops.end(), 0);
+      }
 
       std::map<unsigned int, nlohmann::json> configs;
       for (unsigned int r : active_rops) {
         const std::string key = "algconfig_rop" + std::to_string(r);
-        if (!p.has_key(key))
-          throw cet::exception("TriggerActivityMakerTPC") << "active_rops includes ROP " << r << " but no matching '" << key << "' was provided.\n";
+        if (!p.has_key(key)) {
+          throw cet::exception("TriggerActivityMakerTPC") 
+            << "active_rops includes ROP " << r << " but no matching '" << key << "' was provided.\n";
+        }
         configs[r] = toJson(p.get<fhicl::ParameterSet>(key));
       }
       return configs;
