@@ -2,407 +2,186 @@
 #define SOA_BUFFER_HPP
 // =============================================================================
 //  SoABuffer.hpp
-//  Automatic Structure-of-Arrays buffer from a C++ struct,
-//  with ROOT TTree branch registration and clear support.
+//  Structure-of-Arrays storage buffer and write-staging wrapper, auto-reflected
+//  from a C++ struct via Boost.PFR.
 //
-//  Requirements:
-//    - C++17 or later  (GCC >= 12 supported)
-//    - Boost >= 1.75   (Boost.PFR, header-only)
-//    - ROOT >= 6.x     (for TTree / TBranch)
+//  Requirements: C++20, Boost >= 1.80 (Boost.PFR), ROOT >= 6.x
 //
-//  Field-name reflection:
-//    In C++20 mode (Boost >= 1.80) real struct field names are used for
-//    branch names (e.g. "trk_px").  In C++17 mode the fallback scheme
-//    "field_0", "field_1", ... is used automatically.
-//
-//  Compile (C++17):
-//    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
-//  Compile (C++20, real field names):
-//    g++ -std=c++20 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
+//  Classes:
+//    SoABuffer<Struct>  — raw SoA storage + ROOT TTree interface
+//    SoAWriter<Struct>  — SoABuffer + staging row (convenience for writing)
 // =============================================================================
+
+#include "FieldNames.hh"
 
 #include <boost/pfr.hpp>
 #include <TTree.h>
 
 #include <array>
 #include <iostream>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
-#include <utility>
+#include <typeinfo>
 #include <vector>
-#include <stdexcept>
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-namespace soa_detail {
-
-// Map a tuple<T0, T1, ...> → tuple<vector<T0>, vector<T1>, ...>
-template<typename Tuple>
-struct TupleToVectors;
-
-template<typename... Ts>
-struct TupleToVectors<std::tuple<Ts...>> {
-    using type = std::tuple<std::vector<Ts>...>;
-};
-
-// Map a tuple<T0, T1, ...> → tuple<vector<T0>*, vector<T1>*, ...>
-// Used to provide the T** that ROOT's SetBranchAddress requires.
-template<typename Tuple>
-struct TupleToVectorPtrs;
-
-template<typename... Ts>
-struct TupleToVectorPtrs<std::tuple<Ts...>> {
-    using type = std::tuple<std::vector<Ts>*...>;
-};
-
-} // namespace soa_detail
-
-// ---------------------------------------------------------------------------
-//  SoaFieldNames<Struct> — specialisable trait for field name registration.
-//
-//  C++20: names are always available automatically via Boost.PFR; no action
-//         needed from the user.
-//
-//  C++17: field name reflection does not exist in the language.  Users must
-//         explicitly specialise this trait for each struct, or use the
-//         convenience macro REGISTER_SOA_FIELD_NAMES.  If no specialisation
-//         is provided the fallback "field_0", "field_1", ... names are used
-//         and a compile-time warning is emitted via static_assert.
-//
-//  Usage (C++17, outside any namespace):
-//    REGISTER_SOA_FIELD_NAMES(Track, x, y, z, px, py, pz, chi2, n_hits, pdg_id, is_primary)
-// ---------------------------------------------------------------------------
-template<typename Struct>
-struct SoaFieldNames {
-    static constexpr bool registered = false;
-
-    static std::array<std::string, boost::pfr::tuple_size_v<Struct>> get() {
-        // Fallback: "field_0", "field_1", ...
-        return get_impl(std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
-    }
-private:
-    template<std::size_t... Is>
-    static std::array<std::string, sizeof...(Is)> get_impl(std::index_sequence<Is...>) {
-        return { ("field_" + std::to_string(Is))... };
-    }
-};
-
-// ---------------------------------------------------------------------------
-//  REGISTER_SOA_FIELD_NAMES(StructType, field1, field2, ...)
-//  Specialises SoaFieldNames for StructType with the given field names.
-//  Place at namespace scope (outside any class or function).
-//
-//  Uses Boost.Preprocessor to stringify each field name individually:
-//
-//    BOOST_PP_VARIADIC_TO_SEQ(x, y, z)  →  (x)(y)(z)      [a PP sequence]
-//    BOOST_PP_SEQ_ENUM(                  →  "x", "y", "z"  [comma-separated]
-//        BOOST_PP_SEQ_TRANSFORM(
-//            SOA_PP_STRINGIFY_OP, _, seq))
-//
-//  BOOST_PP_SEQ_TRANSFORM applies SOA_PP_STRINGIFY_OP(_, _, elem) to every
-//  element of the sequence, which expands to BOOST_PP_STRINGIZE(elem) i.e.
-//  the quoted token.  BOOST_PP_SEQ_ENUM then joins them with commas so they
-//  form a valid brace-initialiser for the const char* array.
-//
-//  Field limit: BOOST_PP_LIMIT_SEQ (default 256).
-// ---------------------------------------------------------------------------
-#include <boost/preprocessor/variadic/to_seq.hpp>
-#include <boost/preprocessor/seq/transform.hpp>
-#include <boost/preprocessor/seq/enum.hpp>
-#include <boost/preprocessor/stringize.hpp>
-
-// Callback for BOOST_PP_SEQ_TRANSFORM: (data, elem) → "elem"
-// The macro receives (r, data, elem); data is unused (_).
-#define SOA_PP_STRINGIFY_OP(r, _, elem) BOOST_PP_STRINGIZE(elem)
-
-// Produce a comma-separated list of quoted strings from a variadic list:
-//   SOA_PP_STRINGIFY_EACH(x, y, z)  →  "x", "y", "z"
-#define SOA_PP_STRINGIFY_EACH(...)                          \
-    BOOST_PP_SEQ_ENUM(                                      \
-        BOOST_PP_SEQ_TRANSFORM(                             \
-            SOA_PP_STRINGIFY_OP, _,                         \
-            BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
-
-#define REGISTER_SOA_FIELD_NAMES(StructType, ...)                               \
-template<>                                                                       \
-struct SoaFieldNames<StructType> {                                               \
-    static constexpr bool registered = true;                                     \
-    static constexpr std::size_t kN = boost::pfr::tuple_size_v<StructType>;     \
-    static std::array<std::string, kN> get() {                                  \
-        static const char* const names[] = {                                    \
-            SOA_PP_STRINGIFY_EACH(__VA_ARGS__)                                   \
-        };                                                                       \
-        constexpr std::size_t kProvided =                                        \
-            sizeof(names) / sizeof(names[0]);                                    \
-        static_assert(kProvided == kN,                                           \
-            "REGISTER_SOA_FIELD_NAMES: name count does not match "              \
-            "the number of fields in " #StructType ". "                         \
-            "Check that every field has exactly one name.");                     \
-        return get_impl(std::make_index_sequence<kN>{}, names);                  \
-    }                                                                            \
-private:                                                                         \
-    template<std::size_t... Is>                                                  \
-    static std::array<std::string, sizeof...(Is)>                               \
-    get_impl(std::index_sequence<Is...>, const char* const* n) {                \
-        return { std::string(n[Is])... };                                        \
-    }                                                                            \
-};
-
-namespace soa_detail {
-
-// Dispatch: C++20 uses PFR directly; C++17 goes through the trait.
-#if __cplusplus >= 202002L
-// Forward declaration — defined below get_field_names to avoid lookup issues
-// across compilers.
-template<typename Struct, typename NamesArray, std::size_t... Is>
-std::array<std::string, sizeof...(Is)>
-get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>);
-#endif
-
-template<typename Struct>
-std::array<std::string, boost::pfr::tuple_size_v<Struct>>
-get_field_names() {
-#if __cplusplus >= 202002L
-    constexpr auto pfr_names = boost::pfr::names_as_array<Struct>();
-    return get_names_impl<Struct>(pfr_names,
-        std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
-#else
-    static_assert(SoaFieldNames<Struct>::registered,
-        "SoABuffer (C++17): field names not registered for this struct. "
-        "Use REGISTER_SOA_FIELD_NAMES(StructType, field1, field2, ...) "
-        "at namespace scope, or compile with -std=c++20.");
-    return SoaFieldNames<Struct>::get();
-#endif
-}
-
-#if __cplusplus >= 202002L
-template<typename Struct, typename NamesArray, std::size_t... Is>
-std::array<std::string, sizeof...(Is)>
-get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
-    return { std::string(pfr_names[Is])... };
-}
-#endif
-
-} // namespace soa_detail
 
 // ---------------------------------------------------------------------------
 //  SoABuffer<Struct>
 //  ---
-//  Wraps one std::vector<T> per field of Struct, reflecting the layout
-//  automatically through Boost.PFR.  Provides:
-//    push_back(const Struct&)   – append one element
-//    get(size_t i)              – reconstruct an AoS element
-//    size()                     – number of stored elements
-//    clear()                    – empty all vectors (keeps capacity)
-//    make_branches(TTree*, prefix)  – register all vectors as TTree branches
-//    set_branch_addresses(TTree*, prefix) – re-point addresses on an existing tree
+//  Wraps one std::vector<T> per field of Struct.  Provides:
+//    push_back(const Struct&)              — append one element
+//    get(size_t i)                         — reconstruct an AoS element
+//    size() / clear() / reserve()
+//    make_branches(tree, prefix)           — register vector branches (write)
+//    set_branch_addresses(tree, prefix)    — attach to existing branches (read)
 // ---------------------------------------------------------------------------
-template<typename Struct>
+template<trg_concepts::PfrAggregate Struct>
+    requires std::is_default_constructible_v<Struct>
+          && std::is_copy_constructible_v<Struct>
+          && (boost::pfr::tuple_size_v<Struct> > 0)
 class SoABuffer {
-    static_assert(std::is_default_constructible_v<Struct>,
-                  "SoABuffer requires a default-constructible struct");
-    static_assert(std::is_copy_constructible_v<Struct>,
-                  "SoABuffer requires a copy-constructible struct");
-    static_assert(boost::pfr::tuple_size_v<Struct> > 0,
-                  "SoABuffer does not support empty structs");
-
 public:
-    // Number of fields in Struct
     static constexpr std::size_t kNFields = boost::pfr::tuple_size_v<Struct>;
 
-    // Tuple-of-vectors type that mirrors the struct layout
     using FieldTuple  = decltype(boost::pfr::structure_to_tuple(std::declval<Struct>()));
-    using ArraysTuple = typename soa_detail::TupleToVectors<FieldTuple>::type;
-    // Tuple of raw pointers to each vector — passed to ROOT's SetBranchAddress (needs T**)
-    using PtrsTuple   = typename soa_detail::TupleToVectorPtrs<FieldTuple>::type;
+    using ArraysTuple = typename trg_detail::Vectorize<FieldTuple>::arrays;
+    using PtrsTuple   = typename trg_detail::Vectorize<FieldTuple>::ptrs;
 
     // ------------------------------------------------------------------
     // Construction
     // ------------------------------------------------------------------
-    SoABuffer() : ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
-    // Copying would leave ptrs_ pointing at the source's arrays_ — disallow.
+    SoABuffer() : ptrs_(rebind_ptrs()) {}
+
     SoABuffer(const SoABuffer&)            = delete;
     SoABuffer& operator=(const SoABuffer&) = delete;
 
-    // Move is safe: re-initialise ptrs_ to point at the new arrays_.
     SoABuffer(SoABuffer&& o) noexcept
-        : arrays_(std::move(o.arrays_))
-        , ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
+        : arrays_(std::move(o.arrays_)), ptrs_(rebind_ptrs()) {}
 
     SoABuffer& operator=(SoABuffer&& o) noexcept {
         if (this != &o) {
             arrays_ = std::move(o.arrays_);
-            ptrs_   = make_ptrs(std::make_index_sequence<kNFields>{});
+            ptrs_   = rebind_ptrs();
         }
         return *this;
-    }
-
-    /// Reserve memory for all vectors at once
-    void reserve(std::size_t n) {
-        reserve_impl(n, std::make_index_sequence<kNFields>{});
     }
 
     // ------------------------------------------------------------------
     // Element access
     // ------------------------------------------------------------------
 
-    /// Append a struct as a new row
+    /// @brief Append a struct as a new row.
     void push_back(const Struct& s) {
-        push_impl(s, std::make_index_sequence<kNFields>{});
+        trg_detail::for_fields<kNFields>([&]<std::size_t I>() {
+            std::get<I>(arrays_).push_back(boost::pfr::get<I>(s));
+        });
     }
 
-    /// Reconstruct a struct from row i. Throws std::out_of_range if i >= size().
+    /// @brief Reconstruct a struct from row @p i.
+    /// @throws std::out_of_range if @p i >= size().
     Struct get(std::size_t i) const {
         if (i >= size())
             throw std::out_of_range(
                 "SoABuffer::get: index " + std::to_string(i) +
                 " out of range (size=" + std::to_string(size()) + ")");
-        return get_impl(i, std::make_index_sequence<kNFields>{});
+        Struct s{};
+        trg_detail::for_fields<kNFields>([&]<std::size_t I>() {
+            boost::pfr::get<I>(s) = std::get<I>(arrays_)[i];
+        });
+        return s;
     }
 
-    /// Number of rows stored
-    std::size_t size() const {
-        return std::get<0>(arrays_).size();
-    }
+    /// @return Number of rows stored.
+    [[nodiscard]] std::size_t size() const { return std::get<0>(arrays_).size(); }
 
-    /// Direct access to the i-th column vector (type-safe via index)
+    /// @brief Direct access to the I-th column vector.
     template<std::size_t I>
     auto& column() { return std::get<I>(arrays_); }
 
+    /// @copydoc column()
     template<std::size_t I>
     const auto& column() const { return std::get<I>(arrays_); }
 
     // ------------------------------------------------------------------
-    // Clear
+    // Bulk operations
     // ------------------------------------------------------------------
 
-    /// Empty all column vectors (capacity is preserved)
+    /// @brief Pre-allocate all column vectors.
+    void reserve(std::size_t n) {
+        std::apply([n](auto&... vecs) { (vecs.reserve(n), ...); }, arrays_);
+    }
+
+    /// @brief Empty all column vectors (capacity is preserved).
     void clear() {
-        clear_impl(std::make_index_sequence<kNFields>{});
+        std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
     }
 
     // ------------------------------------------------------------------
     // ROOT TTree interface
     // ------------------------------------------------------------------
 
-    /// Create one STL-vector branch per field on tree.
-    /// The branch name is  prefix + field_name  (e.g. "trk_x", "trk_y", …).
-    /// Call once after TTree construction, before the event loop.
+    /// @brief Create one STL-vector branch per field on @p tree.
+    /// @param prefix Optional prefix prepended to each branch name.
     void make_branches(TTree& tree, const std::string& prefix = "") {
-        make_branches_impl(&tree, prefix, std::make_index_sequence<kNFields>{});
+        constexpr auto names = trg_detail::get_field_names_sv<Struct>();
+        trg_detail::for_fields<kNFields>([&]<std::size_t I>() {
+            tree.Branch((prefix + names[I]).c_str(), &std::get<I>(arrays_));
+        });
     }
 
-    /// Re-point branch addresses to this buffer's vectors.
-    /// Use when reading back from an existing file, or after the buffer
-    /// has been moved in memory.
+    /// @brief Re-point branch addresses to this buffer's vectors.
+    /// @throws std::runtime_error if a branch cannot be bound.
     void set_branch_addresses(TTree& tree, const std::string& prefix = "") {
-        set_addresses_impl(&tree, prefix, std::make_index_sequence<kNFields>{});
+        constexpr auto names = trg_detail::get_field_names_sv<Struct>();
+        trg_detail::for_fields<kNFields>([&]<std::size_t I>() {
+            const auto name = prefix + names[I];
+            check_set_address(tree.SetBranchAddress(name.c_str(), &std::get<I>(ptrs_)), name);
+        });
     }
 
     // ------------------------------------------------------------------
     // Utilities
     // ------------------------------------------------------------------
 
-    /// Field names — real names in C++20 mode, "field_N" in C++17 mode.
-    static std::array<std::string, kNFields> field_names() {
-        return soa_detail::get_field_names<Struct>();
+    /// @brief Returns the compile-time array of field name string_views.
+    [[nodiscard]] static constexpr std::array<std::string_view, kNFields>
+    field_names() noexcept {
+        return trg_detail::get_field_names_sv<Struct>();
     }
 
-    /// Print a short summary of stored columns to stdout
+    /// @brief Print a short summary of column names and sizes to @p os.
     void print_summary(std::ostream& os = std::cout) const {
-        auto names = soa_detail::get_field_names<Struct>();
+        constexpr auto names = trg_detail::get_field_names_sv<Struct>();
         os << "SoABuffer<" << typeid(Struct).name()
-           << ">  rows=" << size()
-           << "  fields=" << kNFields << '\n';
-        print_impl(os, names, std::make_index_sequence<kNFields>{});
+           << ">  rows=" << size() << "  fields=" << kNFields << '\n';
+        trg_detail::for_fields<kNFields>([&]<std::size_t I>() {
+            os << "  [" << I << "] " << names[I]
+               << "  size=" << std::get<I>(arrays_).size() << '\n';
+        });
     }
 
 private:
     ArraysTuple arrays_;
-    PtrsTuple   ptrs_;   // each element points at the corresponding vector in arrays_
+    PtrsTuple   ptrs_;
 
-    template<std::size_t... Is>
-    PtrsTuple make_ptrs(std::index_sequence<Is...>) {
-        return PtrsTuple{ &std::get<Is>(arrays_)... };
-    }
-
-    // ---- push_back -------------------------------------------------------
-    template<std::size_t... Is>
-    void push_impl(const Struct& s, std::index_sequence<Is...>) {
-        (std::get<Is>(arrays_).push_back(boost::pfr::get<Is>(s)), ...);
-    }
-
-    // ---- get -------------------------------------------------------------
-    template<std::size_t... Is>
-    Struct get_impl(std::size_t i, std::index_sequence<Is...>) const {
-        Struct s{};
-        ((boost::pfr::get<Is>(s) = std::get<Is>(arrays_)[i]), ...);
-        return s;
-    }
-
-    // ---- clear -----------------------------------------------------------
-    template<std::size_t... Is>
-    void clear_impl(std::index_sequence<Is...>) {
-        (std::get<Is>(arrays_).clear(), ...);
-    }
-
-    // ---- reserve ---------------------------------------------------------
-    template<std::size_t... Is>
-    void reserve_impl(std::size_t n, std::index_sequence<Is...>) {
-        (std::get<Is>(arrays_).reserve(n), ...);
-    }
-
-    // ---- make_branches ---------------------------------------------------
-    // ROOT TTree::Branch for std::vector<T> takes a pointer-to-pointer:
-    //   tree->Branch("name", &vec_ptr)
-    // where vec_ptr is a std::vector<T>*.
-    template<std::size_t... Is>
-    void make_branches_impl(TTree* tree,
-                            const std::string& prefix,
-                            std::index_sequence<Is...>) {
-        auto names = soa_detail::get_field_names<Struct>();
-        (tree->Branch(
-            (prefix + names[Is]).c_str(),
-            &std::get<Is>(arrays_)          // ROOT takes std::vector<T>* directly
-        ), ...);
-    }
-
-    // ---- set_branch_addresses --------------------------------------------
-    // SetBranchAddress for STL-vector branches requires T** (pointer-to-pointer).
-    // ptrs_[I] is a std::vector<T>* pointing at arrays_[I]; we pass &ptrs_[I].
-    // Return value is checked: ROOT returns <0 on failure (name/type mismatch).
-    template<std::size_t... Is>
-    void set_addresses_impl(TTree* tree,
-                            const std::string& prefix,
-                            std::index_sequence<Is...>) {
-        auto names = soa_detail::get_field_names<Struct>();
-        (check_set_address(
-            tree->SetBranchAddress(
-                (prefix + names[Is]).c_str(),
-                &std::get<Is>(ptrs_)        // T** — what ROOT requires for vector branches
-            ),
-            prefix + names[Is]
-        ), ...);
+    // Re-points each element of ptrs_ at the corresponding vector in arrays_.
+    // Called after construction and after any move.
+    PtrsTuple rebind_ptrs() noexcept {
+        PtrsTuple p;
+        trg_detail::for_fields<kNFields>([&]<std::size_t I>() {
+            std::get<I>(p) = &std::get<I>(arrays_);
+        });
+        return p;
     }
 
     static void check_set_address(Int_t status, const std::string& branch_name) {
-        // ROOT returns kMissingBranch (-5) or other negative codes on failure
         if (status < 0)
             throw std::runtime_error(
                 "SoABuffer::set_branch_addresses: failed to bind branch \"" +
                 branch_name + "\" (ROOT error code " + std::to_string(status) + ")");
-    }
-
-    // ---- print -----------------------------------------------------------
-    template<std::size_t... Is>
-    void print_impl(std::ostream& os,
-                    const std::array<std::string, kNFields>& names,
-                    std::index_sequence<Is...>) const {
-        ((os << "  [" << Is << "] " << names[Is]
-             << "  size=" << std::get<Is>(arrays_).size() << '\n'), ...);
     }
 };
 
@@ -410,115 +189,102 @@ private:
 //  SoAWriter<Struct>
 //  ---
 //  Convenience wrapper around SoABuffer<Struct> with an internal staging row.
-//  Typical usage:
 //
-//    SoAWriter<Track> writer;
-//    writer.make_branches(tree, "trk_");
+//  @par Typical write loop
+//  @code
+//  SoAWriter<Track> writer;
+//  writer.make_branches(tree, "trk_");
 //
-//    for (auto& raw : source) {
-//        writer->x         = raw.x;      // fill staging row
-//        writer->px        = raw.px;
-//        writer.push_back();             // commit row → SoA buffer
-//    }
-//    tree.Fill();
-//    writer.clear();                     // reset buffer and staging row
-//
-//  Methods:
-//    push_back()          – append current value of `row` into the SoA buffer
-//    commit_and_reset()   – append current `row`, then reset it
-//    clear()              – clear the SoA buffer AND zero-initialise `row`
-//    reset_row()          – zero-initialise `row` only (buffer unchanged)
-//    buffer()             – access the underlying SoABuffer (e.g. for size(),
-//                           get(i), set_branch_addresses for read-back)
-//    make_branches(...)   – forwarded to SoABuffer
+//  for (auto& raw : source) {
+//      writer->x  = raw.x;      // fill staging row
+//      writer->px = raw.px;
+//      writer.push_back();      // commit row → SoA storage
+//  }
+//  tree.Fill();
+//  writer.clear();              // reset storage and staging row
+//  @endcode
 // ---------------------------------------------------------------------------
-template<typename Struct>
+template<trg_concepts::PfrAggregate Struct>
+    requires std::is_default_constructible_v<Struct>
+          && std::is_copy_constructible_v<Struct>
+          && (boost::pfr::tuple_size_v<Struct> > 0)
 class SoAWriter {
 public:
-    /// Access the staging row fields via `writer->field`.
-    /// Always available regardless of enabled state.
-    Struct* operator->() noexcept { return &row_; }
+    /// @brief Access the staging row fields via `writer->field`.
+    Struct* operator->() noexcept       { return &row_; }
     const Struct* operator->() const noexcept { return &row_; }
-    Struct& row() noexcept { return row_; }
+
+    Struct& row() noexcept             { return row_; }
     const Struct& row() const noexcept { return row_; }
 
-    // ------------------------------------------------------------------
-    // Construction
-    // ------------------------------------------------------------------
     SoAWriter() = default;
 
-    explicit SoAWriter(std::size_t reserve_n) {
-        buffer_.reserve(reserve_n);
-    }
+    explicit SoAWriter(std::size_t reserve_n) { buffer_.reserve(reserve_n); }
 
     // ------------------------------------------------------------------
     // Enable / disable
     // ------------------------------------------------------------------
 
-    /// Activate or deactivate this writer (default: enabled).
-    /// When disabled, make_branches, push_back, commit_and_reset, and
-    /// clear are all no-ops.  Must be called before make_branches.
+    /// @brief Activate or deactivate this writer (default: enabled).
+    /// @note When disabled, make_branches, push_back, commit_and_reset,
+    ///       and clear are all no-ops.  Must be called before make_branches.
     void enable(bool e = true) noexcept { enabled_ = e; }
 
-    /// Returns true when this writer is active.
+    /// @return @c true if write operations are active.
+    [[nodiscard]] bool is_enabled() const noexcept { return enabled_; }
+
+    /// @copydoc is_enabled()
     [[nodiscard]] explicit operator bool() const noexcept { return enabled_; }
 
     // ------------------------------------------------------------------
     // Core operations
     // ------------------------------------------------------------------
 
-    /// Copy the current value of `row` into the SoA buffer.
-    /// No-op when disabled.
+    /// @brief Commit the current staging row to storage.
+    /// @note No-op when disabled.
     void push_back() {
         if (enabled_) buffer_.push_back(row_);
     }
 
-    /// Copy current row into the buffer and reset staging row.
-    /// No-op when disabled.
+    /// @brief Commit staging row and zero-initialise it.
+    /// @note No-op when disabled.
     void commit_and_reset() {
         if (enabled_) { buffer_.push_back(row_); reset_row(); }
     }
 
-    /// Empty the SoA buffer and zero-initialise the staging row.
-    /// No-op when disabled.
+    /// @brief Empty storage and zero-initialise the staging row.
+    /// @note No-op when disabled.
     void clear() {
         if (enabled_) { buffer_.clear(); reset_row(); }
     }
 
-    /// Zero-initialise the staging row without touching the buffer.
-    void reset_row() {
-        row_ = Struct{};
-    }
+    /// @brief Zero-initialise the staging row without touching the buffer.
+    void reset_row() { row_ = Struct{}; }
 
     // ------------------------------------------------------------------
     // Buffer access
     // ------------------------------------------------------------------
 
-    [[nodiscard]] SoABuffer<Struct>& buffer() noexcept { return buffer_; }
+    [[nodiscard]] SoABuffer<Struct>&       buffer() noexcept       { return buffer_; }
     [[nodiscard]] const SoABuffer<Struct>& buffer() const noexcept { return buffer_; }
 
-    /// Current SoA buffer row count (number of committed rows).
-    [[nodiscard]] std::size_t row_count() const noexcept { return buffer_.size(); }
-
-    /// Shorthand for the number of committed rows.
+    /// @return Number of committed rows.
     [[nodiscard]] std::size_t size() const noexcept { return buffer_.size(); }
 
     // ------------------------------------------------------------------
     // ROOT TTree forwarding
     // ------------------------------------------------------------------
 
-    /// Register branches on the tree.  No-op when disabled.
+    /// @brief Register branches on @p tree.  No-op when disabled.
     void make_branches(TTree& tree, const std::string& prefix = "") {
         if (enabled_) buffer_.make_branches(tree, prefix);
     }
 
-    void print_summary(std::ostream& os = std::cout) const {
-        buffer_.print_summary(os);
-    }
+    void print_summary(std::ostream& os = std::cout) const { buffer_.print_summary(os); }
 
 private:
-    bool enabled_ = true;
-    Struct row_{};
+    bool             enabled_ = true;
+    Struct           row_{};
     SoABuffer<Struct> buffer_;
 };
 
