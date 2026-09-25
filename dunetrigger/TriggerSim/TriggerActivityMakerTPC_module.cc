@@ -44,13 +44,6 @@ namespace dunetrigger {
   using dunedaq::trgdataformats::TriggerActivityData;
   using dunedaq::trgdataformats::TriggerPrimitive;
 
-  // Bundles a TriggerPrimitive with its index in the original input collection,
-  // This is needed later to build art::Ptr associations without re-searching.
-  struct IndexedTP {
-    size_t index;
-    TriggerPrimitive tp;
-  }; 
-
   class TriggerActivityMakerTPC : public art::EDProducer {
   public:
     explicit TriggerActivityMakerTPC(fhicl::ParameterSet const &p);
@@ -126,18 +119,17 @@ namespace dunetrigger {
       return a.channel == b.channel && a.time_start == b.time_start && a.adc_integral == b.adc_integral;
     }
 
-    // Comparator: sort IndexedTPs by (time_start, channel).
-    // the old code sorted by channel - not sure if this is necessary 
-    static bool earlierTP(const IndexedTP &a, const IndexedTP &b) {
-      return std::tie(a.tp.time_start, a.tp.channel) < std::tie(b.tp.time_start, b.tp.channel);
+    // Comparator: sort art::Ptr<TriggerPrimitive>s by (time_start, channel).
+    // the old code sorted by channel - not sure if this is necessary
+    static bool earlierTP(const art::Ptr<TriggerPrimitive> &a, const art::Ptr<TriggerPrimitive> &b) {
+      return std::tie(a->time_start, a->channel) < std::tie(b->time_start, b->channel);
     }
 
     // Build art::Ptr associations between one output TA and its input TPs.
     void buildAssociations(
                            const triggeralgs::TriggerActivity &ta,
-                           const std::vector<IndexedTP> &plane_tps,
+                           const std::vector<art::Ptr<TriggerPrimitive>> &plane_tps,
                            art::Ptr<TriggerActivityData> taPtr,
-                           const art::ValidHandle<std::vector<TriggerPrimitive>> &tpHandle,
                            art::Assns<TriggerActivityData, TriggerPrimitive> &assns) const;
   };
 
@@ -181,23 +173,20 @@ namespace dunetrigger {
     art::PtrMaker<TriggerActivityData> taPtrMaker{e};
     auto tpHandle = e.getValidHandle<std::vector<TriggerPrimitive>>(tp_tag_);
 
-    // Split TPs by ROPID, such that each TAMaker instance accepts TP data from single APA plane. 
-    // Each TP is stored alongside its original vector index so that art::Ptr associations can be built without re-searching the full TP collection.
-
-    std::map<readout::ROPID, std::vector<IndexedTP>> tps_by_plane;
+    // Split TPs by ROPID, such that each TAMaker instance accepts TP data from single APA plane.
+    std::map<readout::ROPID, std::vector<art::Ptr<TriggerPrimitive>>> tps_by_plane;
     for (size_t i = 0; i < tpHandle->size(); ++i) {
-      const TriggerPrimitive &tp = (*tpHandle)[i];
-      tps_by_plane[geom_->ChannelToROP(tp.channel)].push_back({i, tp});
+      tps_by_plane[geom_->ChannelToROP((*tpHandle)[i].channel)].push_back(art::Ptr<TriggerPrimitive>(tpHandle, i));
     }
 
     // Run the TAMaker alg. on each plane
-    for (auto &[plane, indexed_tps] : tps_by_plane) {
+    for (auto &[plane, plane_tps] : tps_by_plane) {
       const unsigned int rop_idx = plane.ROP;
 
       // Skip ROPs not listed in active_rops
       if (algconfigs_.find(rop_idx) == algconfigs_.end()) continue;
 
-      std::sort(indexed_tps.begin(), indexed_tps.end(), earlierTP);
+      std::sort(plane_tps.begin(), plane_tps.end(), earlierTP);
 
       auto alg = factory_->build_maker(algname_);
       if (!alg)
@@ -209,17 +198,17 @@ namespace dunetrigger {
 
       // Feed TPs into the algorithm, skipping any masked channels.
       std::vector<triggeralgs::TriggerActivity> created_tas;
-      for (const auto &itp : indexed_tps) {
-        if (std::binary_search(channel_mask_.begin(), channel_mask_.end(), itp.tp.channel)) {
+      for (const auto &itp : plane_tps) {
+        if (std::binary_search(channel_mask_.begin(), channel_mask_.end(), itp->channel)) {
           if (verbosity_ >= Verbosity::kDebug)
-            std::cout << "Skipping masked channel " << itp.tp.channel << "\n";
+            std::cout << "Skipping masked channel " << itp->channel << "\n";
           continue;
         }
-        (*alg)(itp.tp, created_tas);
+        (*alg)(*itp, created_tas);
       }
 
       // Optionally flush the algorithm window to ensure final in-progress window is evaluated before the event closes.
-      if (flush_) alg->flush(std::numeric_limits<uint64_t>::max(), created_tas);//here
+      if (flush_) alg->flush(std::numeric_limits<uint64_t>::max(), created_tas);
 
       if (verbosity_ >= Verbosity::kInfo && !created_tas.empty())
         std::cout << "Created " << created_tas.size() << " TAs on plane " << plane << "\n";
@@ -228,7 +217,7 @@ namespace dunetrigger {
       for (const auto &ta : created_tas) {
         auto taPtr = taPtrMaker(ta_vec->size());
         ta_vec->emplace_back(ta);
-        buildAssociations(ta, indexed_tps, taPtr, tpHandle, *assns);
+        buildAssociations(ta, plane_tps, taPtr, *assns);
       }
     }
 
@@ -240,14 +229,13 @@ namespace dunetrigger {
 
   void TriggerActivityMakerTPC::buildAssociations(
                                                   const triggeralgs::TriggerActivity &ta,
-                                                  const std::vector<IndexedTP> &plane_tps,
+                                                  const std::vector<art::Ptr<TriggerPrimitive>> &plane_tps,
                                                   art::Ptr<TriggerActivityData> taPtr,
-                                                  const art::ValidHandle<std::vector<TriggerPrimitive>> &tpHandle,
                                                   art::Assns<TriggerActivityData, TriggerPrimitive> &assns) const {
 
     art::PtrVector<TriggerPrimitive> ptrs;
     for (const auto &in_tp : ta.inputs) {
-      auto it = std::find_if(plane_tps.begin(), plane_tps.end(), [&](const IndexedTP &t) { return sameTP(t.tp, in_tp); });
+      auto it = std::find_if(plane_tps.begin(), plane_tps.end(), [&](const art::Ptr<TriggerPrimitive> &t) { return sameTP(*t, in_tp); });
 
       if (it == plane_tps.end()) {
         mf::LogWarning("TriggerActivityMakerTPC") << "TP recorded in TA not found in input list -- skipping association.";
@@ -256,9 +244,9 @@ namespace dunetrigger {
 
       size_t matches = 0;
       while (it != plane_tps.end()) {
-        ptrs.push_back(art::Ptr<TriggerPrimitive>(tpHandle, it->index));
+        ptrs.push_back(*it);
         ++matches;
-        it = std::find_if(std::next(it), plane_tps.end(), [&](const IndexedTP &t) { return sameTP(t.tp, in_tp); });
+        it = std::find_if(std::next(it), plane_tps.end(), [&](const art::Ptr<TriggerPrimitive> &t) { return sameTP(*t, in_tp); });
       }
       if (matches > 1)
         mf::LogWarning("TriggerActivityMakerTPC") << matches << " matching TPs found -- possible duplicate in input list.";
