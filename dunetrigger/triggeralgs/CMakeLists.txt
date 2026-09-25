@@ -9,5 +9,6 @@ basic_plugin(triggeralgs module
   OfflineTPCChannelMap_module
   SOURCE
   src/TriggerActivityMakerSWIFT.cpp
+  src/TriggerActivityMakerPrescale.cpp
   src/TriggerCandidateMakerPrescale.cpp
 )
