@@ -7,6 +7,7 @@ basic_plugin(triggeralgs module
   BASENAME_ONLY
   LIBRARIES
   OfflineTPCChannelMap_module
+  dunetrigger::DataProducts
   SOURCE
   src/TriggerActivityMakerSWIFT.cpp
   src/TriggerActivityMakerPrescale.cpp

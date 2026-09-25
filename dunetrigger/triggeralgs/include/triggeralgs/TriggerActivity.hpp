@@ -16,7 +16,8 @@
 
 namespace triggeralgs {
 
-struct TriggerActivity : public dunedaq::trgdataformats::TriggerActivityData
+// struct TriggerActivity : public dunedaq::trgdataformats::TriggerActivityData
+struct TriggerActivity : public dunedaq::trgdataformats::exp::TriggerActivityData
 {
   std::vector<TriggerPrimitive> inputs;
 };
