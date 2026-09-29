@@ -27,7 +27,7 @@ struct TriggerActivityData
   {
     kUnknown = 0,
     kSupernova = 1,
-    kPrescale = 2,
+    kPassthrough = 2,
     kADCSimpleWindow = 3,
     kHorizontalMuon = 4,
     kMichelElectron = 5,

@@ -1,20 +1,20 @@
 /**
- * @file TriggerCandidateMakerPrescale.hpp
+ * @file TriggerCandidateMakerPassthrough.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#ifndef TRIGGERALGS_PRESCALE_TRIGGERCANDIDATEMAKERPRESCALE_HPP_
-#define TRIGGERALGS_PRESCALE_TRIGGERCANDIDATEMAKERPRESCALE_HPP_
+#ifndef TRIGGERALGS_PASSTHROUGH_TRIGGERCANDIDATEMAKERPASSTHROUGH_HPP_
+#define TRIGGERALGS_PASSTHROUGH_TRIGGERCANDIDATEMAKERPASSTHROUGH_HPP_
 
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidateFactory.hpp"
 
 #include <vector>
 
 namespace triggeralgs {
-class TriggerCandidateMakerPrescale : public TriggerCandidateMaker
+class TriggerCandidateMakerPassthrough : public TriggerCandidateMaker
 {
 
 public:
@@ -34,4 +34,4 @@ private:
 
 } // namespace triggeralgs
 
-#endif // TRIGGERALGS_PRESCALE_TRIGGERCANDIDATEMAKERPRESCALE_HPP_
+#endif // TRIGGERALGS_PASSTHROUGH_TRIGGERCANDIDATEMAKERPASSTHROUGH_HPP_

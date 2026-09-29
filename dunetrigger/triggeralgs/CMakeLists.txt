@@ -10,6 +10,6 @@ basic_plugin(triggeralgs module
   dunetrigger::DataProducts
   SOURCE
   src/TriggerActivityMakerSWIFT.cpp
-  src/TriggerActivityMakerPrescale.cpp
-  src/TriggerCandidateMakerPrescale.cpp
+  src/TriggerActivityMakerPassthrough.cpp
+  src/TriggerCandidateMakerPassthrough.cpp
 )

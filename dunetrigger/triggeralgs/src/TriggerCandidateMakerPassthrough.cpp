@@ -1,15 +1,15 @@
 /**
- * @file TriggerCandidateMakerPrescale.cpp
+ * @file TriggerCandidateMakerPassthrough.cpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#include "dunetrigger/triggeralgs/include/triggeralgs/Prescale/TriggerCandidateMakerPrescale.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/Passthrough/TriggerCandidateMakerPassthrough.hpp"
 
 #include "TRACE/trace.h"
-#define TRACE_NAME "TriggerCandidateMakerPrescalePlugin"
+#define TRACE_NAME "TriggerCandidateMakerPassthroughPlugin"
 
 #include <vector>
 
@@ -19,7 +19,7 @@ using Logging::TLVL_DEBUG_LOW;
 using Logging::TLVL_IMPORTANT;
 
 void
-TriggerCandidateMakerPrescale::operator()(const TriggerActivity& activity, std::vector<TriggerCandidate>& cand)
+TriggerCandidateMakerPassthrough::operator()(const TriggerActivity& activity, std::vector<TriggerCandidate>& cand)
 {
   if ((m_activity_count++) % m_prescale == 0) {
     TLOG_DEBUG(TLVL_DEBUG_LOW) << "[TCM:Pr] Emitting prescaled TriggerCandidate " << (m_activity_count - 1);
@@ -42,7 +42,7 @@ TriggerCandidateMakerPrescale::operator()(const TriggerActivity& activity, std::
 }
 
 void
-TriggerCandidateMakerPrescale::configure(const nlohmann::json& config)
+TriggerCandidateMakerPassthrough::configure(const nlohmann::json& config)
 {
   if (config.is_object() && config.contains("prescale")) {
     m_prescale = config["prescale"];
@@ -54,4 +54,4 @@ TriggerCandidateMakerPrescale::configure(const nlohmann::json& config)
   TLOG_DEBUG(TLVL_IMPORTANT) << "[TCM:Pr] Using candidate prescale " << m_prescale;
 }
 
-REGISTER_TRIGGER_CANDIDATE_MAKER(TRACE_NAME, TriggerCandidateMakerPrescale)
+REGISTER_TRIGGER_CANDIDATE_MAKER(TRACE_NAME, TriggerCandidateMakerPassthrough)

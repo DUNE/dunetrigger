@@ -9,13 +9,14 @@
 #ifndef TRIGGERALGS_INCLUDE_TRIGGERALGS_TRIGGERACTIVITY_DATA_HPP_
 #define TRIGGERALGS_INCLUDE_TRIGGERALGS_TRIGGERACTIVITY_DATA_HPP_
 
-#include "detdataformats/trigger/TriggerActivityData.hpp"
+// #include "detdataformats/trigger/TriggerActivityData.hpp"
+#include "dunetrigger/DataProducts/TriggerActivityData.hpp"
 
 #include <vector>
 
 namespace triggeralgs {
 
-using TriggerActivityData = dunedaq::trgdataformats::TriggerActivityData;
+using TriggerActivityData = dunedaq::trgdataformats::exp::TriggerActivityData;
 
 } // namespace triggeralgs
 
