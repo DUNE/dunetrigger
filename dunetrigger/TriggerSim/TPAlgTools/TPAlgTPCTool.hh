@@ -1,7 +1,8 @@
 #ifndef DUNETRIGGER_TRIGGERSIM_TPALGTPCTOOL_hh
 #define DUNETRIGGER_TRIGGERSIM_TPALGTPCTOOL_hh
 
-#include "detdataformats/trigger/TriggerPrimitive.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerPrimitive.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/Types.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -18,10 +19,10 @@ namespace dunetrigger {
 
     //take in a waveform, add trigger primitives to it
     virtual void process_waveform(std::vector<short> const& adcs,
-                                  dunedaq::trgdataformats::channel_t const channel,
-                                  dunedaq::trgdataformats::detid_t const detid,
-                                  dunedaq::trgdataformats::timestamp_t const start_time,
-                                  std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) = 0;
+                                  triggeralgs::channel_t const channel,
+                                  triggeralgs::detid_t const detid,
+                                  triggeralgs::timestamp_t const start_time,
+                                  std::vector<triggeralgs::TriggerPrimitive> & tps_out) = 0;
 
     inline int16_t avx2_divide(const int16_t& a, const int16_t& b) {
       int16_t vb = (1 << 15) / b;         //  1 / b * 2^15

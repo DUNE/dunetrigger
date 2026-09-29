@@ -9,7 +9,7 @@
 #define TRIGGERALGS_TRIGGER_ACTIVITY_FACTORY_HPP_
 
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityMaker.hpp"
-#include "dunetrigger/triggeralgs/include/triggeralgs/AbstractFactory.hpp"
+#include "AbstractFactory.hpp"
 
 #define REGISTER_TRIGGER_ACTIVITY_MAKER(tam_name, tam_class)                                                                                      \
   static struct tam_class##Registrar {                                                                                                            \

@@ -23,8 +23,8 @@
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
-#include "detdataformats/trigger/TriggerActivityData.hpp"
-#include "detdataformats/trigger/TriggerPrimitive.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerPrimitive.hpp"
 
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivity.hpp"
@@ -41,8 +41,8 @@
 
 namespace dunetrigger {
 
-  using dunedaq::trgdataformats::TriggerActivityData;
-  using dunedaq::trgdataformats::TriggerPrimitive;
+  using triggeralgs::TriggerActivityData;
+  using triggeralgs::TriggerPrimitive;
 
   class TriggerActivityMakerTPC : public art::EDProducer {
   public:

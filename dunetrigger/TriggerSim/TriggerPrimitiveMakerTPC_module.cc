@@ -70,7 +70,7 @@ dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
   // Call appropriate produces<>() functions here.
   // Call appropriate consumes<>() for any products to be retrieved by this
   // module.
-  produces<std::vector<dunedaq::trgdataformats::TriggerPrimitive>>();
+  produces<std::vector<triggeralgs::TriggerPrimitive>>();
   consumes<std::vector<raw::RawDigit>>(rawdigit_tag_);
   consumes<art::Assns<raw::RDTimeStamp, raw::RawDigit>>(rawdigit_tag_);
 }
@@ -80,7 +80,7 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
 
   // make output collection for the TriggerPrimitive objects
   auto tp_col_ptr = std::make_unique<
-      std::vector<dunedaq::trgdataformats::TriggerPrimitive>>();
+      std::vector<triggeralgs::TriggerPrimitive>>();
 
   // readout raw digits from event
   auto rawdigit_handle =

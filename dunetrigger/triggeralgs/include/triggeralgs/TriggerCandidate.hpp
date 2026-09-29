@@ -9,16 +9,16 @@
 #ifndef TRIGGERALGS_INCLUDE_TRIGGERALGS_TRIGGERCANDIDATE_HPP_
 #define TRIGGERALGS_INCLUDE_TRIGGERALGS_TRIGGERCANDIDATE_HPP_
 
-#include "detdataformats/trigger/TriggerActivityData.hpp"
-#include "detdataformats/trigger/TriggerCandidateData.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidateData.hpp"
 
 #include <vector>
 
 namespace triggeralgs {
 
-struct TriggerCandidate : public dunedaq::trgdataformats::TriggerCandidateData
+struct TriggerCandidate : public TriggerCandidateData
 {
-  std::vector<dunedaq::trgdataformats::TriggerActivityData> inputs;
+  std::vector<TriggerActivityData> inputs;
 };
 
 } // namespace triggeralgs

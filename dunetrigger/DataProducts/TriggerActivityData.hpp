@@ -1,55 +1,61 @@
 /**
  * @file TriggerActivityData.hpp
  *
- * This header defines the TriggerActivityData struct, which
- * aggregates information about a found set of associate trigger
- * primitives (algorithm used, channels and times involved, etc.). It
- * does *not* include per-trigger-primitive information, which need to
- * be associated with TriggerActivityData in a higher level object.
- *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#ifndef TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_EXP_TRIGGERACTIVITYDATA_HPP_
-#define TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_EXP_TRIGGERACTIVITYDATA_HPP_
+#ifndef TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_TRIGGERACTIVITYDATA_HPP_
+#define TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_TRIGGERACTIVITYDATA_HPP_
 
-#include "trgdataformats/Types.hpp"
+#include "detdataformats/trigger/Types.hpp"
 #include <cstdint>
-#include <limits>
 
 namespace dunedaq::trgdataformats::exp {
 
 struct TriggerActivityData
 {
+  enum class Type
+  {
+    kUnknown = 0,
+    kTPC = 1,
+    kPDS = 2,
+  };
 
-  static constexpr version_t s_trigger_activity_version = 2;
-  static constexpr channel_t s_invalid_channel = std::numeric_limits<channel_t>::max();
+  enum class Algorithm
+  {
+    kUnknown = 0,
+    kSupernova = 1,
+    kPrescale = 2,
+    kADCSimpleWindow = 3,
+    kHorizontalMuon = 4,
+    kMichelElectron = 5,
+    kDBSCAN = 6,
+    kPlaneCoincidence = 7,
+    kChannelDistance = 8,
+    kBundle = 9,
+    kChannelAdjacency = 10,
+  };
 
-  version_t version = s_trigger_activity_version;
-  timestamp_t time_start = TypeDefaults::s_invalid_timestamp;
-  timestamp_t time_end = TypeDefaults::s_invalid_timestamp;
-  timestamp_t time_peak = TypeDefaults::s_invalid_timestamp;
-  timestamp_t time_activity = TypeDefaults::s_invalid_timestamp;
-  channel_t channel_start = s_invalid_channel;
-  channel_t channel_end = s_invalid_channel;
-  channel_t channel_peak = s_invalid_channel;
+  // Update this version number if there are any changes to the in-memory representation of this class!
+  static constexpr version_t s_trigger_activity_version = 1; // NOLINT(build/unsigned)
+  
+  version_t version = s_trigger_activity_version; // NOLINT(build/unsigned)
+  timestamp_t time_start = INVALID_TIMESTAMP;
+  timestamp_t time_end = INVALID_TIMESTAMP;
+  timestamp_t time_peak = INVALID_TIMESTAMP;
+  timestamp_t time_activity = INVALID_TIMESTAMP;
+  channel_t channel_start = INVALID_CHANNEL; // NOLINT(build/unsigned)
+  channel_t channel_end = INVALID_CHANNEL;   // NOLINT(build/unsigned)
+  channel_t channel_peak = INVALID_CHANNEL;  // NOLINT(build/unsigned)
   uint64_t adc_integral = 0;                 // NOLINT(build/unsigned)
   uint16_t adc_peak = 0;                     // NOLINT(build/unsigned)
-  detid_t detid = TypeDefaults::s_invalid_detid;
-  uint16_t type = 0;
-  uint16_t algorithm = 0;
+  detid_t detid = INVALID_DETID;             // NOLINT(build/unsigned)
+  Type type = Type::kUnknown;                // NOLINT(build/unsigned)
+  Algorithm algorithm = Algorithm::kUnknown; // NOLINT(build/unsigned)
 };
-  
+
 } // namespace dunedaq::trgdataformats
 
-// This static_assert is meant to alert the developer to bump the
-// version if variables are added or removed
-static_assert(
-	      dunedaq::trgdataformats::TriggerActivityData::s_trigger_activity_version == 2 &&
-	      sizeof(dunedaq::trgdataformats::TriggerActivityData) == 80
-	      );
-
-
-#endif // TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_EXP_TRIGGERACTIVITYDATA_HPP_
+#endif // TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_TRIGGERACTIVITYDATA_HPP_

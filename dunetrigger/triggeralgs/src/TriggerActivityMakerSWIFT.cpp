@@ -211,8 +211,8 @@ namespace triggeralgs {
     m_current_ta.algorithm = TriggerActivity::Algorithm::kUnknown;
 
 
-    dunedaq::trgdataformats::channel_t min_ch = first_tp.channel;
-    dunedaq::trgdataformats::channel_t max_ch = first_tp.channel;
+    triggeralgs::channel_t min_ch = first_tp.channel;
+    triggeralgs::channel_t max_ch = first_tp.channel;
 
     // Peak quantities
     m_current_ta.adc_peak = 0;
