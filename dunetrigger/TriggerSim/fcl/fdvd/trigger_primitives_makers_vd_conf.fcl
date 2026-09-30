@@ -1,0 +1,49 @@
+# triggersim_makers.fcl
+
+#include "services_dune.fcl"
+
+BEGIN_PROLOG
+
+## These are producers
+
+#======================================================================
+# TP makers
+
+tpmakerTPC_ADCSimpleThreshold_vd_5sigma:
+  {
+    module_type: TriggerPrimitiveMakerTPC
+    rawdigit_tag: "tpcrawdecoder:daq.*"
+    tpalg: {
+      tool_type: TPAlgTPCSimpleThreshold
+      threshold_tpg_plane0: 45 
+      threshold_tpg_plane1: 45
+      threshold_tpg_plane2: 45
+      verbosity: 0
+    }
+  }
+
+tpmakerTPC_ADCSimpleThreshold_vd_4sigma:
+  {
+    @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma
+    tpalg: {
+      @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma.tpalg
+      threshold_tpg_plane0: 36
+      threshold_tpg_plane1: 36
+      threshold_tpg_plane2: 36
+    }
+  }
+
+tpmakerTPC_ADCSimpleThreshold_vd_3sigma:
+  {
+    @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma
+    tpalg: {
+      @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma.tpalg
+      threshold_tpg_plane0: 27
+      threshold_tpg_plane1: 27
+      threshold_tpg_plane2: 27
+    }
+  }
+
+tpmakerTPC_ADCSimpleThreshold_vd: @local::tpmakerTPC_ADCSimpleThreshold_vd_4sigma
+
+END_PROLOG

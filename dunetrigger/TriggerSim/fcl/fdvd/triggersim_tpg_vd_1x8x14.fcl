@@ -18,8 +18,9 @@ physics:
 {
   producers: {
     tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold_vd    
+    tamakerTPCSWIFT: @local::tamakerTPC_SWIFT_vd    
   }
-  makers: [ tpmakerTPCSimpleThreshold ]
+  makers: [ tpmakerTPCSimpleThreshold, tamakerTPCSWIFT]
   trigger_paths: [makers]
   stream1:  [ out1 ]
   end_paths: [stream1]
