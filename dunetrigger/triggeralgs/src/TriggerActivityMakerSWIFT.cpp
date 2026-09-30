@@ -27,15 +27,15 @@ namespace triggeralgs {
     m_wire_pitch               = config.value("wire_pitch", 0.48); // cm
     m_db_min_samples           = config.value("min_samples", 2); //min. number of TPs for valid cluster
     m_db_eps                   = config.value("epsilon", 2); //dbscan search radius in cm
-    m_cluster_energy_cut_sadc       = config.value("cluster_energy_cut_sadc", 22000); // min energy of dominant cluster eng. in window for acceptance
+    m_cluster_energy_cut_sadc  = config.value("cluster_energy_cut_sadc", 22000); // min energy of dominant cluster eng. in window for acceptance
 
-    assert(m_window_length > 0);
+    assert(m_window_length > 0); //inifite loop guard
   }
 
   //TP refinement
   bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp) const{
-    //FIXME: OR logic, and change TOT -> SOT after updating to TP v2.
-    return !((input_tp.adc_peak < m_min_adc_peak) && (input_tp.time_over_threshold < m_min_samples_over_threshold));
+    //FIXME: change TOT -> SOT after updating to TP v2.
+    return (input_tp.adc_peak > m_min_adc_peak) && (input_tp.time_over_threshold > m_min_samples_over_threshold);
   }
 
   // Reset window state
@@ -48,7 +48,7 @@ namespace triggeralgs {
   }
 
   //main function for binning TPs into fixed-size time windows
-  //assumes TPs are strictly time-ordered
+  // **assumes TPs are strictly time ordered**
   void TriggerActivityMakerSWIFT::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_tas)
   {
     // Apply TP filtering
@@ -95,8 +95,8 @@ namespace triggeralgs {
 
     //Prompt window categorisatoin : immidiate accept, inspect, reject based on local energy in window
     WindowDecision decision;
-    if (m_window_energy_sadc >= m_accept_energy_threshold_sadc) decision = WindowDecision::kAccept;
-    else if (m_window_energy_sadc >= m_inspect_energy_threshold_sadc) decision = WindowDecision::kInspect;
+    if (m_window_energy_sadc > m_accept_energy_threshold_sadc) decision = WindowDecision::kAccept;
+    else if (m_window_energy_sadc > m_inspect_energy_threshold_sadc) decision = WindowDecision::kInspect;
     else  return; // Reject
 
     // cluster inspect cases
