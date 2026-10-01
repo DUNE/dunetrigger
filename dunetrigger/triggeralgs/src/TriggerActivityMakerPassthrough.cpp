@@ -1,15 +1,15 @@
 /**
- * @file TriggerActivityMakerPrescale.cpp
+ * @file TriggerActivityMakerPassthrough.cpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#include "dunetrigger/triggeralgs/include/triggeralgs/Prescale/TriggerActivityMakerPrescale.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/Passthrough/TriggerActivityMakerPassthrough.hpp"
 
 #include "TRACE/trace.h"
-#define TRACE_NAME "TriggerActivityMakerPrescalePlugin"
+#define TRACE_NAME "TriggerActivityMakerPassthroughPlugin"
 
 #include <vector>
 
@@ -19,7 +19,7 @@ using Logging::TLVL_DEBUG_MEDIUM;
 using Logging::TLVL_IMPORTANT;
 
 void
-TriggerActivityMakerPrescale::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_ta)
+TriggerActivityMakerPassthrough::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_ta)
 {
   if ((m_primitive_count++) % m_prescale == 0) {
 
@@ -39,7 +39,7 @@ TriggerActivityMakerPrescale::operator()(const TriggerPrimitive& input_tp, std::
     ta.adc_peak = input_tp.adc_peak;
     ta.detid = input_tp.detid;
     ta.type = TriggerActivity::Type::kTPC;
-    ta.algorithm = TriggerActivity::Algorithm::kPrescale;
+    ta.algorithm = TriggerActivity::Algorithm::kPassthrough;
 
     ta.inputs = tp_list;
 
@@ -48,7 +48,7 @@ TriggerActivityMakerPrescale::operator()(const TriggerPrimitive& input_tp, std::
 }
 
 void
-TriggerActivityMakerPrescale::configure(const nlohmann::json& config)
+TriggerActivityMakerPassthrough::configure(const nlohmann::json& config)
 {
   // FIXME use some schema here
   if (config.is_object() && config.contains("prescale")) {
@@ -58,4 +58,4 @@ TriggerActivityMakerPrescale::configure(const nlohmann::json& config)
 }
 
 // Register algo in TA Factory
-REGISTER_TRIGGER_ACTIVITY_MAKER(TRACE_NAME, TriggerActivityMakerPrescale)
+REGISTER_TRIGGER_ACTIVITY_MAKER(TRACE_NAME, TriggerActivityMakerPassthrough)

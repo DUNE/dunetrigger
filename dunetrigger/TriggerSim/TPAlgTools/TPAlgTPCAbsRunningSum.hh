@@ -29,7 +29,7 @@ public:
         threshold_tpg_plane1_(ps.get<int16_t>("threshold_tpg_plane1")),
         threshold_tpg_plane2_(ps.get<int16_t>("threshold_tpg_plane2")) {}
 
-  void initialize_channel_state(dunedaq::trgdataformats::channel_t const &channel, std::vector<short> const &adcs) {
+  void initialize_channel_state(triggeralgs::channel_t const &channel, std::vector<short> const &adcs) {
 
     // grab the geometry service
     art::ServiceHandle<geo::Geometry> geom;
@@ -105,18 +105,18 @@ public:
   }
 
 
-  void process_waveform(std::vector<short> const &adcs, dunedaq::trgdataformats::channel_t const channel,
-                        dunedaq::trgdataformats::detid_t const detid,  dunedaq::trgdataformats::timestamp_t const start_time,
-                        std::vector<dunedaq::trgdataformats::TriggerPrimitive> &tps_out) {
+  void process_waveform(std::vector<short> const &adcs, triggeralgs::channel_t const channel,
+                        triggeralgs::detid_t const detid,  triggeralgs::timestamp_t const start_time,
+                        std::vector<triggeralgs::TriggerPrimitive> &tps_out) {
 
     // setup a TP and initialize it with the common things for this
     // algorithm/channel
-    dunedaq::trgdataformats::TriggerPrimitive this_tp;
+    triggeralgs::TriggerPrimitive this_tp;
 
     this_tp.channel = channel;
     this_tp.detid = detid;
-    this_tp.type = dunedaq::trgdataformats::TriggerPrimitive::Type::kTPC;
-    this_tp.algorithm = dunedaq::trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
+    this_tp.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+    this_tp.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kAbsRunningSum;
     this_tp.flag = 0;
 
     // for this channel, reinitialize the channel state variables
