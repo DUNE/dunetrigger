@@ -1,6 +1,6 @@
 # triggersim_makers.fcl
 
 #include "services_dune.fcl"
-#include "trigger_primitive_makers_hd_conf.fcl"
-#include "trigger_activity_makers_hd_conf.fcl"
-#include "trigger_candidate_makers_hd_conf.fcl"
+#include "trigger_primitive_makers_hd_cfg.fcl"
+#include "trigger_activity_makers_hd_cfg.fcl"
+#include "trigger_candidate_makers_hd_cfg.fcl"

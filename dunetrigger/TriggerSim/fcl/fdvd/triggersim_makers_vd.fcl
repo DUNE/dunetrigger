@@ -1,5 +1,5 @@
 # triggersim_makers.fcl
 
 #include "services_dune.fcl"
-#include "trigger_primitives_makers_vd_conf.fcl"
-#include "trigger_activity_makers_vd_conf.fcl"
+#include "trigger_primitives_makers_vd_cfg.fcl"
+#include "trigger_activity_makers_vd_cfg.fcl"
