@@ -33,6 +33,7 @@ physics.analyzers.triggerAna.bt_window_offsets: [
     }
   ]
 physics.analyzers.triggerAna.dump_simides: true
+physics.analyzers.triggerAna.dump_ta: true
 
 physics.producers : @erase
 physics.makers : @erase

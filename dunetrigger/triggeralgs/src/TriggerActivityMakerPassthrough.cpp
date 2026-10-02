@@ -38,8 +38,8 @@ TriggerActivityMakerPassthrough::operator()(const TriggerPrimitive& input_tp, st
     ta.adc_integral = input_tp.adc_integral;
     ta.adc_peak = input_tp.adc_peak;
     ta.detid = input_tp.detid;
-    ta.type = TriggerActivity::Type::kTPC;
-    ta.algorithm = TriggerActivity::Algorithm::kPassthrough;
+    ta.type = static_cast<TriggerActivityData::type_t>(TriggerActivityData::Type::kTPC);
+    ta.algorithm = static_cast<TriggerActivityData::algorithm_t>(TriggerActivityData::Algorithm::kPassthrough);
 
     ta.inputs = tp_list;
 

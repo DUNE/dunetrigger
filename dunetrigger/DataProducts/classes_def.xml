@@ -1,19 +1,27 @@
 <lcgdict>
 
-  <!-- The product itself -->
-  <class name="dunetrigger::MyProduct"             ClassVersion="10" >
-   <version ClassVersion="10" checksum="1321818287"/>
+  <!-- The product itself (v11: type/algorithm changed from 4-byte enum class to uint8_t) -->
+  <class name="dunedaq::trgdataformats::exp::TriggerActivityData"             ClassVersion="11" >
+   <version ClassVersion="11" checksum="4107819053"/>
+   <version ClassVersion="10" checksum="2385474025"/>
   </class>
 
   <!-- art wraps every product in art::Wrapper for I/O -->
-  <class name="art::Wrapper<dunetrigger::MyProduct>"               />
+  <class name="art::Wrapper<dunedaq::trgdataformats::exp::TriggerActivityData>"               />
 
   <!-- A collection of products (the most common form stored in events) -->
-  <class name="std::vector<dunetrigger::MyProduct>"                />
-  <class name="art::Wrapper<std::vector<dunetrigger::MyProduct>>"  />
+  <class name="std::vector<dunedaq::trgdataformats::exp::TriggerActivityData>"                />
+  <class name="art::Wrapper<std::vector<dunedaq::trgdataformats::exp::TriggerActivityData>>"  />
 
   <!-- art::Ptr — needed if other modules will hold pointers to your product -->
-  <class name="art::Ptr<dunetrigger::MyProduct>"                   />
-  <class name="std::vector<art::Ptr<dunetrigger::MyProduct>>"      />
+  <class name="art::Ptr<dunedaq::trgdataformats::exp::TriggerActivityData>"                   />
+  <class name="std::vector<art::Ptr<dunedaq::trgdataformats::exp::TriggerActivityData>>"      />
+
+  <class name="art::Assns<dunedaq::trgdataformats::exp::TriggerActivityData,dunedaq::trgdataformats::TriggerPrimitive,void>"/>
+  <class name="art::Wrapper<art::Assns<dunedaq::trgdataformats::exp::TriggerActivityData,dunedaq::trgdataformats::TriggerPrimitive,void> >"/>
+  
+  <class name="art::Assns<dunedaq::trgdataformats::TriggerPrimitive, dunedaq::trgdataformats::exp::TriggerActivityData,void>"/>
+  <class name="art::Wrapper<art::Assns<dunedaq::trgdataformats::TriggerPrimitive, dunedaq::trgdataformats::exp::TriggerActivityData,void> >"/>
+
 
 </lcgdict>
