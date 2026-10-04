@@ -26,9 +26,9 @@ tamakerTPC_SWIFT_vd:
   tp_tag: "tpmakerTPCSimpleThreshold"
   algorithm: "TriggerActivityMakerSWIFTPlugin"
   #active_rops: []
-  algconfig_rop0: @local::ta_algconfig_swift # collection rop2
-  algconfig_rop1: @local::ta_algconfig_swift # collection rop2
-  algconfig_rop2: @local::ta_algconfig_swift # collection rop2
+  algconfig_rop0: @local::ta_algconfig_swift_vd
+  algconfig_rop1: @local::ta_algconfig_swift_vd
+  algconfig_rop2: @local::ta_algconfig_swift_vd
   flush: true
   verbosity: 0
 }
