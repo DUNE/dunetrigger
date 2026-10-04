@@ -547,11 +547,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
         e.getMany<std::vector<TriggerActivityData>>();
 
-    std::cout << "TriggerActivityData tag regex: " << this->ta_tag_regex << std::endl;
     std::regex ta_regex(this->ta_tag_regex);
 
     for (auto const &taHandle : taHandles) {
-      std::cout << "Processing TriggerActivityData collection with tag: " << taHandle.provenance()->inputTag().encode() << std::endl;
 
       art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
       std::string tag = taHandle.provenance()->inputTag().encode();
@@ -780,6 +778,10 @@ std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const Tr
   }
 
   art::Ptr<sim::SimChannel> sim_channel = bt.findSimChannelPtr(tp.channel);
+  if (!sim_channel) {
+    return {};
+  }
+
   std::vector<sim::IDE> matched_ides = sim_channel->TrackIDsAndEnergies(sample_start, sample_end);
   return matched_ides;
 }
