@@ -96,11 +96,13 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
 
   for (auto const& rawdigit_handle : rawdigit_many) {
 
-    if (verbosity_ >= Verbosity::kInfo)
-      std::cout << "Processing " << rawdigit_handle.provenance()->inputTag().encode() << ": "
-                << rawdigit_handle->size() << " raw::RawDigits" << std::endl;
+    // The timestamp associations are stored under the same tag as the
+    // rawdigit collection they refer to.
+    art::InputTag const rawdigit_tag = rawdigit_handle.provenance()->inputTag();
 
-    std::string rawdigit_tag = rawdigit_handle.provenance()->inputTag().instance();
+    if (verbosity_ >= Verbosity::kInfo)
+      std::cout << "Processing " << rawdigit_tag.encode() << ": "
+                << rawdigit_handle->size() << " raw::RawDigits" << std::endl;
 
     // try to get the associated timestamps to our rawdigit objects
     const art::FindOneP<raw::RDTimeStamp> rdtimestamp_per_rd(rawdigit_handle, e,
