@@ -1,7 +1,5 @@
 # trigger_activity_makers_hd_cfg.fcl
 
-#include "services_dune.fcl"
-
 BEGIN_PROLOG
 
 ## These are producers
