@@ -16,6 +16,7 @@
 #include "art_root_io/TFileService.h"
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Utilities/InputTag.h"
+#include "cetlib_except/exception.h"
 #include "fhiclcpp/ParameterSet.h"
 
 #include "detdataformats/trigger/TriggerActivityData.hpp"
@@ -45,6 +46,7 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <set>
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/set_algorithm.hpp>
@@ -70,9 +72,7 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
     dump_simides(p.get<bool>("dump_simides", true)),
     simchannel_tag(p.get<art::InputTag>("simchannel_tag", "tpcrawdecoder:simpleSC"))
-// More initializers here.
 {
-  // FIXME: rename `window_offsets` to `bt_window_offsets`
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
@@ -312,27 +312,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     // if doesn't exist -> handle
     // else continue as it is
 
-    // for ( int tpcset_id{0}; tpcset_id < num_tpcsets; ++tpcset_id) {
-    //   // std::string m_inputTag = simide_label + std::to_string();
-    //   // art::Handle<std::vector<sim::SimChannel> sedvh;
-    //   // bool okay = e.getByLabel(m_inputTag, sedvh);
-    // }
     for ( auto simchannels : simchannels_many ) {
-
-      // std::string m_inputTag = "IonAndScint";
-      // art::Handle<std::vector<sim::SimChannel> sedvh;
-      // bool okay = e.getByLabel(m_inputTag, sedvh);
-
-      // book okay = e.getValidHandle<std::vector<sim::SimChannel>>(
-      // auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
-
-      // // Unreliable
-      // int elem_id = simchannels.provenance()->parameterSet().get<int>("wcls_main.structs.process_tpc_index");
-      // auto i = simchannels.provenance()->inputTag();
-
-      // std::cout << "Processing " << i.label() << "   " << i.instance() << "   " << i.process() << " : size=" << simchannels->size() <<  std::endl;
-
-
 
       std::set<int> tpcset_ids;
 
@@ -394,19 +374,25 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
             }
           }
         }
+      }
 
-        std::vector<int> overlap;
-        boost::set_intersection(tpcset_ids, bt_map | boost::adaptors::map_keys,
-                        std::back_inserter(overlap));
+      // Each TPCSet must be covered by a single SimChannel collection,
+      // otherwise backtracking would silently use only the last one.
+      std::vector<int> overlap;
+      boost::set_intersection(tpcset_ids, bt_map | boost::adaptors::map_keys,
+                              std::back_inserter(overlap));
+      if (!overlap.empty()) {
+        cet::exception ex("TriggerAnaTree");
+        ex << "SimChannel collection " << simchannels.provenance()->inputTag().encode()
+           << " covers TPCSets already provided by another collection:";
+        for (int tpcset_id : overlap) ex << " " << tpcset_id;
+        ex << ". Check that simchannel_tag matches only one set of SimChannel collections.";
+        throw ex;
+      }
 
-        
-
-        auto mtb = std::make_shared<MiniBackTracker> (simchannels);
-        for( int tpcset_id : tpcset_ids ) {
-          bt_map[tpcset_id] = mtb;
-        }
-
-
+      auto mtb = std::make_shared<MiniBackTracker>(simchannels);
+      for (int tpcset_id : tpcset_ids) {
+        bt_map[tpcset_id] = mtb;
       }
     }
 
