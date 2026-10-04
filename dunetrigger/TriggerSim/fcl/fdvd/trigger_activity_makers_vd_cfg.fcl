@@ -21,7 +21,7 @@ ta_algconfig_swift_vd:
 tamakerTPC_SWIFT_vd:
 {
   module_type: TriggerActivityMakerTPC
-  tp_tag: "tpmakerTPCSimpleThreshold"
+  # tp_tag is set by the producer chain that uses this maker, next to the TP maker label
   algorithm: "TriggerActivityMakerSWIFTPlugin"
   #active_rops: []
   algconfig_rop0: @local::ta_algconfig_swift_vd

@@ -13,7 +13,7 @@ physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
 
   # basic producers from triggersim_hd_cfg.fcl
   producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
-  makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+  makers: @local::makers_triggersim_simpleThr_simpleWin_simpleWin
   trigger_paths: [ makers ]
 
   # This is just a basic example that reads the trigger information from the TPC and dumps it to a tree
@@ -30,6 +30,6 @@ physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
 
 physics_triggerana_simpleThr_absRS: @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin
 physics_triggerana_simpleThr_absRS.producers: @local::producers_triggersim_simpleThr_absRS
-physics_triggerana_simpleThr_absRS.makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
+physics_triggerana_simpleThr_absRS.makers: @local::makers_triggersim_simpleThr_absRS
 
 END_PROLOG

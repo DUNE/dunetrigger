@@ -31,7 +31,7 @@ tcconfig_simplewindow:
 tcmakerTPC_ADCSimpleWindow:
   {
     module_type: TriggerCandidateMakerTPC
-    ta_tag: "tamakerTPC"
+    # ta_tag is set by the producer chain that uses this maker, next to the TA maker label
     algorithm: "TriggerCandidateMakerADCSimpleWindowPlugin"
     algconfig: @local::tcconfig_simplewindow
     verbosity: 1

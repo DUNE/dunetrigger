@@ -44,7 +44,7 @@ analyzers_trigger_tpc_infodisplay: {
 physics_triggerana_tpc_infodisplay_simpleThr_simpleWin_simpleWin: {
     
     producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
-    makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    makers: @local::makers_triggersim_simpleThr_simpleWin_simpleWin
     trigger_paths: [ makers ]
 
     analyzers: @local::analyzers_trigger_tpc_infodisplay

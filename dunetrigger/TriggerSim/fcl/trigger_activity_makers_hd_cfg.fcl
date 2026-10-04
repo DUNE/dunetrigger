@@ -34,7 +34,7 @@ ta_algconfig_swift:
 tamakerTPC_SWIFT:
 {
   module_type: TriggerActivityMakerTPC
-  tp_tag: "tpmakerTPCsimpleThr"
+  # tp_tag is set by the producer chain that uses this maker, next to the TP maker label
   algorithm: "TriggerActivityMakerSWIFTPlugin"
   #active_rops: []
   algconfig_rop0: @local::ta_algconfig_swift # collection rop2
@@ -48,7 +48,7 @@ tamakerTPC_SWIFT:
 tamakerTPC_ADCSimpleWindow:
   {
     module_type: TriggerActivityMakerTPC
-    tp_tag: "tpmakerTPC"
+    # tp_tag is set by the producer chain that uses this maker, next to the TP maker label
     # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
     algorithm: "TriggerActivityMakerADCSimpleWindowPlugin" # another basic option is TriggerActivityMakerChannelAdjacencyPlugin
     algconfig_rop0: @local::ta_algconfig_simplewindow # induction 1

@@ -1,6 +1,4 @@
-#include "triggersim_common_cfg.fcl"
-#include "trigger_primitive_makers_vd_cfg.fcl"
-#include "trigger_activity_makers_vd_cfg.fcl"
+#include "triggersim_vd_cfg.fcl"
 #include "tools_dune.fcl"
 
 
@@ -14,17 +12,7 @@ services: {
 source:	@local::source_triggersim
 outputs: @local::outputs_triggersim
 
-physics:
-{
-  producers: {
-    tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold_vd    
-    tamakerTPCSWIFT: @local::tamakerTPC_SWIFT_vd    
-  }
-  makers: [ tpmakerTPCSimpleThreshold, tamakerTPCSWIFT]
-  trigger_paths: [makers]
-  stream1:  [ out1 ]
-  end_paths: [stream1]
-}
+physics: @local::physics_triggersim_vd_simpleThr_swift
 
 outputs.out1.outputCommands: ["keep *_*_*_*", "drop raw::RawDigit*_*_*_*"] 
 

@@ -12,24 +12,30 @@
 
 BEGIN_PROLOG
 
+# Producer chains. Each chain picks the module labels and sets every
+# consumer's input tag (tp_tag/ta_tag) to match, so the maker prologs stay
+# label-agnostic. makers_* is the matching trigger path.
+
 # the simplest configurations are here as default
 producers_triggersim_simpleThr_simpleWin_simpleWin: {
     tpmakerTPC: @local::tpmakerTPC_ADCSimpleThreshold
-    tamakerTPC: @local::tamakerTPC_ADCSimpleWindow
-    tcmakerTPC: @local::tcmakerTPC_ADCSimpleWindow
+    tamakerTPC: { @table::tamakerTPC_ADCSimpleWindow tp_tag: "tpmakerTPC" }
+    tcmakerTPC: { @table::tcmakerTPC_ADCSimpleWindow ta_tag: "tamakerTPC" }
 }
+makers_triggersim_simpleThr_simpleWin_simpleWin: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
 
 # Run both AbsRS and SimpleThreshold TPG
 producers_triggersim_simpleThr_absRS: {
     tpmakerTPCsimpleThr: @local::tpmakerTPC_ADCSimpleThreshold
     tpmakerTPCabsRS: @local::tpmakerTPC_ABSRunningSum
 }
+makers_triggersim_simpleThr_absRS: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
 
 # this does not have analyzers! Add them
 physics_triggersim_simpleThr_simpleWin_simpleWin: {
     producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
     stream1: [ out1 ]
-    makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    makers: @local::makers_triggersim_simpleThr_simpleWin_simpleWin
     trigger_paths: [ makers ]
     end_paths: [ stream1 ]
 }
