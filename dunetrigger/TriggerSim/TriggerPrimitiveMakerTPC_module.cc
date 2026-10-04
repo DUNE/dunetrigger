@@ -22,6 +22,7 @@
 #include "art/Framework/Principal/SubRun.h"
 #include "art/Utilities/make_tool.h"
 #include "canvas/Utilities/InputTag.h"
+#include "cetlib_except/exception.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -31,6 +32,7 @@
 
 #include <iostream>
 #include <memory>
+#include <unordered_map>
 
 namespace dunetrigger {
 class TriggerPrimitiveMakerTPC;
@@ -92,11 +94,11 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
 
   auto rawdigit_many = getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
 
-  for( auto rawdigit_handle : rawdigit_many) {
+  for (auto const& rawdigit_handle : rawdigit_many) {
 
-    auto i = rawdigit_handle.provenance()->inputTag();
-    std::cout << "Processing: " << i.label() << "   " << i.instance() << "   " << i.process() << ", size=" << rawdigit_handle->size() << std::endl;
-
+    if (verbosity_ >= Verbosity::kInfo)
+      std::cout << "Processing " << rawdigit_handle.provenance()->inputTag().encode() << ": "
+                << rawdigit_handle->size() << " raw::RawDigits" << std::endl;
 
     std::string rawdigit_tag = rawdigit_handle.provenance()->inputTag().instance();
 
@@ -106,11 +108,7 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
     // store a bool for whether it is valid or not to use inside the loop
     auto rd_assn_is_valid = rdtimestamp_per_rd.isValid();
 
-    auto rawdigit_vec = *rawdigit_handle;
-
-    if (verbosity_ >= Verbosity::kInfo)
-      std::cout << "Found " << rawdigit_vec.size() << " raw::RawDigits"
-                << std::endl;
+    auto const& rawdigit_vec = *rawdigit_handle;
 
     uint64_t this_timestamp = default_timestamp_;
     for (size_t i_digit = 0; i_digit < rawdigit_vec.size(); ++i_digit) {
