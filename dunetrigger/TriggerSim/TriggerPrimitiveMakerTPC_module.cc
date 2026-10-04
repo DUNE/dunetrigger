@@ -30,9 +30,13 @@
 #include "dunetrigger/TriggerSim/GetManyByRegexTag.hh"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
+#include <algorithm>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace dunetrigger {
 class TriggerPrimitiveMakerTPC;
@@ -61,6 +65,9 @@ private:
   std::unique_ptr<TPAlgTPCTool> tpalg_;
   uint64_t default_timestamp_;
   int verbosity_;
+
+  void check_duplicate_channels(
+      std::vector<art::Handle<std::vector<raw::RawDigit>>> const& rawdigit_many) const;
 };
 
 dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
@@ -93,6 +100,9 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   // std::cout << "label=" << rawdigit_tag_.label() << std::endl;
 
   auto rawdigit_many = getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
+
+  // Collections sharing channels would silently produce duplicated TPs
+  check_duplicate_channels(rawdigit_many);
 
   for (auto const& rawdigit_handle : rawdigit_many) {
 
@@ -171,6 +181,65 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   // }
 
   // e.put(std::move(tp_col_ptr));
+}
+
+void dunetrigger::TriggerPrimitiveMakerTPC::check_duplicate_channels(
+    std::vector<art::Handle<std::vector<raw::RawDigit>>> const& rawdigit_many) const {
+
+  // Collection (index in rawdigit_many) in which each channel was first seen
+  std::unordered_map<raw::ChannelID_t, std::size_t> channel_collection;
+  // Channels found again in a later collection, grouped by (first, later) collection
+  std::map<std::pair<std::size_t, std::size_t>, std::vector<raw::ChannelID_t>> duplicates;
+
+  for (std::size_t i_coll = 0; i_coll < rawdigit_many.size(); ++i_coll) {
+    auto const& rawdigit_vec = *rawdigit_many[i_coll];
+    channel_collection.reserve(channel_collection.size() + rawdigit_vec.size());
+    for (auto const& digit : rawdigit_vec) {
+      auto const [it, inserted] = channel_collection.try_emplace(digit.Channel(), i_coll);
+      // Repeated channels within a single collection are left alone
+      if (!inserted && it->second != i_coll)
+        duplicates[{it->second, i_coll}].push_back(digit.Channel());
+    }
+  }
+
+  if (duplicates.empty())
+    return;
+
+  // Maximum number of channel ranges listed per pair of collections
+  constexpr std::size_t kMaxRanges = 10;
+
+  cet::exception ex("TriggerPrimitiveMakerTPC");
+  ex << "rawdigit_tag \"" << rawdigit_tag_.encode()
+     << "\" matches raw::RawDigit collections sharing channels:\n";
+
+  for (auto& [colls, channels] : duplicates) {
+    std::sort(channels.begin(), channels.end());
+    channels.erase(std::unique(channels.begin(), channels.end()), channels.end());
+
+    // Compress the sorted channels into contiguous [first, last] ranges
+    std::vector<std::pair<raw::ChannelID_t, raw::ChannelID_t>> ranges;
+    for (raw::ChannelID_t ch : channels) {
+      if (!ranges.empty() && ch == ranges.back().second + 1)
+        ranges.back().second = ch;
+      else
+        ranges.emplace_back(ch, ch);
+    }
+
+    ex << "  " << rawdigit_many[colls.first].provenance()->inputTag().encode()
+       << " and " << rawdigit_many[colls.second].provenance()->inputTag().encode()
+       << ": " << channels.size() << " channels (";
+    for (std::size_t i = 0; i < std::min(ranges.size(), kMaxRanges); ++i) {
+      if (i) ex << ", ";
+      ex << ranges[i].first;
+      if (ranges[i].second != ranges[i].first) ex << "-" << ranges[i].second;
+    }
+    if (ranges.size() > kMaxRanges)
+      ex << ", ... " << ranges.size() - kMaxRanges << " more ranges";
+    ex << ")\n";
+  }
+
+  ex << "Check that rawdigit_tag matches only one set of collections, e.g. by pinning the process name.";
+  throw ex;
 }
 
 DEFINE_ART_MODULE(dunetrigger::TriggerPrimitiveMakerTPC)
