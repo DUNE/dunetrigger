@@ -1,4 +1,4 @@
-# trigger_primitives_makers_vd_cfg.fcl
+# trigger_primitive_makers_vd_cfg.fcl
 
 #include "services_dune.fcl"
 
