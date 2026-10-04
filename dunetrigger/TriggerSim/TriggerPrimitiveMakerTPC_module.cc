@@ -27,7 +27,7 @@
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include "canvas/Persistency/Common/FindOneP.h"
-#include "dunetrigger/TriggerSim/GetManyByRegexTag.hh"
+#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
 #include <algorithm>
@@ -99,7 +99,13 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
   // std::cout << "instance=" << rawdigit_tag_.instance() << std::endl;
   // std::cout << "label=" << rawdigit_tag_.label() << std::endl;
 
-  auto rawdigit_many = getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
+  auto rawdigit_many =
+      lar::util::getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
+  if (rawdigit_many.empty()) {
+    throw cet::exception("TriggerPrimitiveMakerTPC")
+        << "Found no std::vector<raw::RawDigit> collections matching rawdigit_tag \""
+        << rawdigit_tag_.encode() << "\"";
+  }
 
   // Collections sharing channels would silently produce duplicated TPs
   check_duplicate_channels(rawdigit_many);

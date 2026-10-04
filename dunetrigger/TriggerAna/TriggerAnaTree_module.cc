@@ -41,6 +41,7 @@
 #include "TriggerAnaTree_module.hh"
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
+#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
@@ -73,6 +74,8 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     dump_simides(p.get<bool>("dump_simides", true)),
     simchannel_tag(p.get<art::InputTag>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 {
+  consumesMany<std::vector<sim::SimChannel>>();
+
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
@@ -283,24 +286,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
   {
 
-    // TODO: factoriss this block into an helper object or function
-    std::regex instance_regex(!simchannel_tag.instance().empty() ? simchannel_tag.instance() : ".*");
-    std::regex label_regex(!simchannel_tag.label().empty() ? simchannel_tag.label() : ".*");
-    std::regex process_regex(!simchannel_tag.process().empty() ? simchannel_tag.process() : ".*");
-
-    art::SelectorByFunction re_inputtags_selector(
-        [instance_regex, label_regex, process_regex](art::BranchDescription const& p){
-            return (
-              std::regex_match(p.inputTag().label(), label_regex) &
-              std::regex_match(p.inputTag().instance(), instance_regex) & 
-              std::regex_match(p.inputTag().process(), process_regex)
-
-            );
-        },
-        "InputTag Regex Instance Selector"
-    );
-
-    auto simchannels_many = e.getMany<std::vector<sim::SimChannel>>(re_inputtags_selector);
+    auto simchannels_many =
+        lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
     if (simchannels_many.empty()) {
       throw cet::exception("TriggerAnaTree")
           << "Found no std::vector<sim::SimChannel> collections matching simchannel_tag \""
