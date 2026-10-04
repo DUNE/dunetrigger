@@ -1,0 +1,54 @@
+# triggerana_common.fcl
+
+# Detector-independent settings shared by all TriggerAna jobs (HD and VD):
+# services, source, outputs and the generic TriggerAnaTree analyzer.
+# It deliberately defines no makers or producer chains.
+
+#include "triggersim_common.fcl"
+
+BEGIN_PROLOG
+
+services_triggerana_tree: @local::services_triggersim
+services_triggerana_tree.TFileService.fileName: "triggerAna.ntuple.root"
+
+source_triggerana_tree: @local::source_triggersim
+
+outputs_triggerana_tree: @local::outputs_triggersim
+outputs_triggerana_tree.out1.fileName: "triggerAna.root"
+
+## These are analyzers
+
+triggerAnaTree_dumpAll:
+{
+  module_type: TriggerAnaTree
+  dump_tp: true
+  dump_ta: true
+  dump_tc: true
+  # If true, dump all information about mctruth particles in a tree named "mctruths"
+  dump_mctruths: true 
+  # If true, dump all information about particles in the G4 simulation in a tree named "mcparticles"
+  dump_mcparticles: true 
+  # If true, dump all simChannels and their IDEs in a tree named "simides" 
+  dump_simides: true
+  # If true, perform backtracking to find energy depositions for each TP.
+  tp_backtracking: true
+  # Offset to apply for the backtracker
+  bt_window_offsets: [
+    {
+      tool_type: "TPAlgTPCSimpleThreshold"
+      U: 8
+      V: 4
+      X: -3
+    },
+    {
+      tool_type: "TPAlgTPCAbsRunningSum"
+      U: -1
+      V: -5
+      X: -5
+    }
+  ]
+
+  simchannel_tag: "tpcrawdecoder:simpleSC.*"
+}
+
+END_PROLOG

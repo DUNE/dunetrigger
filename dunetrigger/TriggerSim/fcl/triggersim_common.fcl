@@ -1,0 +1,36 @@
+# triggersim_common.fcl
+
+# Detector-independent settings shared by all dunetrigger jobs (HD and VD):
+# services, source and outputs. It deliberately defines no makers, so that
+# detector-specific files can include it without pulling in other detectors' settings.
+
+#include "services_dune.fcl"
+
+BEGIN_PROLOG
+
+services_triggersim: {
+    TFileService:           { fileName: "triggersim_hist.root" }
+    TimeTracker:            @local::dune_time_tracker
+    MemoryTracker:          @local::dune_memory_tracker
+    RandomNumberGenerator:  {} #ART native random number generator
+    message:                @local::dune_message_services_prod
+    #FileCatalogMetadata:    @local::art_file_catalog_mc 
+    IFDH:                   {}
+}
+
+source_triggersim: {
+    module_type: RootInput
+    maxEvents:  10        # Number of events to create
+    saveMemoryObjectThreshold: 0
+}
+
+outputs_triggersim: {
+    out1: {
+        module_type: RootOutput
+        fileName: "triggersim.root"
+        compressionLevel: 1
+        saveMemoryObjectThreshold: 0
+    }
+}
+
+END_PROLOG
