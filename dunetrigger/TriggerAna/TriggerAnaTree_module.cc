@@ -499,7 +499,17 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
         // TPC TP backtracking
         if (tpbt_writer and is_tpc_tp_collection) {
-          auto& mbt = bt_map.at(chinfo.tpcset_id);
+          // SimChannel writers are dense, so every simulated TPCSet must be in
+          // bt_map: a missing one means simchannel_tag misses some collections.
+          auto bt_it = bt_map.find(chinfo.tpcset_id);
+          if (bt_it == bt_map.end()) {
+            throw cet::exception("TriggerAnaTree")
+                << "No SimChannel collection covers TPCSet " << chinfo.tpcset_id
+                << " (TP on channel " << tp.channel << " from " << tag
+                << "). Check that simchannel_tag \"" << simchannel_tag.encode()
+                << "\" matches the SimChannels of every TPCSet with TPs.";
+          }
+          auto& mbt = bt_it->second;
           std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type, *mbt);
           tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
           tpbt_writer.push_back();
