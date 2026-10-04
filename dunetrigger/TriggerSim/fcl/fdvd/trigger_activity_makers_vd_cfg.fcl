@@ -1,4 +1,4 @@
-# triggersim_makers.fcl
+# trigger_activity_makers_vd_cfg.fcl
 
 #include "services_dune.fcl"
 

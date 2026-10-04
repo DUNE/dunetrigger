@@ -22,6 +22,8 @@
 #include "art/Framework/Principal/Run.h"
 #include "art/Framework/Principal/SubRun.h"
 #include "canvas/Utilities/InputTag.h"
+#include "cetlib_except/exception.h"
+#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -117,31 +119,8 @@ private:
   std::map<raw::ChannelID_t, raw::RawDigit::ADCvector_t> fWaveformsBuffer;
   std::vector<unsigned int> fActiveChannels;
 
-  static art::SelectorByFunction make_regex_selector(const art::InputTag& tag );
-
 };
 
-art::SelectorByFunction
-duneana::RawDigitAna::make_regex_selector(const art::InputTag& tag) {
-
-  std::regex instance_regex(!tag.instance().empty() ? tag.instance() : ".*");
-  std::regex label_regex(!tag.label().empty() ? tag.label() : ".*");
-  std::regex process_regex(!tag.process().empty() ? tag.process() : ".*");
-
-  art::SelectorByFunction re_inputtags_selector(
-      [instance_regex, label_regex, process_regex](art::BranchDescription const& p){
-          return (
-            std::regex_match(p.inputTag().label(), label_regex) &
-            std::regex_match(p.inputTag().instance(), instance_regex) & 
-            std::regex_match(p.inputTag().process(), process_regex)
-
-          );
-      },
-      "InputTag Regex Instance Selector"
-  );
-
-  return re_inputtags_selector;
-}
 
 
 // -- Constructor --
@@ -154,6 +133,8 @@ duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
   // TODO: Add histogram range in adc samples
   // Useful in cases of missing IDEs
   {
+    consumesMany<std::vector<sim::SimChannel>>();
+    consumesMany<std::vector<raw::RawDigit>>();
   }
 
 
@@ -227,10 +208,11 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
   
   std::set<unsigned int> signal_chans;
   
-  auto simchans_selector = make_regex_selector(simchans_tag_);
-  auto simchans_many = e.getMany<std::vector<sim::SimChannel>>(simchans_selector);
+  auto simchans_many = lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchans_tag_);
   if (simchans_many.empty()) {
-    throw std::runtime_error("Found std::vector<sim::SimChannel> collections matching "+simchans_tag_.instance()+"_"+simchans_tag_.label());
+    throw cet::exception("RawDigitAna")
+        << "Found no std::vector<sim::SimChannel> collections matching simchannels_tag \""
+        << simchans_tag_.encode() << "\"";
   }
 
   for( auto simchans_handle : simchans_many) {
@@ -251,27 +233,11 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
 
   // Callect rawdigit handles
   // ------------------------
-  // std::regex instance_regex(!rawdigits_tag_.instance().empty() ? rawdigits_tag_.instance() : ".*");
-  // std::regex label_regex(!rawdigits_tag_.label().empty() ? rawdigits_tag_.label() : ".*");
-  // std::regex process_regex(!rawdigits_tag_.process().empty() ? rawdigits_tag_.process() : ".*");
-
-  // art::SelectorByFunction re_inputtags_selector(
-  //     [instance_regex, label_regex](art::BranchDescription const& p){
-  //         return (
-  //           std::regex_match(p.inputTag().label(), label_regex) &
-  //           std::regex_match(p.inputTag().instance(), instance_regex) & 
-  //           std::regex_match(p.inputTag().process(), process_regex)
-
-  //         );
-  //     },
-  //     "InputTag Regex Instance Selector"
-  // );
-// -------
-  auto rawdigis_selector = make_regex_selector(rawdigits_tag_);
-
-  auto rawdigit_many = e.getMany<std::vector<raw::RawDigit>>(rawdigis_selector);
+  auto rawdigit_many = lar::util::getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigits_tag_);
   if (rawdigit_many.empty()) {
-    throw std::runtime_error("Found std::vector<raw::RawDigit> collections matching "+rawdigits_tag_.instance()+"_"+rawdigits_tag_.label());
+    throw cet::exception("RawDigitAna")
+        << "Found no std::vector<raw::RawDigit> collections matching rawdigits_tag \""
+        << rawdigits_tag_.encode() << "\"";
   }
 
   size_t channel_count(0);

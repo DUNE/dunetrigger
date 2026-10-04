@@ -7,12 +7,12 @@
 #include "art_root_io/TFileService.h"
 #include "fhiclcpp/ParameterSet.h"
 
-#include "art/Framework/Principal/Selector.h"
+#include "canvas/Utilities/InputTag.h"
+#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
 
 #include "lardataobj/RawData/RawDigit.h"
 #include "larcore/Geometry/WireReadout.h"
 
-#include <regex>    
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -60,13 +60,16 @@ public:
     void endJob() override;
 
 private:
+    art::InputTag rawdigit_tag_; // regex patterns for label, instance and process
 };
 
 // Constructor — read FHiCL parameters
 RawDigitsReadTest::RawDigitsReadTest(fhicl::ParameterSet const& pset)
     : EDAnalyzer(pset)
-    // , fHitLabel(pset.get<art::InputTag>("HitLabel"))
-{}
+    , rawdigit_tag_(pset.get<art::InputTag>("rawdigit_tag", ":daq.*"))
+{
+    consumesMany<std::vector<raw::RawDigit>>();
+}
 
 void RawDigitsReadTest::beginJob() {
     // art::ServiceHandle<art::TFileService> tfs;
@@ -78,26 +81,16 @@ void RawDigitsReadTest::analyze(art::Event const& e) {
     // geo::WireReadoutGeom const *geom =
     //     &art::ServiceHandle<geo::WireReadout>()->Get();
 
-    std::regex rawdigi_regex("daq.*");
+    std::cout << "---RawDigits Input tags (all)-------------------------------------------" << std::endl;
 
-    // art::SelectorByFunction s([](art::BranchDescription const& p){ return true;}, "pippo");
-    art::SelectorByFunction s(
-        [rawdigi_regex](art::BranchDescription const& p){
-            return std::regex_match(p.inputTag().instance(), rawdigi_regex);
-        },
-        "pippo"
-    );
-
-    std::cout << "---RawDigits Input tags-------------------------------------------------" << std::endl;
-
-    auto input_tags = e.getInputTags<std::vector<raw::RawDigit>>(s);
+    auto input_tags = e.getInputTags<std::vector<raw::RawDigit>>();
     for ( auto i : input_tags) {
         std::cout << i.label() << "   " << i.instance() << "   " << i.process() << std::endl;
     }
 
-    std::cout << "---RawDigits Handles----------------------------------------------------" << std::endl;
+    std::cout << "---RawDigits Handles matching " << rawdigit_tag_.encode() << "---" << std::endl;
 
-    auto vec_h = e.getMany<std::vector<raw::RawDigit>>(s);
+    auto vec_h = lar::util::getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigit_tag_);
 
     for( auto h : vec_h) {
         auto i = h.provenance()->inputTag();
