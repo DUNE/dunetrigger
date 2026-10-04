@@ -1,8 +1,9 @@
 // =============================================================================
-//  main.cpp -- usage demo for VectorFieldsBuffer with ROOT TTree
+//  test_tuple_writing.cxx -- usage demo for VectorFieldsBuffer and
+//  ScalarFieldsBuffer with ROOT TTree
 //
-//  Compile:
-//    g++ -std=c++17 main.cpp $(root-config --cflags --libs) -I/path/to/boost -o soa_demo
+//  Built as the cet_test `test_tuple_writing` (NO_AUTO), run with:
+//    ctest -R test_tuple_writing
 // =============================================================================
 
 #include "../VectorFieldsBuffer.hh"

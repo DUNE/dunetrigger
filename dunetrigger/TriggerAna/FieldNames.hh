@@ -1,7 +1,7 @@
 #ifndef TRG_FIELD_NAMES_HH
 #define TRG_FIELD_NAMES_HH
 // =============================================================================
-//  FieldNames.hpp
+//  FieldNames.hh
 //  Shared field-name reflection used by VectorFieldsBuffer and ScalarFieldsBuffer.
 //
 //  Provides:
