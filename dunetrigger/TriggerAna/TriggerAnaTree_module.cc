@@ -480,7 +480,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
       bool is_tpc_tp_collection = (tp_tool_type.find("TPAlgTPC") == 0);
-      // bool is_pds_tp_collection = (tp_tool_type.find("TPAlgPDS") == 0);
 
       if ( first_event_flag ) {
         info_data["tpg"][tag]["tool"] = tp_tool_type;
@@ -619,14 +618,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
 void dunetrigger::TriggerAnaTree::endJob() {
 
-  art::ServiceHandle<art::TFileService> tfs;
-
   auto n = tfs->make<TNamed>("info", info_data.dump().c_str());
   n->Write();
-
-  // Additional copy 
-  // auto meta_dir = tfs.mkdir('meta');
-  // meta_dir->WriteObject("info", TObjString(info_data.dump().c_str()))
 }
 
 
@@ -655,9 +648,6 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool a
     tpw.make_branches(*tree);
     tpbtw.make_branches(*tree);   // no-op if disabled
     tpassw.make_branches(*tree);
-
-    // }
-    // auto& [curr_tp_writer, curr_tpbt_writer] = it->second;
   }
 }
 
@@ -731,7 +721,6 @@ std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const Tr
                                                                         const MiniBackTracker& bt
                                                                       ) const {
 
-  // art::ServiceHandle<cheat::BackTrackerService> bt_serv;
   auto it = bt_view_offsets.find(tool_type);
   if (it == bt_view_offsets.end()) {
     std::cout << "No offsets found for tool type " << tool_type << ", using 0,0,0" << std::endl;
@@ -815,7 +804,6 @@ void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
                std::back_inserter(bt_ides),
                [](const sim::IDE &ide) { return ide.trackID != 0; });
 
-  // art::ServiceHandle<cheat::BackTrackerService> bt_serv;
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
 
   std::map<int, double> track_numelectrons;

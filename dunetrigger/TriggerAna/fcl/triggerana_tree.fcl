@@ -43,9 +43,6 @@ triggerAnaTree_dumpAll:
       X: -5
     }
   ]
-  # U_window_offset: 0
-  # V_window_offset: 0
-  # X_window_offset: 0
 
   simchannel_tag: "tpcrawdecoder:simpleSC.*"
 }
