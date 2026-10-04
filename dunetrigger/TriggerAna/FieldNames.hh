@@ -26,21 +26,12 @@
 
 // ---------------------------------------------------------------------------
 //  FieldNames<Struct>
-//  Specialisable trait.  Default produces "field_0", "field_1", ...
+//  Specialisable trait.  The primary template only marks the struct as
+//  unregistered; REGISTER_FIELD_NAMES provides the specialisation with get().
 // ---------------------------------------------------------------------------
 template<typename Struct>
 struct FieldNames {
     static constexpr bool registered = false;
-
-    static std::array<std::string, boost::pfr::tuple_size_v<Struct>> get() {
-        return get_impl(std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
-    }
-private:
-    template<std::size_t... Is>
-    static std::array<std::string, sizeof...(Is)>
-    get_impl(std::index_sequence<Is...>) {
-        return { ("field_" + std::to_string(Is))... };
-    }
 };
 
 // ---------------------------------------------------------------------------
@@ -120,7 +111,11 @@ get_field_names() {
         "C++17 mode: field names not registered for this struct. "
         "Use REGISTER_FIELD_NAMES(StructType, field1, ...) "
         "at namespace scope, or compile with -std=c++20.");
-    return FieldNames<Struct>::get();
+    // Guarded so an unregistered struct reports only the static_assert above.
+    if constexpr (FieldNames<Struct>::registered)
+        return FieldNames<Struct>::get();
+    else
+        return {};
 #endif
 }
 

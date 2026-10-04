@@ -10,11 +10,15 @@
 #include "../ScalarFieldsBuffer.hh"
 
 #include <TFile.h>
+#include <TObjArray.h>
 #include <TTree.h>
 #include <TRandom3.h>
 
 #include <iostream>
 #include <cassert>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 // =============================================================================
 //  Domain structs -- plain POD, zero modification needed
@@ -287,6 +291,59 @@ void scalar_demo(const char* filename) {
 }
 
 // =============================================================================
+//  Scalar enable/disable test -- checks the ScalarFieldsBuffer enable flag
+// =============================================================================
+
+/// Throw if @p cond is false.  Unlike assert, this is active in every build type.
+void check(bool cond, const std::string& what) {
+    if (!cond) throw std::runtime_error("scalar_enable_test failed: " + what);
+}
+
+void scalar_enable_test() {
+    std::cout << "\n=== SCALAR ENABLE/DISABLE ===\n";
+
+    constexpr int kN = static_cast<int>(ScalarFieldsBuffer<EventHeader>::kNFields);
+
+    // Enabled by default: one branch per field.
+    ScalarFieldsBuffer<EventHeader> hdr;
+    check(hdr.is_enabled(), "buffer should be enabled by default");
+    check(static_cast<bool>(hdr), "operator bool should be true by default");
+
+    TTree enabled_tree("enabled_tree", "enabled");
+    hdr.make_branches(enabled_tree, "hdr_");
+    check(enabled_tree.GetListOfBranches()->GetEntries() == kN,
+          "enabled buffer should create one branch per field");
+    check(enabled_tree.GetBranch("hdr_run") != nullptr,
+          "enabled buffer should create branch hdr_run");
+
+    // Disabled: make_branches is a no-op.
+    hdr.enable(false);
+    check(!hdr.is_enabled(), "is_enabled() should be false after enable(false)");
+    check(!hdr, "operator bool should be false after enable(false)");
+
+    std::ostringstream summary;
+    hdr.print_summary(summary);
+    check(summary.str().find("enabled=false") != std::string::npos,
+          "print_summary should report enabled=false");
+
+    TTree disabled_tree("disabled_tree", "disabled");
+    hdr.make_branches(disabled_tree, "hdr_");
+    check(disabled_tree.GetListOfBranches()->GetEntries() == 0,
+          "disabled buffer should not create any branches");
+
+    // Re-enabled: branches are created again.
+    hdr.enable();
+    check(hdr.is_enabled(), "is_enabled() should be true after enable()");
+
+    TTree reenabled_tree("reenabled_tree", "re-enabled");
+    hdr.make_branches(reenabled_tree, "hdr_");
+    check(reenabled_tree.GetListOfBranches()->GetEntries() == kN,
+          "re-enabled buffer should create one branch per field");
+
+    std::cout << "  OK\n";
+}
+
+// =============================================================================
 //  main
 // =============================================================================
 int main() {
@@ -297,6 +354,7 @@ int main() {
     read_demo(fname);
     column_access_demo();
     scalar_demo(scalar_fname);
+    scalar_enable_test();
 
     return 0;
 }
