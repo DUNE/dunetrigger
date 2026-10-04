@@ -4,14 +4,14 @@
 # The detector-independent analyzer settings live in triggerana_common.fcl
 
 #include "triggerana_common.fcl"
-#include "triggersim.fcl"
+#include "triggersim_hd_cfg.fcl"
 
 BEGIN_PROLOG
 
 ## Basic example of a physics configuration, better to create your own
 physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
 
-  # basic producers from triggersim.fcl
+  # basic producers from triggersim_hd_cfg.fcl
   producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
   makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
   trigger_paths: [ makers ]

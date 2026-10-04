@@ -1,5 +1,6 @@
-#include "triggersim_common.fcl"
-#include "triggersim_makers_vd.fcl"
+#include "triggersim_common_cfg.fcl"
+#include "trigger_primitive_makers_vd_cfg.fcl"
+#include "trigger_activity_makers_vd_cfg.fcl"
 #include "tools_dune.fcl"
 
 

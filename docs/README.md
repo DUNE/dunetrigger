@@ -42,9 +42,9 @@ In case one desires to use a raw data file for tests, one can find an example ra
 ## Run the LArSoft trigger emulation
 
 The trigger emulation can be run using the fcl files under `dunetrigger/TriggerSim/fcl`. 
-- `triggersim_makers.fcl` is a PROLOG-only configuraiton containing some defaults for the different makers. 
+- `triggersim_makers_hd_cfg.fcl` is a PROLOG-only configuraiton containing some defaults for the different makers. 
 More example configurations can be added.
-- `triggersim.fcl` is another PROLOG-only configuration that contains some example blocks that are imported to all other fcls. 
+- `triggersim_hd_cfg.fcl` is another PROLOG-only configuration that contains some example blocks that are imported to all other fcls. 
 - `triggersim_*_simpleThr_simpleWin_simpleWin.fcl`, where instead of * you will find different geometries, are some configurations to run just the producers that create the TPs, TAs, TCs. 
 The `simpleThr_simpleWin_simpleWin` in the names refer to the algorithms used for the three stages.
 

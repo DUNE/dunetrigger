@@ -1,6 +1,6 @@
 # triggerana_tpc_infodisplay.fcl
 
-#include "triggersim.fcl"
+#include "triggersim_hd_cfg.fcl"
 
 # This configuration is made to run on an input file 
 # coming from protodune data, not simulation.

@@ -1,6 +1,6 @@
 # triggersim_protodunehd_simpleThr_simpleWin_example.fcl
 
-#include "triggersim.fcl"
+#include "triggersim_hd_cfg.fcl"
 
 #include "services_refactored_pdune.fcl"
 # this is not a prolog, it has to go just before the actual config

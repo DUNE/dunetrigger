@@ -1,5 +1,0 @@
-# triggersim_makers.fcl
-
-#include "trigger_primitive_makers_hd_cfg.fcl"
-#include "trigger_activity_makers_hd_cfg.fcl"
-#include "trigger_candidate_makers_hd_cfg.fcl"

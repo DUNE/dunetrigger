@@ -1,4 +1,4 @@
-#include "triggersim.fcl"
+#include "triggersim_hd_cfg.fcl"
 #include "tools_dune.fcl"
 
 process_name: TPGen

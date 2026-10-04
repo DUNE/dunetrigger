@@ -1,4 +1,4 @@
-# triggersim_common.fcl
+# triggersim_common_cfg.fcl
 
 # Detector-independent settings shared by all dunetrigger jobs (HD and VD):
 # services, source and outputs. It deliberately defines no makers, so that

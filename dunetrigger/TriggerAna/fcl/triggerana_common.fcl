@@ -4,7 +4,7 @@
 # services, source, outputs and the generic TriggerAnaTree analyzer.
 # It deliberately defines no makers or producer chains.
 
-#include "triggersim_common.fcl"
+#include "triggersim_common_cfg.fcl"
 
 BEGIN_PROLOG
 

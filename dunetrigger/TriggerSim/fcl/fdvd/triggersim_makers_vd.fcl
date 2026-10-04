@@ -1,4 +1,0 @@
-# triggersim_makers_vd.fcl
-
-#include "trigger_primitive_makers_vd_cfg.fcl"
-#include "trigger_activity_makers_vd_cfg.fcl"

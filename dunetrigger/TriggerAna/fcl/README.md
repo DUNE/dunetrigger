@@ -1,6 +1,6 @@
 TEMPORARY NOTES DURING DEVELOPMENT
 
-These fcls inherit from `triggersim.fcl`, and the three modules `TPC_InfoDisplay`, `TPC_InfoComparator` and `AnaTree` are treated in a "parallel" way.
+These fcls inherit from `triggersim_hd_cfg.fcl`, and the three modules `TPC_InfoDisplay`, `TPC_InfoComparator` and `AnaTree` are treated in a "parallel" way.
 You can always create a fcl with multiple analyzers from different modules running at the same time.
 
 There are no producers run here, therefore these will work on a file produced from a TriggerSim fcl.

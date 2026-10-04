@@ -2,10 +2,13 @@
 
 # This is the high-level configuration file for the HD dunetrigger tools
 # It is imported in almost all HD fcls both of TriggerSim and TriggerAna
-# The detector-independent services/source/outputs live in triggersim_common.fcl
+# The detector-independent services/source/outputs live in triggersim_common_cfg.fcl
 
-#include "triggersim_common.fcl"
-#include "triggersim_makers.fcl"
+#include "triggersim_common_cfg.fcl"
+
+#include "trigger_primitive_makers_hd_cfg.fcl"
+#include "trigger_activity_makers_hd_cfg.fcl"
+#include "trigger_candidate_makers_hd_cfg.fcl"
 
 BEGIN_PROLOG
 
