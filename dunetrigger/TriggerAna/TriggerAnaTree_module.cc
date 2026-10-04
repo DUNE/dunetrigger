@@ -752,6 +752,10 @@ std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const Tr
   }
 
   art::Ptr<sim::SimChannel> sim_channel = bt.findSimChannelPtr(tp.channel);
+  // No SimChannel for this channel (e.g. a noise-only TP): nothing to match.
+  if (sim_channel.isNull()) {
+    return {};
+  }
   std::vector<sim::IDE> matched_ides = sim_channel->TrackIDsAndEnergies(sample_start, sample_end);
   return matched_ides;
 }

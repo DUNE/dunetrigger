@@ -36,7 +36,7 @@ MiniBackTracker::findSimChannelPtr(raw::ChannelID_t channel) const
 
 
 //------------------------------------------------------------------------------
-std::vector<double>
+inline std::vector<double>
 MiniBackTracker::simIDEsToXYZ(std::vector<sim::IDE> const& ides) const
 {
   std::vector<double> xyz(3, 0.0);
