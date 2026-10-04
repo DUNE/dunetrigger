@@ -528,11 +528,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
         e.getMany<std::vector<TriggerActivityData>>();
 
-    std::cout << "TriggerActivityData tag regex: " << this->ta_tag_regex << std::endl;
     std::regex ta_regex(this->ta_tag_regex);
 
     for (auto const &taHandle : taHandles) {
-      std::cout << "Processing TriggerActivityData collection with tag: " << taHandle.provenance()->inputTag().encode() << std::endl;
 
       art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
       std::string tag = taHandle.provenance()->inputTag().encode();
