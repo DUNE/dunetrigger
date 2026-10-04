@@ -34,7 +34,6 @@ tcmakerTPC_ADCSimpleWindow:
     ta_tag: "tamakerTPC"
     algorithm: "TriggerCandidateMakerADCSimpleWindowPlugin"
     algconfig: @local::tcconfig_simplewindow
-    multiplicity: 1 # keep?
     verbosity: 1
   }
 

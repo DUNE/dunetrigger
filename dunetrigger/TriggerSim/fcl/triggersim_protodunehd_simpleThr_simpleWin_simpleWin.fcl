@@ -18,4 +18,3 @@ source:     @local::source_triggersim
 outputs:    @local::outputs_triggersim
 
 physics:  @local::physics_triggersim_simpleThr_simpleWin_simpleWin
-producers.tamakerTPC.nmodules: @local::nmodules_protodunehd

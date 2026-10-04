@@ -16,4 +16,3 @@ source:     @local::source_triggersim
 outputs:    @local::outputs_triggersim
 
 physics:    @local::physics_triggersim_simpleThr_simpleWin_simpleWin
-physics.producers.tamakerTPC.nmodules: @local::nmodules_dune10kt_1x2x2

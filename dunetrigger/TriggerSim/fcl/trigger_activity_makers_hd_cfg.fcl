@@ -45,26 +45,17 @@ tamakerTPC_SWIFT:
   verbosity: 0
 }
 
-# drop these?
-nmodules_protodunehd: 4     # protoDUNE HD 2024
-nmodules_dune10kt_1x2x6: 12 # 12 APAs in the middle
-nmodules_dune10kt_1x2x2: 4  # 4 APAs in the middle
-
 tamakerTPC_ADCSimpleWindow:
   {
     module_type: TriggerActivityMakerTPC
     tp_tag: "tpmakerTPC"
     # simple window, see trgdataformats/include/trgdataformats/TriggerActivityData.hpp
     algorithm: "TriggerActivityMakerADCSimpleWindowPlugin" # another basic option is TriggerActivityMakerChannelAdjacencyPlugin
-    algconfig_plane0: @local::ta_algconfig_simplewindow # induction 1
-    algconfig_plane1: @local::ta_algconfig_simplewindow # induction 2
-    algconfig_plane2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
-    algconfig_plane3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
-    nmodules: @local::nmodules_protodunehd # just a default
-    mergecollwires: true
+    algconfig_rop0: @local::ta_algconfig_simplewindow # induction 1
+    algconfig_rop1: @local::ta_algconfig_simplewindow # induction 2
+    algconfig_rop2: @local::ta_algconfig_simplewindow # collection facing one side (readout differentiates)
+    algconfig_rop3: @local::ta_algconfig_simplewindow # collection facing the other side (readout differentiates)
     flush: true
-    prescale: 1
-    print_tp_info: false
     verbosity: 1
   }
 
