@@ -302,7 +302,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
     auto simchannels_many = e.getMany<std::vector<sim::SimChannel>>(re_inputtags_selector);
     if (simchannels_many.empty()) {
-      throw std::runtime_error("Found no std::vector<raw::RawDigit> collections matching "+simchannel_tag.instance()+"_"+simchannel_tag.label());
+      throw cet::exception("TriggerAnaTree")
+          << "Found no std::vector<sim::SimChannel> collections matching simchannel_tag \""
+          << simchannel_tag.encode() << "\"";
     }
 
     // TODO: alternative implementation that does not rely on `wcls_main.structs.process_apa_index`
