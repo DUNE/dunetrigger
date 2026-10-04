@@ -1,5 +1,5 @@
 
-#include "triggerana_tree.fcl"
+#include "triggerana_common.fcl"
 #include "tools_dune.fcl"
 
 process_name: TriggerTreeMaker
