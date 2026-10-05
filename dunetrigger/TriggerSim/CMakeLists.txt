@@ -23,6 +23,7 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   cetlib_except::cetlib_except
   ROOT::Tree
   triggeralgs_module
+  dunetrigger_vendor_lardata_ArtDataHelper
 )
 
 install_fhicl()
