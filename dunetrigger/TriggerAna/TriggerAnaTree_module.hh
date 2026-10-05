@@ -5,9 +5,15 @@
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "art_root_io/TFileService.h"
-#include "detdataformats/trigger/TriggerActivityData.hpp"
-#include "detdataformats/trigger/TriggerCandidateData.hpp"
-#include "detdataformats/trigger/TriggerPrimitive.hpp"
+// #include "detdataformats/trigger/TriggerActivityData.hpp"
+// #include "detdataformats/trigger/TriggerCandidateData.hpp"
+// #include "detdataformats/trigger/TriggerPrimitive.hpp"
+
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerPrimitive.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidateData.hpp"
+
+
 #include "fhiclcpp/ParameterSet.h"
 #include "larcore/Geometry/WireReadout.h"
 #include "lardataobj/Simulation/SimChannel.h"
@@ -263,8 +269,8 @@ private:
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
   std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
 
-  std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
-  std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
+  std::map<std::string, triggeralgs::TriggerActivityData> ta_bufs;
+  std::map<std::string, triggeralgs::TriggerCandidateData> tc_bufs;
   std::map<int, double> track_en_sums;
   std::map<int, double> track_electron_sums;
   // map for tracking true visible energy deposited on each apa rop (for ROI studies).

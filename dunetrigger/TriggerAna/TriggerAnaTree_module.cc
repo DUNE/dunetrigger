@@ -19,9 +19,6 @@
 #include "cetlib_except/exception.h"
 #include "fhiclcpp/ParameterSet.h"
 
-#include "detdataformats/trigger/TriggerActivityData.hpp"
-#include "detdataformats/trigger/TriggerCandidateData.hpp"
-
 #include "larcore/Geometry/Geometry.h"
 #include "larcore/Geometry/WireReadout.h"
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
@@ -56,9 +53,9 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
-using dunedaq::trgdataformats::TriggerPrimitive;
-using dunedaq::trgdataformats::TriggerActivityData;
-using dunedaq::trgdataformats::TriggerCandidateData;
+using triggeralgs::TriggerPrimitive;
+using triggeralgs::TriggerActivityData;
+using triggeralgs::TriggerCandidateData;
 
 dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, 
@@ -527,12 +524,15 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   evsummary_buf->simides_count = simides_count;
 
   if (dump_ta) {
+    std::cout << "Dumping TriggerActivityData for event " << e.event() << std::endl;
     std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
         e.getMany<std::vector<TriggerActivityData>>();
 
+    std::cout << "TriggerActivityData tag regex: " << this->ta_tag_regex << std::endl;
     std::regex ta_regex(this->ta_tag_regex);
 
     for (auto const &taHandle : taHandles) {
+      std::cout << "Processing TriggerActivityData collection with tag: " << taHandle.provenance()->inputTag().encode() << std::endl;
 
       art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
       std::string tag = taHandle.provenance()->inputTag().encode();

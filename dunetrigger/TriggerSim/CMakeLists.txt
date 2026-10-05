@@ -22,6 +22,7 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   cetlib::cetlib
   cetlib_except::cetlib_except
   ROOT::Tree
+  dunetrigger::DataProducts
   triggeralgs_module
   dunetrigger_vendor_lardata_ArtDataHelper
 )

@@ -14,16 +14,25 @@
 
 namespace dunedaq::trgdataformats::exp {
 
+
+
 struct TriggerActivityData
 {
-  enum class Type
+
+  // Storage types of the TriggerActivityData::type / ::algorithm fields.
+  // The wire/in-memory representation is a bare uint8_t; the semantic values are
+  // the Type / Algorithm enums below.
+  using type_t = uint16_t;      // NOLINT(build/unsigned)
+  using algorithm_t = uint16_t; // NOLINT(build/unsigned)
+
+  enum class Type : uint8_t
   {
     kUnknown = 0,
     kTPC = 1,
     kPDS = 2,
   };
 
-  enum class Algorithm
+  enum class Algorithm : uint8_t
   {
     kUnknown = 0,
     kSupernova = 1,
@@ -37,6 +46,7 @@ struct TriggerActivityData
     kBundle = 9,
     kChannelAdjacency = 10,
   };
+  
 
   // Update this version number if there are any changes to the in-memory representation of this class!
   static constexpr version_t s_trigger_activity_version = 1; // NOLINT(build/unsigned)
@@ -52,8 +62,8 @@ struct TriggerActivityData
   uint64_t adc_integral = 0;                 // NOLINT(build/unsigned)
   uint16_t adc_peak = 0;                     // NOLINT(build/unsigned)
   detid_t detid = INVALID_DETID;             // NOLINT(build/unsigned)
-  Type type = Type::kUnknown;                // NOLINT(build/unsigned)
-  Algorithm algorithm = Algorithm::kUnknown; // NOLINT(build/unsigned)
+  type_t type = static_cast<type_t>(Type::kUnknown);                // NOLINT(build/unsigned)
+  algorithm_t algorithm = static_cast<algorithm_t>(Algorithm::kUnknown); // NOLINT(build/unsigned)
 };
 
 } // namespace dunedaq::trgdataformats

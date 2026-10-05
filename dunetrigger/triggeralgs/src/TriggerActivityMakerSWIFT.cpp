@@ -134,7 +134,7 @@ namespace triggeralgs {
     std::vector<uint8_t> visited(N, 0);
     float eps2 = eps * eps; //clustering radius
 
-    for (int i = 0; i < N; ++i) {
+    for (size_t i = 0; i < N; ++i) {
       if (visited[i]) continue;
       visited[i] = 1;
 
@@ -142,7 +142,7 @@ namespace triggeralgs {
       const float zi = points[i].z;
       const float ti = points[i].t;
 
-      for (int j = 0; j < N; ++j) {
+      for (size_t j = 0; j < N; ++j) {
         float dz = points[j].z - zi;
         float dt = points[j].t - ti;
         if (dz*dz + dt*dt <= eps2) neigh.push_back(j);
@@ -165,7 +165,7 @@ namespace triggeralgs {
           std::vector<int> neigh2;
           const float zj = points[j].z;
           const float tj = points[j].t;
-          for (int m = 0; m < N; ++m) {
+          for (size_t m = 0; m < N; ++m) {
             float dz = points[m].z - zj;
             float dt = points[m].t - tj;
             if (dz*dz + dt*dt <= eps2) neigh2.push_back(m);
@@ -188,7 +188,7 @@ namespace triggeralgs {
 
     // once clusters are formed, calculate the energies
     std::vector<uint64_t> cluster_sums(cluster_id, 0);
-    for (int i = 0; i < N; ++i) {
+    for (size_t i = 0; i < N; ++i) {
       if (labels[i] >= 0) cluster_sums[labels[i]] += points[i].adc;
     }
     //return dominant cluster energy in window
@@ -207,8 +207,8 @@ namespace triggeralgs {
 
     const TriggerPrimitive& first_tp = m_current_ta.inputs.front();
     m_current_ta.detid = first_tp.detid;
-    m_current_ta.type = TriggerActivity::Type::kTPC;
-    m_current_ta.algorithm = TriggerActivity::Algorithm::kUnknown;
+    m_current_ta.type = static_cast<uint8_t>(dunedaq::trgdataformats::exp::TriggerActivityData::Type::kTPC);
+    m_current_ta.algorithm = static_cast<uint8_t>(dunedaq::trgdataformats::exp::TriggerActivityData::Algorithm::kUnknown);
 
 
     triggeralgs::channel_t min_ch = first_tp.channel;
