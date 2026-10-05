@@ -16,8 +16,8 @@
 #include "art_root_io/TFileService.h"
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Utilities/InputTag.h"
+#include "cetlib_except/exception.h"
 #include "fhiclcpp/ParameterSet.h"
-#include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include "detdataformats/trigger/TriggerActivityData.hpp"
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
@@ -32,8 +32,7 @@
 
 #include <regex>
 
-#include <TDirectory.h>
-#include <TFile.h>
+#include <TNamed.h>
 #include <TTree.h>
 
 
@@ -42,13 +41,17 @@
 #include "TriggerAnaTree_module.hh"
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
-#include "larsim/MCCheater/BackTrackerService.h"
+#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
-
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <set>
+
+#include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/set_algorithm.hpp>
+
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -56,10 +59,6 @@ using json = nlohmann::json;
 using dunedaq::trgdataformats::TriggerPrimitive;
 using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
-
-
-
-
 
 dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, 
@@ -73,10 +72,10 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     dump_mctruths(p.get<bool>("dump_mctruths", true)),
     dump_mcparticles(p.get<bool>("dump_mcparticles", true)),
     dump_simides(p.get<bool>("dump_simides", true)),
-    simchannel_tag(p.get<std::string>("simchannel_tag", "tpcrawdecoder:simpleSC"))
-// More initializers here.
+    simchannel_tag(p.get<art::InputTag>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 {
-  // FIXME: rename `window_offsets` to `bt_window_offsets`
+  consumesMany<std::vector<sim::SimChannel>>();
+
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
   for (const auto &offset : offsets) {
     bt_view_offsets[offset.get<std::string>("tool_type")] = {offset.get<int>("U"), offset.get<int>("V"),
@@ -137,8 +136,9 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   info_data["detector_properties"]["electrons_to_adc"] = detProp.ElectronsToADC();
   info_data["detector_properties"]["electron_lifetime"] = detProp.ElectronLifetime();
   info_data["detector_properties"]["readout_window"] = detProp.ReadOutWindowSize();
-  info_data["detector_properties"]["drift_velocity"] = detProp.DriftVelocity();
+  info_data["detector_properties"]["drift_velocity"] = detProp.DriftVelocity();  
 
+  // Backtracking
   if (tp_backtracking) {
     for (const auto &[tool, offsets] : bt_view_offsets) {
       info_data["backtracker"][tool]["offset_U"] = offsets[0];
@@ -168,6 +168,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   track_en_sums.clear();
   track_electron_sums.clear();
   simide_tpc_energy_map.clear();
+  bt_map.clear();
 
   // Clear all TP writers
   for( auto& [tag, tpw] : tp_writers) {
@@ -284,60 +285,103 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   }
 
   {
-    auto simchannels = e.getValidHandle<std::vector<sim::SimChannel>>(simchannel_tag);
 
-    for (const sim::SimChannel &sc : *simchannels) {
+    auto simchannels_many =
+        lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
+    if (simchannels_many.empty()) {
+      throw cet::exception("TriggerAnaTree")
+          << "Found no std::vector<sim::SimChannel> collections matching simchannel_tag \""
+          << simchannel_tag.encode() << "\"";
+    }
 
-      ChannelInfo chinfo = get_channel_info_for_channel(geom, sc.Channel());
-      sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
+    // TODO: alternative implementation that does not rely on `wcls_main.structs.process_apa_index`
+    // Get the number of TPCSets from the wiregeometry
+    // Loop from 0 to NTPCSets
+    // getValidHandle("simpleSC{i_tpcset}")
+    // if doesn't exist -> handle
+    // else continue as it is
 
-      for (const sim::TDCIDE &tdcide : tdcidemap) {
-        for (const sim::IDE& ide : tdcide.second) {
+    for ( auto simchannels : simchannels_many ) {
 
-          track_en_sums[ide.trackID] += ide.energy;
-          track_electron_sums[ide.trackID] += ide.numElectrons;
+      std::set<int> tpcset_ids;
 
-          // save visible energy only in collection views (for ROI studies)
-          if (chinfo.view == geo::kW) {
-            simide_tpc_energy_map[chinfo].energy  += ide.energy;
-            simide_tpc_energy_map[chinfo].num_electrons += ide.numElectrons;
-          }
+      for (const sim::SimChannel &sc : *simchannels) {
 
-          // populate per-plane visible energy counters
-          if (chinfo.rop_id == 0) {
-            evsummary_buf->tot_visible_energy_rop0 += ide.energy;
-            evsummary_buf->tot_numelectrons_rop0 += ide.numElectrons;
-          }
-          else if (chinfo.rop_id == 1) {
-            evsummary_buf->tot_visible_energy_rop1 += ide.energy;
-            evsummary_buf->tot_numelectrons_rop1 += ide.numElectrons;
-          }
-          else if (chinfo.rop_id == 2) {
-            evsummary_buf->tot_visible_energy_rop2 += ide.energy;
-            evsummary_buf->tot_numelectrons_rop2 += ide.numElectrons;
-          }
-          else if (chinfo.rop_id == 3) {
-            evsummary_buf->tot_visible_energy_rop3 += ide.energy;
-            evsummary_buf->tot_numelectrons_rop3 += ide.numElectrons;
-          }
+        
+        ChannelInfo chinfo = get_channel_info_for_channel(geom, sc.Channel());
+        // Track what TPC elements are in this collection
+        tpcset_ids.insert(chinfo.tpcset_id);
+        
+        
+        sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
 
-          if (dump_simides) {
-            simide_buffer->channel = sc.Channel();
-            simide_buffer->timestamp = tdcide.first;
-            simide_buffer->numelectrons = ide.numElectrons;
-            simide_buffer->energy = ide.energy;
-            simide_buffer->x = ide.x;
-            simide_buffer->y = ide.y;
-            simide_buffer->z = ide.z;
-            simide_buffer->trackID = ide.trackID;
-            simide_buffer->origTrackID = ide.origTrackID;
-            simide_buffer->readout_plane_id = chinfo.rop_id;
-            simide_buffer->readout_view = chinfo.view;
-            simide_buffer->detector_element = chinfo.tpcset_id;
-            simide_buffer.push_back();
-            ++simides_count;
+        for (const sim::TDCIDE &tdcide : tdcidemap) {
+          for (const sim::IDE& ide : tdcide.second) {
+
+            track_en_sums[ide.trackID] += ide.energy;
+            track_electron_sums[ide.trackID] += ide.numElectrons;
+
+            // save visible energy only in collection views (for ROI studies)
+            if (chinfo.view == geo::kW) {
+              simide_tpc_energy_map[chinfo].energy  += ide.energy;
+              simide_tpc_energy_map[chinfo].num_electrons += ide.numElectrons;
+            }
+
+            // populate per-plane visible energy counters
+            if (chinfo.rop_id == 0) {
+              evsummary_buf->tot_visible_energy_rop0 += ide.energy;
+              evsummary_buf->tot_numelectrons_rop0 += ide.numElectrons;
+            }
+            else if (chinfo.rop_id == 1) {
+              evsummary_buf->tot_visible_energy_rop1 += ide.energy;
+              evsummary_buf->tot_numelectrons_rop1 += ide.numElectrons;
+            }
+            else if (chinfo.rop_id == 2) {
+              evsummary_buf->tot_visible_energy_rop2 += ide.energy;
+              evsummary_buf->tot_numelectrons_rop2 += ide.numElectrons;
+            }
+            else if (chinfo.rop_id == 3) {
+              evsummary_buf->tot_visible_energy_rop3 += ide.energy;
+              evsummary_buf->tot_numelectrons_rop3 += ide.numElectrons;
+            }
+
+            if (dump_simides) {
+              simide_buffer->channel = sc.Channel();
+              simide_buffer->timestamp = tdcide.first;
+              simide_buffer->numelectrons = ide.numElectrons;
+              simide_buffer->energy = ide.energy;
+              simide_buffer->x = ide.x;
+              simide_buffer->y = ide.y;
+              simide_buffer->z = ide.z;
+              simide_buffer->trackID = ide.trackID;
+              simide_buffer->origTrackID = ide.origTrackID;
+              simide_buffer->readout_plane_id = chinfo.rop_id;
+              simide_buffer->readout_view = chinfo.view;
+              simide_buffer->detector_element = chinfo.tpcset_id;
+              simide_buffer.push_back();
+              ++simides_count;
+            }
           }
         }
+      }
+
+      // Each TPCSet must be covered by a single SimChannel collection,
+      // otherwise backtracking would silently use only the last one.
+      std::vector<int> overlap;
+      boost::set_intersection(tpcset_ids, bt_map | boost::adaptors::map_keys,
+                              std::back_inserter(overlap));
+      if (!overlap.empty()) {
+        cet::exception ex("TriggerAnaTree");
+        ex << "SimChannel collection " << simchannels.provenance()->inputTag().encode()
+           << " covers TPCSets already provided by another collection:";
+        for (int tpcset_id : overlap) ex << " " << tpcset_id;
+        ex << ". Check that simchannel_tag matches only one set of SimChannel collections.";
+        throw ex;
+      }
+
+      auto mtb = std::make_shared<MiniBackTracker>(simchannels);
+      for (int tpcset_id : tpcset_ids) {
+        bt_map[tpcset_id] = mtb;
       }
     }
 
@@ -425,7 +469,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
       std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
       bool is_tpc_tp_collection = (tp_tool_type.find("TPAlgTPC") == 0);
-      // bool is_pds_tp_collection = (tp_tool_type.find("TPAlgPDS") == 0);
 
       if ( first_event_flag ) {
         info_data["tpg"][tag]["tool"] = tp_tool_type;
@@ -456,8 +499,19 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
         // TPC TP backtracking
         if (tpbt_writer and is_tpc_tp_collection) {
-          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type);
-          tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name);
+          // SimChannel writers are dense, so every simulated TPCSet must be in
+          // bt_map: a missing one means simchannel_tag misses some collections.
+          auto bt_it = bt_map.find(chinfo.tpcset_id);
+          if (bt_it == bt_map.end()) {
+            throw cet::exception("TriggerAnaTree")
+                << "No SimChannel collection covers TPCSet " << chinfo.tpcset_id
+                << " (TP on channel " << tp.channel << " from " << tag
+                << "). Check that simchannel_tag \"" << simchannel_tag.encode()
+                << "\" matches the SimChannels of every TPCSet with TPs.";
+          }
+          auto& mbt = bt_it->second;
+          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type, *mbt);
+          tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
           tpbt_writer.push_back();
         }
       }
@@ -563,7 +617,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
 void dunetrigger::TriggerAnaTree::endJob() {
 
-  art::ServiceHandle<art::TFileService> tfs;
   auto n = tfs->make<TNamed>("info", info_data.dump().c_str());
   n->Write();
 }
@@ -594,9 +647,6 @@ void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool a
     tpw.make_branches(*tree);
     tpbtw.make_branches(*tree);   // no-op if disabled
     tpassw.make_branches(*tree);
-
-    // }
-    // auto& [curr_tp_writer, curr_tpbt_writer] = it->second;
   }
 }
 
@@ -666,9 +716,10 @@ dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_chann
 }
 
 std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const TriggerPrimitiveRow &tp,
-                                                                        const std::string &tool_type) const {
+                                                                        const std::string &tool_type,
+                                                                        const MiniBackTracker& bt
+                                                                      ) const {
 
-  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
   auto it = bt_view_offsets.find(tool_type);
   if (it == bt_view_offsets.end()) {
     std::cout << "No offsets found for tool type " << tool_type << ", using 0,0,0" << std::endl;
@@ -698,7 +749,12 @@ std::vector<sim::IDE> dunetrigger::TriggerAnaTree::match_simides_to_tps(const Tr
   if (sample_start > sample_end) {
     throw std::runtime_error("Invalid sample range");
   }
-  art::Ptr<sim::SimChannel> sim_channel = bt_serv->FindSimChannel(tp.channel);
+
+  art::Ptr<sim::SimChannel> sim_channel = bt.findSimChannelPtr(tp.channel);
+  // No SimChannel for this channel (e.g. a noise-only TP): nothing to match.
+  if (sim_channel.isNull()) {
+    return {};
+  }
   std::vector<sim::IDE> matched_ides = sim_channel->TrackIDsAndEnergies(sample_start, sample_end);
   return matched_ides;
 }
@@ -724,7 +780,8 @@ void dunetrigger::TriggerPrimitiveRow::from_tp(const dunedaq::trgdataformats::Tr
 void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
     const std::vector<sim::IDE> &ides,
     const std::unordered_map<int, int> &trkid_to_truth_block,
-    const std::unordered_map<int, std::string> &truth_id_to_gen) {
+    const std::unordered_map<int, std::string> &truth_id_to_gen,
+    const MiniBackTracker& bt) {
   bt_primary_track_id = INVALID_NUM;
   bt_primary_track_numelectron_frac = INVALID_NUM;
   bt_primary_track_energy_frac = INVALID_NUM;
@@ -750,7 +807,6 @@ void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
                std::back_inserter(bt_ides),
                [](const sim::IDE &ide) { return ide.trackID != 0; });
 
-  art::ServiceHandle<cheat::BackTrackerService> bt_serv;
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv;
 
   std::map<int, double> track_numelectrons;
@@ -784,8 +840,8 @@ void dunetrigger::TriggerPrimitiveBacktrackingRow::populate_backtracking_info(
   bt_primary_track_numelectron_frac = track_numelectrons[bt_primary_track_id] / bt_numelectrons;
   bt_primary_track_energy_frac = track_energies[bt_primary_track_id] / bt_edep;
 
-  std::vector<double> bt_position = bt_serv->SimIDEsToXYZ(ides);
-  std::vector<double> primary_bt_position = bt_serv->SimIDEsToXYZ(primary_ides);
+  std::vector<double> bt_position = bt.simIDEsToXYZ(ides);
+  std::vector<double> primary_bt_position = bt.simIDEsToXYZ(primary_ides);
 
   bt_x = bt_position[0];
   bt_y = bt_position[1];

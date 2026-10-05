@@ -7,7 +7,7 @@ BEGIN_PROLOG
 
 tpmakerTPC_ADCSimpleThreshold_vd_5sigma: {
   module_type: TriggerPrimitiveMakerTPC
-  rawdigit_tag: "tpcrawdecoder:daq"
+  rawdigit_tag: "tpcrawdecoder:daq.*"
   tpalg: {
     tool_type: TPAlgTPCSimpleThreshold
     threshold_tpg_plane0: 45

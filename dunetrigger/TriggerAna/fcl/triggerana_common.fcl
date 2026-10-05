@@ -48,7 +48,7 @@ triggerAnaTree_dumpAll:
     }
   ]
 
-  simchannel_tag: "tpcrawdecoder:simpleSC"
+  simchannel_tag: "tpcrawdecoder:simpleSC.*"
 }
 
 END_PROLOG

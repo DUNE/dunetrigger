@@ -24,9 +24,9 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   cetlib::cetlib
   cetlib_except::cetlib_except
   ROOT::Tree
-  larsim::MCCheater_BackTrackerService_service
   larsim::MCCheater_ParticleInventoryService_service
   triggeralgs_module
+  dunetrigger_vendor_lardata_ArtDataHelper
 )
 
 
