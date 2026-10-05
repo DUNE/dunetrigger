@@ -6,6 +6,8 @@ add_subdirectory(triggeralgs)
 add_subdirectory(TriggerSim)
 add_subdirectory(TriggerAna)
 add_subdirectory(TriggerTools)
+add_subdirectory(DataProducts)
+
 
 install_headers()
 install_source()

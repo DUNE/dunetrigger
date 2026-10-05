@@ -25,8 +25,8 @@
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidate.hpp"
 #include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidateFactory.hpp"
 
-#include "detdataformats/trigger/TriggerActivityData.hpp"
-#include "detdataformats/trigger/TriggerCandidateData.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/triggeralgs/include/triggeralgs/TriggerCandidateData.hpp"
 
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
@@ -39,7 +39,7 @@
 
 namespace triggeralgs {
 struct ExtTriggerActivity : public TriggerActivity {
-  ExtTriggerActivity(const dunedaq::trgdataformats::TriggerActivityData &data) {
+  ExtTriggerActivity(const triggeralgs::TriggerActivityData &data) {
     this->time_start = data.time_start;
     this->time_end = data.time_end;
     this->time_peak = data.time_peak;
@@ -91,18 +91,18 @@ private:
 
   int verbosity;
 
-  typedef std::pair<size_t, dunedaq::trgdataformats::TriggerActivityData>
+  typedef std::pair<size_t, triggeralgs::TriggerActivityData>
       TriggerActivityIdx;
 
   static bool compareTriggerActivity(
-      const dunedaq::trgdataformats::TriggerActivityData &ta1,
-      const dunedaq::trgdataformats::TriggerActivityData &ta2) {
+      const triggeralgs::TriggerActivityData &ta1,
+      const triggeralgs::TriggerActivityData &ta2) {
     return (ta1.time_start < ta2.time_start);
   }
 
   static bool
-  isTAEqual(const dunedaq::trgdataformats::TriggerActivityData &ta1,
-            const dunedaq::trgdataformats::TriggerActivityData &ta2) {
+  isTAEqual(const triggeralgs::TriggerActivityData &ta1,
+            const triggeralgs::TriggerActivityData &ta2) {
     return (ta1.detid == ta2.detid && ta1.channel_peak == ta2.channel_peak &&
             ta1.time_peak == ta2.time_peak &&
             ta1.adc_integral == ta2.adc_integral);
@@ -115,8 +115,8 @@ dunetrigger::TriggerCandidateMakerTPC::TriggerCandidateMakerTPC(
       algname(p.get<std::string>("algorithm")),
       algconfig(p.get<fhicl::ParameterSet>("algconfig")),
       verbosity(p.get<int>("verbosity", 0)) {
-  using dunedaq::trgdataformats::TriggerActivityData;
-  using dunedaq::trgdataformats::TriggerCandidateData;
+  using triggeralgs::TriggerActivityData;
+  using triggeralgs::TriggerCandidateData;
 
   consumes<std::vector<TriggerActivityData>>(ta_tag);
   produces<std::vector<TriggerCandidateData>>();
@@ -148,8 +148,8 @@ void dunetrigger::TriggerCandidateMakerTPC::beginJob() {
 }
 
 void dunetrigger::TriggerCandidateMakerTPC::produce(art::Event &e) {
-  using dunedaq::trgdataformats::TriggerActivityData;
-  using dunedaq::trgdataformats::TriggerCandidateData;
+  using triggeralgs::TriggerActivityData;
+  using triggeralgs::TriggerCandidateData;
 
   // get a handle on the TAs and dereference it
   auto ta_handle = e.getValidHandle<std::vector<TriggerActivityData>>(ta_tag);
@@ -191,7 +191,7 @@ void dunetrigger::TriggerCandidateMakerTPC::produce(art::Event &e) {
 
   // process the input TAs
   for (const auto &ta : input_tas) {
-    dunedaq::trgdataformats::TriggerActivityData ta_data = ta.second;
+    triggeralgs::TriggerActivityData ta_data = ta.second;
     triggeralgs::ExtTriggerActivity ta_ext(ta_data);
     (*alg)(ta_ext, produced_tcs);
   }
