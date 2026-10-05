@@ -1,6 +1,10 @@
-# triggerana_tree.fcl
+# triggerana_common.fcl
 
-#include "triggersim.fcl"
+# Detector-independent settings shared by all TriggerAna jobs (HD and VD):
+# services, source, outputs and the generic TriggerAnaTree analyzer.
+# It deliberately defines no makers or producer chains.
+
+#include "triggersim_common_cfg.fcl"
 
 BEGIN_PROLOG
 
@@ -43,35 +47,8 @@ triggerAnaTree_dumpAll:
       X: -5
     }
   ]
-  # U_window_offset: 0
-  # V_window_offset: 0
-  # X_window_offset: 0
 
   simchannel_tag: "tpcrawdecoder:simpleSC"
 }
-
-## Basic example of a physics configuration, better to create your own
-physics_triggerana_tree_simpleThr_simpleWin_simpleWin: {
-
-  # basic producers from triggersim.fcl
-  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
-  makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
-  trigger_paths: [ makers ]
-
-  # This is just a basic example that reads the trigger information from the TPC and dumps it to a tree
-  # (equivalent to a reco2 step, if reco1 is generating trigger data from rawDigits).
-
-  analyzers: {
-    triggerAna: @local::triggerAnaTree_dumpAll
-  }
-
-  ana:            [ triggerAna ]
-  stream1:        [ out1 ]
-  end_paths:      [ stream1, ana ]
-}
-
-physics_triggerana_simpleThr_absRS: @local::physics_triggerana_tree_simpleThr_simpleWin_simpleWin
-physics_triggerana_simpleThr_absRS.producers: @local::producers_triggersim_simpleThr_absRS
-physics_triggerana_simpleThr_absRS.makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
 
 END_PROLOG

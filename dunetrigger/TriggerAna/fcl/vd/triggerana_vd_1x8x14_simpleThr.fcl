@@ -1,0 +1,35 @@
+# triggerana_vd_1x8x14_simpleThr.fcl
+
+#include "triggerana_common.fcl"
+# tools_dune.fcl is not prolog-only: include it after all the prolog files
+#include "tools_dune.fcl"
+
+process_name: TriggerTreeMaker
+
+services: {
+  @table::services_triggerana_tree
+  @table::dunefdvd_1x8x14_3view_30deg_reco_services
+}
+services.TFileService.fileName: "trigtree_%ifb.root"
+
+source: @local::source_triggerana_tree
+
+physics: {
+  analyzers: {
+    triggerAna: {
+      @table::triggerAnaTree_dumpAll
+      tp_tag_regex: ".*SimpleThreshold.*"
+      bt_window_offsets: [
+        {
+          tool_type: "TPAlgTPCSimpleThreshold"
+          U: 8
+          V: 1
+          X: -7
+        }
+      ]
+      dump_simides: true
+    }
+  }
+  ana:       [ triggerAna ]
+  end_paths: [ ana ]
+}

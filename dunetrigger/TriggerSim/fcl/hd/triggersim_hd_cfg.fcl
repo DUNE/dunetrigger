@@ -1,0 +1,43 @@
+# triggersim_hd_cfg.fcl
+
+# This is the high-level configuration file for the HD dunetrigger tools.
+# It is included by almost all HD fcls, both in TriggerSim and TriggerAna.
+# The detector-independent services/source/outputs live in triggersim_common_cfg.fcl
+
+#include "triggersim_common_cfg.fcl"
+
+#include "trigger_primitive_makers_hd_cfg.fcl"
+#include "trigger_activity_makers_hd_cfg.fcl"
+#include "trigger_candidate_makers_hd_cfg.fcl"
+
+BEGIN_PROLOG
+
+# Producer chains. Each chain picks the module labels and sets every
+# consumer's input tag (tp_tag/ta_tag) to match, so the maker prologs stay
+# label-agnostic. makers_* is the matching trigger path.
+
+# the simplest configurations are here as default
+producers_triggersim_simpleThr_simpleWin_simpleWin: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold
+  tamakerTPCSimpleWindow: { @table::tamakerTPC_ADCSimpleWindow tp_tag: "tpmakerTPCSimpleThreshold" }
+  tcmakerTPCSimpleWindow: { @table::tcmakerTPC_ADCSimpleWindow ta_tag: "tamakerTPCSimpleWindow" }
+}
+makers_triggersim_simpleThr_simpleWin_simpleWin: [ tpmakerTPCSimpleThreshold, tamakerTPCSimpleWindow, tcmakerTPCSimpleWindow ]
+
+# Run both AbsRS and SimpleThreshold TPG
+producers_triggersim_simpleThr_absRS: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold
+  tpmakerTPCAbsRunningSum: @local::tpmakerTPC_ABSRunningSum
+}
+makers_triggersim_simpleThr_absRS: [ tpmakerTPCSimpleThreshold, tpmakerTPCAbsRunningSum ]
+
+# this does not have analyzers! Add them
+physics_triggersim_simpleThr_simpleWin_simpleWin: {
+  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
+  makers: @local::makers_triggersim_simpleThr_simpleWin_simpleWin
+  trigger_paths: [ makers ]
+  stream1: [ out1 ]
+  end_paths: [ stream1 ]
+}
+
+END_PROLOG
