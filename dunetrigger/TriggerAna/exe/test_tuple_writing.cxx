@@ -21,8 +21,11 @@
 #include <string>
 
 // =============================================================================
-//  Domain structs -- plain POD, zero modification needed
+//  Domain structs -- plain POD.  They only need to live in namespace dunetrigger
+//  for C++17 field-name registration.
 // =============================================================================
+
+namespace dunetrigger {
 
 struct Track {
     float  x;        // vertex x  [cm]
@@ -45,8 +48,8 @@ struct Cluster {
 };
 
 // Register field names for C++17 mode (no-op in C++20, names come from PFR).
-REGISTER_FIELD_NAMES(Track,   x, y, z, px, py, pz, chi2, n_hits, pdg_id, is_primary)
-REGISTER_FIELD_NAMES(Cluster, energy, eta, phi, n_cells)
+REGISTER_FIELD_NAMES(Track,   x, y, z, px, py, pz, chi2, n_hits, pdg_id, is_primary);
+REGISTER_FIELD_NAMES(Cluster, energy, eta, phi, n_cells);
 
 // Per-event scalar struct -- one instance saved per TTree::Fill()
 struct EventHeader {
@@ -58,7 +61,13 @@ struct EventHeader {
     bool   is_mc;
 };
 
-REGISTER_FIELD_NAMES(EventHeader, run, event_id, n_tracks, n_clusters, beam_energy, is_mc)
+REGISTER_FIELD_NAMES(EventHeader, run, event_id, n_tracks, n_clusters, beam_energy, is_mc);
+
+} // namespace dunetrigger
+
+using dunetrigger::Track;
+using dunetrigger::Cluster;
+using dunetrigger::EventHeader;
 
 // =============================================================================
 //  Helpers
