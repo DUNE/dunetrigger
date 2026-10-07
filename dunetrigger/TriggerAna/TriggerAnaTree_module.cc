@@ -74,6 +74,8 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     dump_simides(p.get<bool>("dump_simides", true)),
     simchannel_tag(p.get<art::InputTag>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 {
+  need_truth_maps = dump_mctruths || dump_mcparticles || (dump_tp && tp_backtracking);
+
   consumesMany<std::vector<sim::SimChannel>>();
 
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
@@ -168,6 +170,9 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   track_electron_sums.clear();
   simide_tpc_energy_map.clear();
   bt_map.clear();
+  mctruth_handles.clear();
+  trkId_to_truthBlockId.clear();
+  truthBlockId_to_generator_name.clear();
 
   // Clear all TP writers
   for( auto& [tag, tpw] : tp_writers) {
@@ -183,6 +188,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
 
+  if (need_truth_maps) build_truth_maps(e);
   if (dump_mctruths) fillMCTruth(e);
   fillSimChannels(e, geom);
   fillSimIDESummary();
@@ -196,32 +202,17 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   first_event_flag = false;
 }
 
-// fillMCTruth
+// build_truth_maps
 // Reads:    simb::MCTruth collections (all), MCTruth->MCParticle assns from largeant
-// Produces: trkId_to_truthBlockId, truthBlockId_to_generator_name,
-//           info_data["mctruth_blockid_map"], evsummary_buf (mctruths_count,
-//           mcneutrinos_count), mctruth_buffer/mctruth_tree,
-//           mcneutrino_buffer/mcneutrino_tree
+// Produces: mctruth_handles, trkId_to_truthBlockId, truthBlockId_to_generator_name,
+//           info_data["mctruth_blockid_map"], evsummary_buf (mctruths_count, mcneutrinos_count)
 // Requires: nothing
-void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
-  std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruthHandles = e.getMany<std::vector<simb::MCTruth>>();
+void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
+  mctruth_handles = e.getMany<std::vector<simb::MCTruth>>();
 
   int truth_block_counter = 0;
-  trkId_to_truthBlockId.clear();
-  truthBlockId_to_generator_name.clear();
 
-  size_t mctruth_collection_size{0};
-  for (auto const &mctruthHandle : mctruthHandles) {
-    for (size_t i = 0; i < mctruthHandle->size(); i++) {
-      const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
-      mctruth_collection_size += truthblock.NParticles();
-    }
-  }
-
-
-  mctruth_buffer.reserve(mctruth_collection_size);
-
-  for (auto const &mctruthHandle : mctruthHandles) {
+  for (auto const &mctruthHandle : mctruth_handles) {
     // Extract the generator name from the truth handle input label
     std::string generator_name = mctruthHandle.provenance()->inputTag().label();
     // Store generator name for TP backtracking
@@ -236,6 +227,42 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
       for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
         trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
       }
+      if (truthblock.NeutrinoSet()) {
+        ++evsummary_buf->mcneutrinos_count;
+      }
+      evsummary_buf->mctruths_count += truthblock.NParticles();
+      truth_block_counter++;
+    }
+  }
+
+  json j_mctruth_gen_map(truthBlockId_to_generator_name);
+  info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
+}
+
+// fillMCTruth
+// Reads:    mctruth_handles
+// Produces: mctruth_buffer/mctruth_tree, mcneutrino_buffer/mcneutrino_tree
+// Requires: mctruth_handles (build_truth_maps)
+void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
+  int truth_block_counter = 0;
+
+  size_t mctruth_collection_size{0};
+  for (auto const &mctruthHandle : mctruth_handles) {
+    for (size_t i = 0; i < mctruthHandle->size(); i++) {
+      const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
+      mctruth_collection_size += truthblock.NParticles();
+    }
+  }
+
+
+  mctruth_buffer.reserve(mctruth_collection_size);
+
+  for (auto const &mctruthHandle : mctruth_handles) {
+    // Extract the generator name from the truth handle input label
+    std::string generator_name = mctruthHandle.provenance()->inputTag().label();
+
+    for (size_t i = 0; i < mctruthHandle->size(); i++) {
+      const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
       if (truthblock.NeutrinoSet()) {
 
         const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
@@ -259,8 +286,6 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
         mcneutrino_buffer->theta = mcneutrino.Theta();
         mcneutrino_buffer.push_back();
 
-
-        ++evsummary_buf->mcneutrinos_count;
       }
 
       int nparticles = truthblock.NParticles();
@@ -288,8 +313,6 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
         mctruth_buffer->kinetic_energy = part.E() - part.Mass();
 
         mctruth_buffer.push_back();
-
-        ++evsummary_buf->mctruths_count;
       }
       truth_block_counter++;
     }
@@ -298,10 +321,6 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
   mcneutrino_tree->Fill();
 
   mctruth_tree->Fill();
-
-  json j_mctruth_gen_map(truthBlockId_to_generator_name);
-  info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
-
 }
 
 // fillSimChannels
@@ -442,7 +461,7 @@ void dunetrigger::TriggerAnaTree::fillSimIDESummary() {
 // Reads:    simb::MCParticle collections (all)
 // Produces: evsummary_buf (mcparticles_count), mcparticle_buffer/mcparticle_tree
 // Requires: track_en_sums, track_electron_sums (fillSimChannels);
-//           trkId_to_truthBlockId (fillMCTruth, only if dump_mctruths)
+//           trkId_to_truthBlockId (build_truth_maps)
 void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 
   std::vector<art::Handle<std::vector<simb::MCParticle>>> mcparticleHandles =
@@ -459,7 +478,10 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
       mcparticle_buffer->status_code = part.StatusCode();
       mcparticle_buffer->g4_track_id = part.TrackId();
       mcparticle_buffer->mother = part.Mother();
-      mcparticle_buffer->truth_block_id = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
+      int truth_block_id = -1;
+      auto it = trkId_to_truthBlockId.find(part.TrackId());
+      if (it != trkId_to_truthBlockId.end()) truth_block_id = it->second;
+      mcparticle_buffer->truth_block_id = truth_block_id;
       mcparticle_buffer->x = part.Vx();
       mcparticle_buffer->y = part.Vy();
       mcparticle_buffer->z = part.Vz();
@@ -492,7 +514,7 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 // Produces: TP trees (tree_map/tp_writers "tp/<tag>"), info_data["tpg"]
 //           (first event only)
 // Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
-//           truthBlockId_to_generator_name (fillMCTruth) -- only if tp_backtracking
+//           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = e.getMany<std::vector<TriggerPrimitive>>();
 
@@ -512,6 +534,12 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
     std::string tp_tool_type = tp_params.get<std::string>("tool_type");
 
     bool is_tpc_tp_collection = (tp_tool_type.find("TPAlgTPC") == 0);
+    if (!is_tpc_tp_collection) {
+      throw cet::exception("TriggerAnaTree")
+        << "TP collection " << tag << " was produced by tool " << tp_tool_type
+        << ", which is not a TPC TP algorithm. Only TPAlgTPC* collections are "
+           "supported; adjust tp_tag_regex to exclude it.";
+    }
 
     if ( first_event_flag ) {
       info_data["tpg"][tag]["tool"] = tp_tool_type;
@@ -536,7 +564,7 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
       auto chinfo = fill_tp_row(tp_writer, tp, geom);
 
       // TPC TP backtracking
-      if (tpbt_writer and is_tpc_tp_collection) {
+      if (tpbt_writer) {
         // SimChannel writers are dense, so every simulated TPCSet must be in
         // bt_map: a missing one means simchannel_tag misses some collections.
         auto bt_it = bt_map.find(chinfo.tpcset_id);
