@@ -178,6 +178,13 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   for( auto& [tag, tpw] : tp_writers) {
     std::apply([](auto&... w) { (w.clear(), ...); }, tpw);
   }
+  // Clear all TA and TC writers
+  for( auto& [tag, taw] : ta_writers) {
+    std::apply([](auto&... w) { (w.clear(), ...); }, taw);
+  }
+  for( auto& [tag, tcw] : tc_writers) {
+    tcw.clear();
+  }
 
   // Counters are incremented by the fill* functions below
   evsummary_buf->mctruths_count = 0;
@@ -607,6 +614,7 @@ void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutG
     }
     std::string map_tag = "ta/" + tag;
     make_ta_tree_if_needed(tag);
+    auto& [ta_writer, taass_writer] = ta_writers[map_tag];
     for (size_t i = 0; i < taHandle->size(); i++) {
       const TriggerActivityData &ta = *art::Ptr<TriggerActivityData>(taHandle, i);
       if (assns.isValid()) {
@@ -630,16 +638,16 @@ void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutG
         }
         tp_tree->Fill();
       }
-      ta_bufs[map_tag] = ta;
-      tree_map[map_tag]->Fill();
+      ta_writer.push_back(ta);
     }
+    tree_map[map_tag]->Fill();
   }
 }
 
 // fillTCs
 // Reads:    TriggerCandidateData collections matching tc_tag_regex,
 //           TC->TriggerActivityData assns
-// Produces: TC trees ("tc/<tag>"), inTCs TA trees ("ta/<tag>inTCs"), m_tc_number
+// Produces: TC trees ("tc/<tag>"), inTCs TA trees ("ta/<tag>inTCs")
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
   std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
@@ -655,6 +663,7 @@ void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
     }
     std::string map_tag = "tc/" + tag;
     make_tc_tree_if_needed(tag);
+    auto& tc_writer = tc_writers[map_tag];
     for (size_t i = 0; i < tcHandle->size(); i++) {
       const TriggerCandidateData &tc = *art::Ptr<TriggerCandidateData>(tcHandle, i);
       if (assns.isValid()) {
@@ -663,16 +672,20 @@ void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
             art::InputTag(tc_input_tag.label(), tc_input_tag.instance() + "inTCs", tc_input_tag.process()).encode();
         std::string map_taInTcTag = "ta/" + taInTcTag;
         make_ta_tree_if_needed(taInTcTag, true);
-        m_tc_number = i;
+        auto& [ta_writer, taass_writer] = ta_writers[map_taInTcTag];
         std::vector<art::Ptr<TriggerActivityData>> matched_tas = assns.at(i);
         for (art::Ptr<TriggerActivityData> ta : matched_tas) {
-          ta_bufs[map_taInTcTag] = *ta;
-          tree_map[map_taInTcTag]->Fill();
+          ta_writer.push_back(*ta);
+          taass_writer->tc_number = i;
+          taass_writer.push_back();
         }
+        tree_map[map_taInTcTag]->Fill();
+        ta_writer.clear();
+        taass_writer.clear();
       }
-      tc_bufs[map_tag] = tc;
-      tree_map[map_tag]->Fill();
+      tc_writer.push_back(tc);
     }
+    tree_map[map_tag]->Fill();
   }
 }
 
@@ -738,24 +751,13 @@ void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool a
     std::replace(tree_name.begin(), tree_name.end(), ':', '_');
     TTree *tree = ta_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
-    TriggerActivityData &ta = ta_bufs[map_tag];
 
-    tree->Branch("version", &ta.version);
-    tree->Branch("time_start", &ta.time_start);
-    tree->Branch("time_end", &ta.time_end);
-    tree->Branch("time_peak", &ta.time_peak);
-    tree->Branch("time_activity", &ta.time_activity);
-    tree->Branch("channel_start", &ta.channel_start);
-    tree->Branch("channel_end", &ta.channel_end);
-    tree->Branch("channel_peak", &ta.channel_peak);
-    tree->Branch("adc_integral", &ta.adc_integral);
-    tree->Branch("adc_peak", &ta.adc_peak);
-    tree->Branch("detid", &ta.detid);
-    // HACK: assuming enums are ints here
-    tree->Branch("type", &ta.type);
-    tree->Branch("algorithm", &ta.algorithm);
-    if (assn)
-      tree->Branch("TCnumber", &m_tc_number);
+    ev_sbuf.make_branches(*tree);
+
+    auto& [taw, taassw] = ta_writers[map_tag];
+    taassw.enable(assn);
+    taw.make_branches(*tree);
+    taassw.make_branches(*tree);   // no-op if disabled
   }
 }
 
@@ -770,15 +772,10 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
     std::replace(tree_name.begin(), tree_name.end(), ':', '_');
     TTree *tree = tc_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
     tree_map[map_tag] = tree;
-    TriggerCandidateData &tc = tc_bufs[map_tag];
 
-    tree->Branch("version", &tc.version);
-    tree->Branch("time_start", &tc.time_start);
-    tree->Branch("time_end", &tc.time_end);
-    tree->Branch("time_candidate", &tc.time_candidate);
-    tree->Branch("detid", &tc.detid);
-    tree->Branch("type", &tc.type);
-    tree->Branch("algorithm", &tc.algorithm);
+    ev_sbuf.make_branches(*tree);
+
+    tc_writers[map_tag].make_branches(*tree);
   }
 }
 
