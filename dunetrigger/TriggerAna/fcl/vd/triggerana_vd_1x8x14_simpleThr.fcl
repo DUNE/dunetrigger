@@ -28,6 +28,8 @@ physics: {
         }
       ]
       dump_simides: true
+      dump_ta: false
+      dump_tc: false
     }
   }
   ana:       [ triggerAna ]
