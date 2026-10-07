@@ -12,6 +12,7 @@
 #include "larcore/Geometry/WireReadout.h"
 #include "lardataobj/Simulation/SimChannel.h"
 
+#include "FieldNames.hh"
 #include "MiniBackTracker.hh"
 #include "ScalarFieldsBuffer.hh"
 #include "VectorFieldsBuffer.hh"
@@ -50,6 +51,11 @@ struct EventMetaData {
   int subrun = INVALID_NUM;
 };
 
+REGISTER_FIELD_NAMES(EventMetaData,
+                            event,
+                            run,
+                            subrun);
+
 //-----------------------------------------------------------------------
 struct EventSummaryData {
   int mctruths_count = INVALID_NUM;
@@ -65,6 +71,20 @@ struct EventSummaryData {
   double tot_numelectrons_rop2 = 0.;
   double tot_numelectrons_rop3 = 0.;
 };
+
+REGISTER_FIELD_NAMES(EventSummaryData,
+                            mctruths_count,
+                            mcparticles_count,
+                            mcneutrinos_count,
+                            simides_count,
+                            tot_visible_energy_rop0,
+                            tot_visible_energy_rop1,
+                            tot_visible_energy_rop2,
+                            tot_visible_energy_rop3,
+                            tot_numelectrons_rop0,
+                            tot_numelectrons_rop1,
+                            tot_numelectrons_rop2,
+                            tot_numelectrons_rop3);
 
 //-----------------------------------------------------------------------
 struct MCTruthRow {
@@ -84,9 +104,25 @@ struct MCTruthRow {
   double p = 0.;
   double energy = 0.;
   double kinetic_energy = 0.;
-
-  MCTruthRow() = default;
 };
+
+REGISTER_FIELD_NAMES(MCTruthRow,
+                         pdg,
+                         process,
+                         status_code,
+                         block_id,
+                         truth_track_id,
+                         generator_name,
+                         x,
+                         y,
+                         z,
+                         t,
+                         px,
+                         py,
+                         pz,
+                         p,
+                         energy,
+                         kinetic_energy);
 
 //-----------------------------------------------------------------------
 struct MCNeutrinoRow {
@@ -106,9 +142,25 @@ struct MCNeutrinoRow {
   double qsqr = 0.;
   double pt = 0.;
   double theta = 0.;
-
-  MCNeutrinoRow() = default;
 };
+
+REGISTER_FIELD_NAMES(MCNeutrinoRow,
+                         block_id,
+                         generator_name,
+                         nupdg,
+                         leptonpdg,
+                         ccnc,
+                         mode,
+                         interactionType,
+                         target,
+                         hitnuc,
+                         hitquark,
+                         w,
+                         x,
+                         y,
+                         qsqr,
+                         pt,
+                         theta);
 
 //-----------------------------------------------------------------------
 struct MCParticleRow {
@@ -136,9 +188,33 @@ struct MCParticleRow {
   double shower_edep = 0.;
   double shower_numelectrons = 0.;
   std::string process = INVALID_STR;
-
-  MCParticleRow() = default;
 };
+
+REGISTER_FIELD_NAMES(MCParticleRow,
+                         pdg,
+                         generator_name,
+                         status_code,
+                         g4_track_id,
+                         mother,
+                         truth_block_id,
+                         x,
+                         y,
+                         z,
+                         t,
+                         end_x,
+                         end_y,
+                         end_z,
+                         end_t,
+                         px,
+                         py,
+                         pz,
+                         energy,
+                         kinetic_energy,
+                         edep,
+                         numelectrons,
+                         shower_edep,
+                         shower_numelectrons,
+                         process);
 
 //-----------------------------------------------------------------------
 struct SimIDERow {
@@ -154,17 +230,31 @@ struct SimIDERow {
   float readout_plane_id = 0.f;
   float readout_view = 0.f;
   float detector_element = 0.f;
-
-  SimIDERow() = default;
 };
+
+REGISTER_FIELD_NAMES(SimIDERow,
+                         channel,
+                         timestamp,
+                         numelectrons,
+                         energy,
+                         x,
+                         y,
+                         z,
+                         trackID,
+                         origTrackID,
+                         readout_plane_id,
+                         readout_view,
+                         detector_element);
 
 //-----------------------------------------------------------------------
 struct SimIDESummaryRow {
   double total_visible_energy = 0.;
   double total_numelectrons = 0.;
-
-  SimIDESummaryRow() = default;
 };
+
+REGISTER_FIELD_NAMES(SimIDESummaryRow,
+                         total_visible_energy,
+                         total_numelectrons);
 
 
 //-----------------------------------------------------------------------
@@ -173,9 +263,13 @@ struct SimIDETPCRow {
   int detector_element = INVALID_NUM;
   double energy_per_tpc = 0.;
   double numelectrons_per_tpc = 0.;
-
-  SimIDETPCRow() = default;
 };
+
+REGISTER_FIELD_NAMES(SimIDETPCRow,
+                         readout_plane_id,
+                         detector_element,
+                         energy_per_tpc,
+                         numelectrons_per_tpc);
 
 //-----------------------------------------------------------------------
 struct TriggerPrimitiveRow {
@@ -193,9 +287,21 @@ struct TriggerPrimitiveRow {
   unsigned int TPCSetID = 0;
 
   void from_tp(const dunedaq::trgdataformats::TriggerPrimitive &tp);
-
-  TriggerPrimitiveRow() = default;
 };
+
+REGISTER_FIELD_NAMES(TriggerPrimitiveRow,
+                         version,
+                         flag,
+                         detid,
+                         channel,
+                         samples_over_threshold,
+                         time_start,
+                         samples_to_peak,
+                         adc_integral,
+                         adc_peak,
+                         readout_plane_id,
+                         readout_view,
+                         TPCSetID);
 
 //-----------------------------------------------------------------------
 struct TriggerPrimitiveBacktrackingRow {
@@ -218,16 +324,30 @@ struct TriggerPrimitiveBacktrackingRow {
                                   const std::unordered_map<int, std::string> &truth_id_to_gen,
                                   const MiniBackTracker& bt
                                 );
-
-  TriggerPrimitiveBacktrackingRow() = default;
 };
+
+REGISTER_FIELD_NAMES(TriggerPrimitiveBacktrackingRow,
+                         bt_primary_track_id,
+                         bt_primary_track_numelectron_frac,
+                         bt_primary_track_energy_frac,
+                         bt_edep,
+                         bt_numelectrons,
+                         bt_x,
+                         bt_y,
+                         bt_z,
+                         bt_primary_x,
+                         bt_primary_y,
+                         bt_primary_z,
+                         bt_truth_block_id,
+                         bt_generator_name);
 
 //-----------------------------------------------------------------------
 struct TriggerPrimitiveAssociationRow {
   int ta_number = INVALID_NUM;
-
-  TriggerPrimitiveAssociationRow() = default;
 };
+
+REGISTER_FIELD_NAMES(TriggerPrimitiveAssociationRow,
+                         ta_number);
 
 
 //-----------------------------------------------------------------------

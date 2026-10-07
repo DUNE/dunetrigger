@@ -12,7 +12,7 @@
  * @par Field-name reflection
  * In C++20 mode (Boost >= 1.80) real struct field names are used for
  * branch names (e.g. `trk_px`).  In C++17 mode use
- * `REGISTER_FIELD_NAMES(StructType, field1, ...)` at namespace scope.
+ * `REGISTER_FIELD_NAMES(StructType, field1, ...)` inside the struct's namespace.
  *
  */
 
@@ -124,12 +124,14 @@ public:
 
     /// @brief Move constructor — re-initialises ptrs_ to point at the new arrays_.
     VectorFieldsBuffer(VectorFieldsBuffer&& o) noexcept
-        : arrays_(std::move(o.arrays_))
+        : enabled_(o.enabled_)
+        , arrays_(std::move(o.arrays_))
         , ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
     /// @brief Move assignment — re-initialises ptrs_ to point at the new arrays_.
     VectorFieldsBuffer& operator=(VectorFieldsBuffer&& o) noexcept {
         if (this != &o) {
+            enabled_ = o.enabled_;
             arrays_ = std::move(o.arrays_);
             ptrs_   = make_ptrs(std::make_index_sequence<kNFields>{});
         }
@@ -151,8 +153,8 @@ public:
 
     /// @brief Activate or deactivate write operations.
     /// @param e @c true to enable (default), @c false to disable.
-    /// @note When disabled, make_branches(), push_back(), commit_and_reset(),
-    ///       and clear() are all no-ops.  Must be called before make_branches().
+    /// @note When disabled, make_branches(), push_back() and commit_and_reset()
+    ///       are no-ops (clear() always works).    Must be called before make_branches().
     void enable(bool e = true) noexcept { enabled_ = e; }
 
     /// @return @c true if write operations are active.
@@ -224,12 +226,9 @@ public:
     }
 
     /// @brief Empty storage and zero-initialise the staging row.
-    /// @note No-op when disabled.
     void clear() {
-        if (enabled_) {
-            std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
-            reset_row();
-        }
+        std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
+        reset_row();
     }
 
     // ------------------------------------------------------------------
