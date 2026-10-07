@@ -183,7 +183,7 @@ private:
 
   // JSON metadata
   nlohmann::json info_data;
-  bool first_event_flag;
+  bool mctruth_map_warned_ = false;
 };
 
 } // namespace dunetrigger

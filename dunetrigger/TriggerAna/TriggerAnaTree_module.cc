@@ -162,7 +162,7 @@ void dunetrigger::TriggerAnaTree::beginJob() {
     }
   }
 
-  first_event_flag = true;
+  if (dump_tp) info_data["tpg"] = json::object();
 }
 
 void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
@@ -212,14 +212,13 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   if (dump_tc) fillTCs(e);
 
   summary_tree->Fill();
-
-  first_event_flag = false;
 }
 
 // build_truth_maps
 // Reads:    simb::MCTruth collections (all), MCTruth->MCParticle assns from largeant
 // Produces: mctruth_handles, trkId_to_truthBlockId, truthBlockId_to_generator_name,
-//           info_data["mctruth_blockid_map"], evsummary_buf (mctruths_count, mcneutrinos_count)
+//           info_data["mctruth_blockid_map"] (first event only; warns once if a later event differs),
+//           evsummary_buf (mctruths_count, mcneutrinos_count)
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
   mctruth_handles = e.getMany<std::vector<simb::MCTruth>>();
@@ -250,7 +249,13 @@ void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
   }
 
   json j_mctruth_gen_map(truthBlockId_to_generator_name);
-  info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
+  if (!info_data.contains("mctruth_blockid_map")) {
+    info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
+  } else if (info_data["mctruth_blockid_map"] != j_mctruth_gen_map && !mctruth_map_warned_) {
+    mf::LogWarning("TriggerAnaTree") << "mctruth_blockid_map differs from the one recorded on the first event; "
+                                        "the info metadata keeps the first one.";
+    mctruth_map_warned_ = true;
+  }
 }
 
 // fillMCTruth
@@ -525,16 +530,12 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 
 // fillTPs
 // Reads:    TriggerPrimitive collections matching tp_tag_regex
-// Produces: TP trees (tp_trees[<tag>]), info_data["tpg"]
-//           (first event only)
+// Produces: TP trees (tp_trees[<tag>]), info_data["tpg"][<tag>]
+//           (written when the TP tree for <tag> is created)
 // Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
 //           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = e.getMany<std::vector<TriggerPrimitive>>();
-
-  if ( first_event_flag ) {
-    info_data["tpg"] = {};
-  }
 
   std::regex tp_regex(this->tp_tag_regex);
   for (auto const &tpHandle : tpHandles) {
@@ -555,19 +556,15 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
            "supported; adjust tp_tag_regex to exclude it.";
     }
 
-    if ( first_event_flag ) {
-      info_data["tpg"][tag]["tool"] = tp_tool_type;
-
-      if (is_tpc_tp_collection) {
-        info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
-        info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
-        info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
-      }
-    }
-
-
+    const bool created = (tp_trees.find(tag) == tp_trees.end());
     auto &ts = get_or_create_tree(tp_trees, "TriggerPrimitives", "Trigger Primitive Trees",
                                   tag, tp_backtracking, false);
+    if (created) {
+      info_data["tpg"][tag]["tool"] = tp_tool_type;
+      info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
+      info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
+      info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+    }
 
     for (const TriggerPrimitive &tp : *tpHandle) {
       auto chinfo = fill_tp_row(ts.writers, tp, geom);
