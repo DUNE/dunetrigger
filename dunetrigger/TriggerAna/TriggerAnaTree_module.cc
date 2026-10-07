@@ -151,7 +151,6 @@ void dunetrigger::TriggerAnaTree::beginJob() {
 }
 
 void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
-  
 
   ev_sbuf.reset();
   ev_sbuf->run = e.run();
@@ -175,219 +174,251 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     std::apply([](auto&... w) { (w.clear(), ...); }, tpw);
   }
 
-  size_t mctruths_count = 0;
-  size_t mcneutrinos_count = 0;
-  size_t mcparticles_count = 0;
-  size_t simides_count = 0;
+  // Counters are incremented by the fill* functions below
+  evsummary_buf->mctruths_count = 0;
+  evsummary_buf->mcparticles_count = 0;
+  evsummary_buf->mcneutrinos_count = 0;
+  evsummary_buf->simides_count = 0;
 
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
 
-  if (dump_mctruths) {
-    std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruthHandles = e.getMany<std::vector<simb::MCTruth>>();
+  if (dump_mctruths) fillMCTruth(e);
+  fillSimChannels(e, geom);
+  fillSimIDESummary();
+  if (dump_mcparticles) fillMCParticles(e);
+  if (dump_tp) fillTPs(e, geom);
+  if (dump_ta) fillTAs(e, geom);
+  if (dump_tc) fillTCs(e);
 
-    int truth_block_counter = 0;
-    trkId_to_truthBlockId.clear();
-    truthBlockId_to_generator_name.clear();
+  summary_tree->Fill();
 
-    size_t mctruth_collection_size{0};
-    for (auto const &mctruthHandle : mctruthHandles) {
-      for (size_t i = 0; i < mctruthHandle->size(); i++) {
-        const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
-        mctruth_collection_size += truthblock.NParticles();
-      }
+  first_event_flag = false;
+}
+
+// fillMCTruth
+// Reads:    simb::MCTruth collections (all), MCTruth->MCParticle assns from largeant
+// Produces: trkId_to_truthBlockId, truthBlockId_to_generator_name,
+//           info_data["mctruth_blockid_map"], evsummary_buf (mctruths_count,
+//           mcneutrinos_count), mctruth_buffer/mctruth_tree,
+//           mcneutrino_buffer/mcneutrino_tree
+// Requires: nothing
+void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
+  std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruthHandles = e.getMany<std::vector<simb::MCTruth>>();
+
+  int truth_block_counter = 0;
+  trkId_to_truthBlockId.clear();
+  truthBlockId_to_generator_name.clear();
+
+  size_t mctruth_collection_size{0};
+  for (auto const &mctruthHandle : mctruthHandles) {
+    for (size_t i = 0; i < mctruthHandle->size(); i++) {
+      const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
+      mctruth_collection_size += truthblock.NParticles();
     }
-
-
-    mctruth_buffer.reserve(mctruth_collection_size);
-
-    for (auto const &mctruthHandle : mctruthHandles) {
-      // Extract the generator name from the truth handle input label
-      std::string generator_name = mctruthHandle.provenance()->inputTag().label();
-      // Store generator name for TP backtracking
-      truthBlockId_to_generator_name[truth_block_counter] = generator_name;
-
-      // NOTE: here we are making an assumption that the geant4 stage's process
-      // name is largeant. This should be safe mostly.
-      art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
-      for (size_t i = 0; i < mctruthHandle->size(); i++) {
-        const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
-        std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
-        for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
-          trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
-        }
-        if (truthblock.NeutrinoSet()) {
-
-          const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
-          
-
-          mcneutrino_buffer->block_id = truth_block_counter;
-          mcneutrino_buffer->generator_name = generator_name;
-          mcneutrino_buffer->nupdg = mcneutrino.Nu().PdgCode();
-          mcneutrino_buffer->leptonpdg = mcneutrino.Lepton().PdgCode();
-          mcneutrino_buffer->ccnc = mcneutrino.CCNC();
-          mcneutrino_buffer->mode = mcneutrino.Mode();
-          mcneutrino_buffer->interactionType = mcneutrino.InteractionType();
-          mcneutrino_buffer->target = mcneutrino.Target();
-          mcneutrino_buffer->hitnuc = mcneutrino.HitNuc();
-          mcneutrino_buffer->hitquark = mcneutrino.HitQuark();
-          mcneutrino_buffer->w = mcneutrino.W();
-          mcneutrino_buffer->x = mcneutrino.X();
-          mcneutrino_buffer->y = mcneutrino.Y();
-          mcneutrino_buffer->qsqr = mcneutrino.QSqr();
-          mcneutrino_buffer->pt = mcneutrino.Pt();
-          mcneutrino_buffer->theta = mcneutrino.Theta();
-          mcneutrino_buffer.push_back();
-
-
-          ++mcneutrinos_count;
-        }
-
-        int nparticles = truthblock.NParticles();
-
-
-        for (int ipart = 0; ipart < nparticles; ipart++) {
-
-          const simb::MCParticle &part = truthblock.GetParticle(ipart);
-
-          mctruth_buffer->block_id = truth_block_counter;
-          mctruth_buffer->pdg = part.PdgCode();
-          mctruth_buffer->generator_name = generator_name;
-          mctruth_buffer->status_code = part.StatusCode();
-          mctruth_buffer->process = part.Process();
-          mctruth_buffer->truth_track_id = part.TrackId();
-          mctruth_buffer->x = part.Vx();
-          mctruth_buffer->y = part.Vy();
-          mctruth_buffer->z = part.Vz();
-          mctruth_buffer->t = part.T();
-          mctruth_buffer->px = part.Px();
-          mctruth_buffer->py = part.Py();
-          mctruth_buffer->pz = part.Pz();
-          mctruth_buffer->p = part.P();
-          mctruth_buffer->energy = part.E();
-          mctruth_buffer->kinetic_energy = part.E() - part.Mass();
-
-          mctruth_buffer.push_back();
-
-          ++mctruths_count;
-        }
-        truth_block_counter++;
-      }
-    }
-
-    mcneutrino_tree->Fill();
-
-    mctruth_tree->Fill();
-
-    json j_mctruth_gen_map(truthBlockId_to_generator_name);
-    info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
-
   }
 
-  {
 
-    auto simchannels_many =
-        lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
-    if (simchannels_many.empty()) {
-      throw cet::exception("TriggerAnaTree")
-          << "Found no std::vector<sim::SimChannel> collections matching simchannel_tag \""
-          << simchannel_tag.encode() << "\"";
+  mctruth_buffer.reserve(mctruth_collection_size);
+
+  for (auto const &mctruthHandle : mctruthHandles) {
+    // Extract the generator name from the truth handle input label
+    std::string generator_name = mctruthHandle.provenance()->inputTag().label();
+    // Store generator name for TP backtracking
+    truthBlockId_to_generator_name[truth_block_counter] = generator_name;
+
+    // NOTE: here we are making an assumption that the geant4 stage's process
+    // name is largeant. This should be safe mostly.
+    art::FindManyP<simb::MCParticle> assns(mctruthHandle, e, "largeant");
+    for (size_t i = 0; i < mctruthHandle->size(); i++) {
+      const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
+      std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
+      for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
+        trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
+      }
+      if (truthblock.NeutrinoSet()) {
+
+        const simb::MCNeutrino &mcneutrino = truthblock.GetNeutrino();
+        
+
+        mcneutrino_buffer->block_id = truth_block_counter;
+        mcneutrino_buffer->generator_name = generator_name;
+        mcneutrino_buffer->nupdg = mcneutrino.Nu().PdgCode();
+        mcneutrino_buffer->leptonpdg = mcneutrino.Lepton().PdgCode();
+        mcneutrino_buffer->ccnc = mcneutrino.CCNC();
+        mcneutrino_buffer->mode = mcneutrino.Mode();
+        mcneutrino_buffer->interactionType = mcneutrino.InteractionType();
+        mcneutrino_buffer->target = mcneutrino.Target();
+        mcneutrino_buffer->hitnuc = mcneutrino.HitNuc();
+        mcneutrino_buffer->hitquark = mcneutrino.HitQuark();
+        mcneutrino_buffer->w = mcneutrino.W();
+        mcneutrino_buffer->x = mcneutrino.X();
+        mcneutrino_buffer->y = mcneutrino.Y();
+        mcneutrino_buffer->qsqr = mcneutrino.QSqr();
+        mcneutrino_buffer->pt = mcneutrino.Pt();
+        mcneutrino_buffer->theta = mcneutrino.Theta();
+        mcneutrino_buffer.push_back();
+
+
+        ++evsummary_buf->mcneutrinos_count;
+      }
+
+      int nparticles = truthblock.NParticles();
+
+
+      for (int ipart = 0; ipart < nparticles; ipart++) {
+
+        const simb::MCParticle &part = truthblock.GetParticle(ipart);
+
+        mctruth_buffer->block_id = truth_block_counter;
+        mctruth_buffer->pdg = part.PdgCode();
+        mctruth_buffer->generator_name = generator_name;
+        mctruth_buffer->status_code = part.StatusCode();
+        mctruth_buffer->process = part.Process();
+        mctruth_buffer->truth_track_id = part.TrackId();
+        mctruth_buffer->x = part.Vx();
+        mctruth_buffer->y = part.Vy();
+        mctruth_buffer->z = part.Vz();
+        mctruth_buffer->t = part.T();
+        mctruth_buffer->px = part.Px();
+        mctruth_buffer->py = part.Py();
+        mctruth_buffer->pz = part.Pz();
+        mctruth_buffer->p = part.P();
+        mctruth_buffer->energy = part.E();
+        mctruth_buffer->kinetic_energy = part.E() - part.Mass();
+
+        mctruth_buffer.push_back();
+
+        ++evsummary_buf->mctruths_count;
+      }
+      truth_block_counter++;
     }
+  }
 
-    // TODO: alternative implementation that does not rely on `wcls_main.structs.process_apa_index`
-    // Get the number of TPCSets from the wiregeometry
-    // Loop from 0 to NTPCSets
-    // getValidHandle("simpleSC{i_tpcset}")
-    // if doesn't exist -> handle
-    // else continue as it is
+  mcneutrino_tree->Fill();
 
-    for ( auto simchannels : simchannels_many ) {
+  mctruth_tree->Fill();
 
-      std::set<int> tpcset_ids;
+  json j_mctruth_gen_map(truthBlockId_to_generator_name);
+  info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
 
-      for (const sim::SimChannel &sc : *simchannels) {
+}
 
-        
-        ChannelInfo chinfo = get_channel_info_for_channel(geom, sc.Channel());
-        // Track what TPC elements are in this collection
-        tpcset_ids.insert(chinfo.tpcset_id);
-        
-        
-        sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
+// fillSimChannels
+// Reads:    sim::SimChannel collections matching simchannel_tag
+// Produces: track_en_sums, track_electron_sums, simide_tpc_energy_map,
+//           bt_map, evsummary_buf (per-ROP sums, simides_count),
+//           simide_buffer/simide_tree
+// Requires: nothing
+void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::WireReadoutGeom const *geom) {
 
-        for (const sim::TDCIDE &tdcide : tdcidemap) {
-          for (const sim::IDE& ide : tdcide.second) {
+  auto simchannels_many =
+      lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
+  if (simchannels_many.empty()) {
+    throw cet::exception("TriggerAnaTree")
+        << "Found no std::vector<sim::SimChannel> collections matching simchannel_tag \""
+        << simchannel_tag.encode() << "\"";
+  }
 
-            track_en_sums[ide.trackID] += ide.energy;
-            track_electron_sums[ide.trackID] += ide.numElectrons;
+  // TODO: alternative implementation that does not rely on `wcls_main.structs.process_apa_index`
+  // Get the number of TPCSets from the wiregeometry
+  // Loop from 0 to NTPCSets
+  // getValidHandle("simpleSC{i_tpcset}")
+  // if doesn't exist -> handle
+  // else continue as it is
 
-            // save visible energy only in collection views (for ROI studies)
-            if (chinfo.view == geo::kW) {
-              simide_tpc_energy_map[chinfo].energy  += ide.energy;
-              simide_tpc_energy_map[chinfo].num_electrons += ide.numElectrons;
-            }
+  for ( auto simchannels : simchannels_many ) {
 
-            // populate per-plane visible energy counters
-            if (chinfo.rop_id == 0) {
-              evsummary_buf->tot_visible_energy_rop0 += ide.energy;
-              evsummary_buf->tot_numelectrons_rop0 += ide.numElectrons;
-            }
-            else if (chinfo.rop_id == 1) {
-              evsummary_buf->tot_visible_energy_rop1 += ide.energy;
-              evsummary_buf->tot_numelectrons_rop1 += ide.numElectrons;
-            }
-            else if (chinfo.rop_id == 2) {
-              evsummary_buf->tot_visible_energy_rop2 += ide.energy;
-              evsummary_buf->tot_numelectrons_rop2 += ide.numElectrons;
-            }
-            else if (chinfo.rop_id == 3) {
-              evsummary_buf->tot_visible_energy_rop3 += ide.energy;
-              evsummary_buf->tot_numelectrons_rop3 += ide.numElectrons;
-            }
+    std::set<int> tpcset_ids;
 
-            if (dump_simides) {
-              simide_buffer->channel = sc.Channel();
-              simide_buffer->timestamp = tdcide.first;
-              simide_buffer->numelectrons = ide.numElectrons;
-              simide_buffer->energy = ide.energy;
-              simide_buffer->x = ide.x;
-              simide_buffer->y = ide.y;
-              simide_buffer->z = ide.z;
-              simide_buffer->trackID = ide.trackID;
-              simide_buffer->origTrackID = ide.origTrackID;
-              simide_buffer->readout_plane_id = chinfo.rop_id;
-              simide_buffer->readout_view = chinfo.view;
-              simide_buffer->detector_element = chinfo.tpcset_id;
-              simide_buffer.push_back();
-              ++simides_count;
-            }
+    for (const sim::SimChannel &sc : *simchannels) {
+
+      
+      ChannelInfo chinfo = get_channel_info_for_channel(geom, sc.Channel());
+      // Track what TPC elements are in this collection
+      tpcset_ids.insert(chinfo.tpcset_id);
+      
+      
+      sim::SimChannel::TDCIDEs_t const &tdcidemap = sc.TDCIDEMap();
+
+      for (const sim::TDCIDE &tdcide : tdcidemap) {
+        for (const sim::IDE& ide : tdcide.second) {
+
+          track_en_sums[ide.trackID] += ide.energy;
+          track_electron_sums[ide.trackID] += ide.numElectrons;
+
+          // save visible energy only in collection views (for ROI studies)
+          if (chinfo.view == geo::kW) {
+            simide_tpc_energy_map[chinfo].energy  += ide.energy;
+            simide_tpc_energy_map[chinfo].num_electrons += ide.numElectrons;
+          }
+
+          // populate per-plane visible energy counters
+          if (chinfo.rop_id == 0) {
+            evsummary_buf->tot_visible_energy_rop0 += ide.energy;
+            evsummary_buf->tot_numelectrons_rop0 += ide.numElectrons;
+          }
+          else if (chinfo.rop_id == 1) {
+            evsummary_buf->tot_visible_energy_rop1 += ide.energy;
+            evsummary_buf->tot_numelectrons_rop1 += ide.numElectrons;
+          }
+          else if (chinfo.rop_id == 2) {
+            evsummary_buf->tot_visible_energy_rop2 += ide.energy;
+            evsummary_buf->tot_numelectrons_rop2 += ide.numElectrons;
+          }
+          else if (chinfo.rop_id == 3) {
+            evsummary_buf->tot_visible_energy_rop3 += ide.energy;
+            evsummary_buf->tot_numelectrons_rop3 += ide.numElectrons;
+          }
+
+          if (dump_simides) {
+            simide_buffer->channel = sc.Channel();
+            simide_buffer->timestamp = tdcide.first;
+            simide_buffer->numelectrons = ide.numElectrons;
+            simide_buffer->energy = ide.energy;
+            simide_buffer->x = ide.x;
+            simide_buffer->y = ide.y;
+            simide_buffer->z = ide.z;
+            simide_buffer->trackID = ide.trackID;
+            simide_buffer->origTrackID = ide.origTrackID;
+            simide_buffer->readout_plane_id = chinfo.rop_id;
+            simide_buffer->readout_view = chinfo.view;
+            simide_buffer->detector_element = chinfo.tpcset_id;
+            simide_buffer.push_back();
+            ++evsummary_buf->simides_count;
           }
         }
       }
-
-      // Each TPCSet must be covered by a single SimChannel collection,
-      // otherwise backtracking would silently use only the last one.
-      std::vector<int> overlap;
-      boost::set_intersection(tpcset_ids, bt_map | boost::adaptors::map_keys,
-                              std::back_inserter(overlap));
-      if (!overlap.empty()) {
-        cet::exception ex("TriggerAnaTree");
-        ex << "SimChannel collection " << simchannels.provenance()->inputTag().encode()
-           << " covers TPCSets already provided by another collection:";
-        for (int tpcset_id : overlap) ex << " " << tpcset_id;
-        ex << ". Check that simchannel_tag matches only one set of SimChannel collections.";
-        throw ex;
-      }
-
-      auto mtb = std::make_shared<MiniBackTracker>(simchannels);
-      for (int tpcset_id : tpcset_ids) {
-        bt_map[tpcset_id] = mtb;
-      }
     }
 
-    if (dump_simides) simide_tree->Fill();
+    // Each TPCSet must be covered by a single SimChannel collection,
+    // otherwise backtracking would silently use only the last one.
+    std::vector<int> overlap;
+    boost::set_intersection(tpcset_ids, bt_map | boost::adaptors::map_keys,
+                            std::back_inserter(overlap));
+    if (!overlap.empty()) {
+      cet::exception ex("TriggerAnaTree");
+      ex << "SimChannel collection " << simchannels.provenance()->inputTag().encode()
+         << " covers TPCSets already provided by another collection:";
+      for (int tpcset_id : overlap) ex << " " << tpcset_id;
+      ex << ". Check that simchannel_tag matches only one set of SimChannel collections.";
+      throw ex;
+    }
+
+    auto mtb = std::make_shared<MiniBackTracker>(simchannels);
+    for (int tpcset_id : tpcset_ids) {
+      bt_map[tpcset_id] = mtb;
+    }
   }
 
+  if (dump_simides) simide_tree->Fill();
+}
+
+// fillSimIDESummary
+// Reads:    nothing from the event
+// Produces: simide_summary_buffer, simide_tpc_buffer/simide_summary_tree
+// Requires: simide_tpc_energy_map (fillSimChannels)
+void dunetrigger::TriggerAnaTree::fillSimIDESummary() {
   // Fill simide_summary_tree: one row per {rop, tpcset} for collection-view channels
   double total_visible_energy = 0.;
   double total_numelectrons = 0.;
@@ -405,215 +436,233 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
     simide_tpc_buffer.push_back();
   }
   simide_summary_tree->Fill();
+}
 
-  if (dump_mcparticles) {
+// fillMCParticles
+// Reads:    simb::MCParticle collections (all)
+// Produces: evsummary_buf (mcparticles_count), mcparticle_buffer/mcparticle_tree
+// Requires: track_en_sums, track_electron_sums (fillSimChannels);
+//           trkId_to_truthBlockId (fillMCTruth, only if dump_mctruths)
+void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 
-    std::vector<art::Handle<std::vector<simb::MCParticle>>> mcparticleHandles =
-        e.getMany<std::vector<simb::MCParticle>>();
+  std::vector<art::Handle<std::vector<simb::MCParticle>>> mcparticleHandles =
+      e.getMany<std::vector<simb::MCParticle>>();
 
-    for (auto const &mcparticleHandle : mcparticleHandles) {
+  for (auto const &mcparticleHandle : mcparticleHandles) {
 
-      std::string generator_name = mcparticleHandle.provenance()->inputTag().label();
+    std::string generator_name = mcparticleHandle.provenance()->inputTag().label();
 
-      for (const simb::MCParticle &part : *mcparticleHandle) {
+    for (const simb::MCParticle &part : *mcparticleHandle) {
 
-        mcparticle_buffer->pdg = part.PdgCode();
-        mcparticle_buffer->generator_name = generator_name;
-        mcparticle_buffer->status_code = part.StatusCode();
-        mcparticle_buffer->g4_track_id = part.TrackId();
-        mcparticle_buffer->mother = part.Mother();
-        mcparticle_buffer->truth_block_id = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
-        mcparticle_buffer->x = part.Vx();
-        mcparticle_buffer->y = part.Vy();
-        mcparticle_buffer->z = part.Vz();
-        mcparticle_buffer->t = part.T();
-        mcparticle_buffer->end_x = part.EndX();
-        mcparticle_buffer->end_y = part.EndY();
-        mcparticle_buffer->end_z = part.EndZ();
-        mcparticle_buffer->end_t = part.EndT();
-        mcparticle_buffer->px = part.Px();
-        mcparticle_buffer->py = part.Py();
-        mcparticle_buffer->pz = part.Pz();
-        mcparticle_buffer->energy = part.E();
-        mcparticle_buffer->kinetic_energy = part.E() - part.Mass();
-        mcparticle_buffer->edep = track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0;
-        mcparticle_buffer->numelectrons =
-            track_electron_sums.count(part.TrackId()) ? track_electron_sums.at(part.TrackId()) : 0;
-        mcparticle_buffer->shower_edep = track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0;
-        mcparticle_buffer->shower_numelectrons =
-            track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0;
-        mcparticle_buffer->process = part.Process();
-        mcparticle_buffer.push_back();
-        ++mcparticles_count;
-      }
+      mcparticle_buffer->pdg = part.PdgCode();
+      mcparticle_buffer->generator_name = generator_name;
+      mcparticle_buffer->status_code = part.StatusCode();
+      mcparticle_buffer->g4_track_id = part.TrackId();
+      mcparticle_buffer->mother = part.Mother();
+      mcparticle_buffer->truth_block_id = dump_mctruths ? trkId_to_truthBlockId.at(part.TrackId()) : -1;
+      mcparticle_buffer->x = part.Vx();
+      mcparticle_buffer->y = part.Vy();
+      mcparticle_buffer->z = part.Vz();
+      mcparticle_buffer->t = part.T();
+      mcparticle_buffer->end_x = part.EndX();
+      mcparticle_buffer->end_y = part.EndY();
+      mcparticle_buffer->end_z = part.EndZ();
+      mcparticle_buffer->end_t = part.EndT();
+      mcparticle_buffer->px = part.Px();
+      mcparticle_buffer->py = part.Py();
+      mcparticle_buffer->pz = part.Pz();
+      mcparticle_buffer->energy = part.E();
+      mcparticle_buffer->kinetic_energy = part.E() - part.Mass();
+      mcparticle_buffer->edep = track_en_sums.count(part.TrackId()) ? track_en_sums.at(part.TrackId()) : 0;
+      mcparticle_buffer->numelectrons =
+          track_electron_sums.count(part.TrackId()) ? track_electron_sums.at(part.TrackId()) : 0;
+      mcparticle_buffer->shower_edep = track_en_sums.count(-part.TrackId()) ? track_en_sums.at(-part.TrackId()) : 0;
+      mcparticle_buffer->shower_numelectrons =
+          track_electron_sums.count(-part.TrackId()) ? track_electron_sums.at(-part.TrackId()) : 0;
+      mcparticle_buffer->process = part.Process();
+      mcparticle_buffer.push_back();
+      ++evsummary_buf->mcparticles_count;
     }
-    mcparticle_tree->Fill();
+  }
+  mcparticle_tree->Fill();
+}
+
+// fillTPs
+// Reads:    TriggerPrimitive collections matching tp_tag_regex
+// Produces: TP trees (tree_map/tp_writers "tp/<tag>"), info_data["tpg"]
+//           (first event only)
+// Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
+//           truthBlockId_to_generator_name (fillMCTruth) -- only if tp_backtracking
+void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
+  std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = e.getMany<std::vector<TriggerPrimitive>>();
+
+  if ( first_event_flag ) {
+    info_data["tpg"] = {};
   }
 
-  if (dump_tp) {
-    std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = e.getMany<std::vector<TriggerPrimitive>>();
+  std::regex tp_regex(this->tp_tag_regex);
+  for (auto const &tpHandle : tpHandles) {
+
+    std::string tag = tpHandle.provenance()->inputTag().encode();
+    if ( !std::regex_match(tag, tp_regex) ) {
+      continue;
+    }
+
+    fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
+    std::string tp_tool_type = tp_params.get<std::string>("tool_type");
+
+    bool is_tpc_tp_collection = (tp_tool_type.find("TPAlgTPC") == 0);
 
     if ( first_event_flag ) {
-      info_data["tpg"] = {};
+      info_data["tpg"][tag]["tool"] = tp_tool_type;
+
+      if (is_tpc_tp_collection) {
+        info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
+        info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
+        info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+      }
     }
 
-    std::regex tp_regex(this->tp_tag_regex);
-    for (auto const &tpHandle : tpHandles) {
 
-      std::string tag = tpHandle.provenance()->inputTag().encode();
-      if ( !std::regex_match(tag, tp_regex) ) {
-        continue;
-      }
+    std::string map_tag = "tp/" + tag;
 
-      fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
-      std::string tp_tool_type = tp_params.get<std::string>("tool_type");
+    make_tp_tree_if_needed(tag);
 
-      bool is_tpc_tp_collection = (tp_tool_type.find("TPAlgTPC") == 0);
+    TTree *tp_tree = tree_map[map_tag];
 
-      if ( first_event_flag ) {
-        info_data["tpg"][tag]["tool"] = tp_tool_type;
+    auto& [tp_writer, tpbt_writer, tpass_writer] = tp_writers[map_tag];
 
-        if (is_tpc_tp_collection) {
-          info_data["tpg"][tag]["threshold_tpg_plane0"] = tp_params.get<int>("threshold_tpg_plane0");
-          info_data["tpg"][tag]["threshold_tpg_plane1"] = tp_params.get<int>("threshold_tpg_plane1");
-          info_data["tpg"][tag]["threshold_tpg_plane2"] = tp_params.get<int>("threshold_tpg_plane2");
+    for (const TriggerPrimitive &tp : *tpHandle) {
+      auto chinfo = fill_tp_row(tp_writer, tp, geom);
+
+      // TPC TP backtracking
+      if (tpbt_writer and is_tpc_tp_collection) {
+        // SimChannel writers are dense, so every simulated TPCSet must be in
+        // bt_map: a missing one means simchannel_tag misses some collections.
+        auto bt_it = bt_map.find(chinfo.tpcset_id);
+        if (bt_it == bt_map.end()) {
+          throw cet::exception("TriggerAnaTree")
+              << "No SimChannel collection covers TPCSet " << chinfo.tpcset_id
+              << " (TP on channel " << tp.channel << " from " << tag
+              << "). Check that simchannel_tag \"" << simchannel_tag.encode()
+              << "\" matches the SimChannels of every TPCSet with TPs.";
         }
+        auto& mbt = bt_it->second;
+        std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type, *mbt);
+        tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
+        tpbt_writer.push_back();
       }
-
-
-      std::string map_tag = "tp/" + tag;
-
-      make_tp_tree_if_needed(tag);
-
-      TTree *tp_tree = tree_map[map_tag];
-
-      auto& [tp_writer, tpbt_writer, tpass_writer] = tp_writers[map_tag];
-
-      for (const TriggerPrimitive &tp : *tpHandle) {
-        tp_writer->from_tp(tp);
-        auto chinfo = get_channel_info_for_channel(geom, tp.channel);
-        tp_writer->readout_plane_id = chinfo.rop_id;
-        tp_writer->readout_view = chinfo.view;
-        tp_writer->TPCSetID = chinfo.tpcset_id;
-        tp_writer.push_back();
-
-        // TPC TP backtracking
-        if (tpbt_writer and is_tpc_tp_collection) {
-          // SimChannel writers are dense, so every simulated TPCSet must be in
-          // bt_map: a missing one means simchannel_tag misses some collections.
-          auto bt_it = bt_map.find(chinfo.tpcset_id);
-          if (bt_it == bt_map.end()) {
-            throw cet::exception("TriggerAnaTree")
-                << "No SimChannel collection covers TPCSet " << chinfo.tpcset_id
-                << " (TP on channel " << tp.channel << " from " << tag
-                << "). Check that simchannel_tag \"" << simchannel_tag.encode()
-                << "\" matches the SimChannels of every TPCSet with TPs.";
-          }
-          auto& mbt = bt_it->second;
-          std::vector<sim::IDE> matched_ides = match_simides_to_tps(tp_writer.row, tp_tool_type, *mbt);
-          tpbt_writer->populate_backtracking_info(matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
-          tpbt_writer.push_back();
-        }
-      }
-
-      tp_tree->Fill();
     }
 
+    tp_tree->Fill();
   }
 
-  evsummary_buf->mctruths_count = mctruths_count;
-  evsummary_buf->mcparticles_count = mcparticles_count;
-  evsummary_buf->mcneutrinos_count = mcneutrinos_count;
-  evsummary_buf->simides_count = simides_count;
-
-  if (dump_ta) {
-    std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
-        e.getMany<std::vector<TriggerActivityData>>();
-
-    std::regex ta_regex(this->ta_tag_regex);
-
-    for (auto const &taHandle : taHandles) {
-
-      art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
-      std::string tag = taHandle.provenance()->inputTag().encode();
-      if ( !std::regex_match(tag, ta_regex) ) {
-        continue;
-      }
-      std::string map_tag = "ta/" + tag;
-      make_ta_tree_if_needed(tag);
-      for (size_t i = 0; i < taHandle->size(); i++) {
-        const TriggerActivityData &ta = *art::Ptr<TriggerActivityData>(taHandle, i);
-        if (assns.isValid()) {
-          art::InputTag ta_input_tag = taHandle.provenance()->inputTag();
-          std::string tpInTaTag =
-              art::InputTag(ta_input_tag.label(), ta_input_tag.instance() + "inTAs", ta_input_tag.process()).encode();
-          size_t ta_idx = i;
-          std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
-
-
-          std::string map_tpInTaTag = "tp/" + tpInTaTag;
-          make_tp_tree_if_needed(tpInTaTag, true);
-          TTree *tp_tree = tree_map[map_tpInTaTag];
-          auto& [tp_writer, tpbt_writer, tpass_writer] = tp_writers[map_tpInTaTag];
-
-          for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
-            tp_writer->from_tp(*tp);
-            auto chinfo = get_channel_info_for_channel(geom, tp->channel);
-            tp_writer->readout_plane_id = chinfo.rop_id;
-            tp_writer->readout_view = chinfo.view;
-            tp_writer->TPCSetID = chinfo.tpcset_id;
-            tp_writer.push_back();
-            if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID_NUM) row -- backtracking not computed for association TPs
-            tpass_writer->ta_number = ta_idx;
-            tpass_writer.push_back();
-          }
-          tp_tree->Fill();
-        }
-        ta_bufs[map_tag] = ta;
-        tree_map[map_tag]->Fill();
-      }
-    }
-  }
-
-  if (dump_tc) {
-    std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
-        e.getMany<std::vector<TriggerCandidateData>>();
-
-    std::regex tc_regex(this->tc_tag_regex);
-
-    for (auto const &tcHandle : tcHandles) {
-      art::FindManyP<TriggerActivityData> assns(tcHandle, e, tcHandle.provenance()->moduleLabel());
-      std::string tag = tcHandle.provenance()->inputTag().encode();
-      if ( !std::regex_match(tag, tc_regex) ) {
-        continue;
-      }
-      std::string map_tag = "tc/" + tag;
-      make_tc_tree_if_needed(tag);
-      for (size_t i = 0; i < tcHandle->size(); i++) {
-        const TriggerCandidateData &tc = *art::Ptr<TriggerCandidateData>(tcHandle, i);
-        if (assns.isValid()) {
-          art::InputTag tc_input_tag = tcHandle.provenance()->inputTag();
-          std::string taInTcTag =
-              art::InputTag(tc_input_tag.label(), tc_input_tag.instance() + "inTCs", tc_input_tag.process()).encode();
-          std::string map_taInTcTag = "ta/" + taInTcTag;
-          make_ta_tree_if_needed(taInTcTag, true);
-          m_tc_number = i;
-          std::vector<art::Ptr<TriggerActivityData>> matched_tas = assns.at(i);
-          for (art::Ptr<TriggerActivityData> ta : matched_tas) {
-            ta_bufs[map_taInTcTag] = *ta;
-            tree_map[map_taInTcTag]->Fill();
-          }
-        }
-        tc_bufs[map_tag] = tc;
-        tree_map[map_tag]->Fill();
-      }
-    }
-  }
-
-  summary_tree->Fill();
-
-  first_event_flag = false;
 }
+
+// fillTAs
+// Reads:    TriggerActivityData collections matching ta_tag_regex,
+//           TA->TriggerPrimitive assns
+// Produces: TA trees ("ta/<tag>"), inTAs TP trees ("tp/<tag>inTAs")
+// Requires: nothing
+void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
+  std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
+      e.getMany<std::vector<TriggerActivityData>>();
+
+  std::regex ta_regex(this->ta_tag_regex);
+
+  for (auto const &taHandle : taHandles) {
+
+    art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
+    std::string tag = taHandle.provenance()->inputTag().encode();
+    if ( !std::regex_match(tag, ta_regex) ) {
+      continue;
+    }
+    std::string map_tag = "ta/" + tag;
+    make_ta_tree_if_needed(tag);
+    for (size_t i = 0; i < taHandle->size(); i++) {
+      const TriggerActivityData &ta = *art::Ptr<TriggerActivityData>(taHandle, i);
+      if (assns.isValid()) {
+        art::InputTag ta_input_tag = taHandle.provenance()->inputTag();
+        std::string tpInTaTag =
+            art::InputTag(ta_input_tag.label(), ta_input_tag.instance() + "inTAs", ta_input_tag.process()).encode();
+        size_t ta_idx = i;
+        std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
+
+
+        std::string map_tpInTaTag = "tp/" + tpInTaTag;
+        make_tp_tree_if_needed(tpInTaTag, true);
+        TTree *tp_tree = tree_map[map_tpInTaTag];
+        auto& [tp_writer, tpbt_writer, tpass_writer] = tp_writers[map_tpInTaTag];
+
+        for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
+          fill_tp_row(tp_writer, *tp, geom);
+          if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID_NUM) row -- backtracking not computed for association TPs
+          tpass_writer->ta_number = ta_idx;
+          tpass_writer.push_back();
+        }
+        tp_tree->Fill();
+      }
+      ta_bufs[map_tag] = ta;
+      tree_map[map_tag]->Fill();
+    }
+  }
+}
+
+// fillTCs
+// Reads:    TriggerCandidateData collections matching tc_tag_regex,
+//           TC->TriggerActivityData assns
+// Produces: TC trees ("tc/<tag>"), inTCs TA trees ("ta/<tag>inTCs"), m_tc_number
+// Requires: nothing
+void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
+  std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
+      e.getMany<std::vector<TriggerCandidateData>>();
+
+  std::regex tc_regex(this->tc_tag_regex);
+
+  for (auto const &tcHandle : tcHandles) {
+    art::FindManyP<TriggerActivityData> assns(tcHandle, e, tcHandle.provenance()->moduleLabel());
+    std::string tag = tcHandle.provenance()->inputTag().encode();
+    if ( !std::regex_match(tag, tc_regex) ) {
+      continue;
+    }
+    std::string map_tag = "tc/" + tag;
+    make_tc_tree_if_needed(tag);
+    for (size_t i = 0; i < tcHandle->size(); i++) {
+      const TriggerCandidateData &tc = *art::Ptr<TriggerCandidateData>(tcHandle, i);
+      if (assns.isValid()) {
+        art::InputTag tc_input_tag = tcHandle.provenance()->inputTag();
+        std::string taInTcTag =
+            art::InputTag(tc_input_tag.label(), tc_input_tag.instance() + "inTCs", tc_input_tag.process()).encode();
+        std::string map_taInTcTag = "ta/" + taInTcTag;
+        make_ta_tree_if_needed(taInTcTag, true);
+        m_tc_number = i;
+        std::vector<art::Ptr<TriggerActivityData>> matched_tas = assns.at(i);
+        for (art::Ptr<TriggerActivityData> ta : matched_tas) {
+          ta_bufs[map_taInTcTag] = *ta;
+          tree_map[map_taInTcTag]->Fill();
+        }
+      }
+      tc_bufs[map_tag] = tc;
+      tree_map[map_tag]->Fill();
+    }
+  }
+}
+
+// fill_tp_row
+// Fills the TP staging row from `tp` plus its channel info, commits it, and
+// returns the channel info for callers that need it (backtracking).
+dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::fill_tp_row(TriggerPrimitiveWriter &tpw,
+                                                                  const TriggerPrimitive &tp,
+                                                                  geo::WireReadoutGeom const *geom) {
+  tpw->from_tp(tp);
+  auto chinfo = get_channel_info_for_channel(geom, tp.channel);
+  tpw->readout_plane_id = chinfo.rop_id;
+  tpw->readout_view = chinfo.view;
+  tpw->TPCSetID = chinfo.tpcset_id;
+  tpw.push_back();
+  return chinfo;
+}
+
 
 void dunetrigger::TriggerAnaTree::endJob() {
 
