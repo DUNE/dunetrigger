@@ -5,6 +5,7 @@
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "art_root_io/TFileService.h"
+#include "canvas/Persistency/Provenance/ProductID.h"
 #include "detdataformats/trigger/TriggerActivityData.hpp"
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
@@ -107,6 +108,7 @@ private:
   
   std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
   std::map<int, std::shared_ptr<MiniBackTracker>> bt_map;
+  std::map<art::ProductID, std::string> tp_tool_type_cache_; // per event
 
 
   bool dump_tp, dump_ta, dump_tc;
@@ -135,6 +137,17 @@ private:
   ChannelInfo fill_tp_row(TPWriters &tpw,
                           const dunedaq::trgdataformats::TriggerPrimitive &tp,
                           geo::WireReadoutGeom const *geom);
+
+  // Backtracks the TP whose row is in w.tp.row (already filled by fill_tp_row):
+  // finds the SimChannel backtracker for the TP's TPCSet, matches IDEs, fills
+  // and commits w.bt. Throws if no SimChannel collection covers the TPCSet.
+  void backtrack_tp(TPWriters &w, const ChannelInfo &chinfo,
+                    const std::string &tool_type, const std::string &tag);
+
+  // tpalg.tool_type of the producer of the TP collection `id` (cached per
+  // event). Throws if it cannot be determined or is not a TPC TP algorithm.
+  const std::string &tp_tool_type_for(art::Event const &e, art::ProductID id,
+                                      const std::string &ta_tag);
 
   // Event meta data buffer  
   ScalarFieldsBuffer<EventMetaData> ev_sbuf;
