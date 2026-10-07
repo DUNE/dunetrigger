@@ -259,6 +259,7 @@ private:
 
   size_t m_tc_number = 0;  // TC index bound to the "TCnumber" ROOT branch in TA-in-TC trees
 
+  std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruth_handles;
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
   std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
@@ -283,6 +284,7 @@ private:
   std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
 
   bool tp_backtracking;
+  bool need_truth_maps;
 
   void make_tp_tree_if_needed(std::string tag, bool assn = false);
   void make_ta_tree_if_needed(std::string tag, bool assn = false);
@@ -293,6 +295,7 @@ private:
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
   // Per-product fill functions called by analyze(), in this order
+  void build_truth_maps(art::Event const &e);
   void fillMCTruth(art::Event const &e);
   void fillSimChannels(art::Event const &e, geo::WireReadoutGeom const *geom);
   void fillSimIDESummary();
