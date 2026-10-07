@@ -27,7 +27,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -60,16 +59,42 @@ private:
   using TriggerActivityAssociationWriter = VectorFieldsBuffer<TriggerActivityAssociationRow>;
   using TriggerCandidateWriter = VectorFieldsBuffer<dunedaq::trgdataformats::TriggerCandidateData>;
 
+  // Writers bound to one output tree, per tree kind
+  struct TPWriters {
+    TriggerPrimitiveWriter             tp;
+    TriggerPrimitiveBacktrackingWriter bt;
+    TriggerPrimitiveAssociationWriter  assn;
+    void enable(bool backtracking, bool association) { bt.enable(backtracking); assn.enable(association); }
+    void clear() { tp.clear(); bt.clear(); assn.clear(); }
+    void make_branches(TTree &t) { tp.make_branches(t); bt.make_branches(t); assn.make_branches(t); }
+  };
+  struct TAWriters {
+    TriggerActivityWriter            ta;
+    TriggerActivityAssociationWriter assn;
+    void enable(bool /*backtracking*/, bool association) { assn.enable(association); }
+    void clear() { ta.clear(); assn.clear(); }
+    void make_branches(TTree &t) { ta.make_branches(t); assn.make_branches(t); }
+  };
+  struct TCWriters {
+    TriggerCandidateWriter tc;
+    void enable(bool /*backtracking*/, bool /*association*/) {}
+    void clear() { tc.clear(); }
+    void make_branches(TTree &t) { tc.make_branches(t); }
+  };
+  template <typename Writers>
+  struct TreeSet {
+    TTree  *tree = nullptr;
+    Writers writers;
+  };
+
   art::ServiceHandle<art::TFileService> tfs;
-  std::map<std::string, TTree *> tree_map;
 
   std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruth_handles;
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
-  std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
-
-  std::map<std::string, std::tuple<TriggerActivityWriter, TriggerActivityAssociationWriter>> ta_writers;
-  std::map<std::string, TriggerCandidateWriter> tc_writers;
+  std::map<std::string, TreeSet<TPWriters>> tp_trees; // key: raw tag
+  std::map<std::string, TreeSet<TAWriters>> ta_trees;
+  std::map<std::string, TreeSet<TCWriters>> tc_trees;
   std::map<int, double> track_en_sums;
   std::map<int, double> track_electron_sums;
   // map for tracking true visible energy deposited on each apa rop (for ROI studies).
@@ -90,9 +115,10 @@ private:
   bool tp_backtracking;
   bool need_truth_maps;
 
-  void make_tp_tree_if_needed(std::string tag, bool assn = false);
-  void make_ta_tree_if_needed(std::string tag, bool assn = false);
-  void make_tc_tree_if_needed(std::string tag);
+  template <typename Writers>
+  TreeSet<Writers> &get_or_create_tree(std::map<std::string, TreeSet<Writers>> &trees,
+                                       const std::string &dir_name, const std::string &dir_title,
+                                       const std::string &tag, bool backtracking, bool association);
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
@@ -106,7 +132,7 @@ private:
   void fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom);
   void fillTCs(art::Event const &e);
 
-  ChannelInfo fill_tp_row(TriggerPrimitiveWriter &tpw,
+  ChannelInfo fill_tp_row(TPWriters &tpw,
                           const dunedaq::trgdataformats::TriggerPrimitive &tp,
                           geo::WireReadoutGeom const *geom);
 

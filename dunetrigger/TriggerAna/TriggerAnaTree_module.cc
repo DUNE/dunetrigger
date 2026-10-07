@@ -32,6 +32,8 @@
 
 #include <regex>
 
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
 #include <TNamed.h>
 #include <TTree.h>
 
@@ -59,6 +61,13 @@ using json = nlohmann::json;
 using dunedaq::trgdataformats::TriggerPrimitive;
 using dunedaq::trgdataformats::TriggerActivityData;
 using dunedaq::trgdataformats::TriggerCandidateData;
+
+namespace {
+// Tag of the "objects in parent" tree associated with `parent`
+std::string assn_tag(const art::InputTag &parent, const char *suffix) {
+  return art::InputTag(parent.label(), parent.instance() + suffix, parent.process()).encode();
+}
+} // namespace
 
 dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p}, 
@@ -178,17 +187,10 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   trkId_to_truthBlockId.clear();
   truthBlockId_to_generator_name.clear();
 
-  // Clear all TP writers
-  for( auto& [tag, tpw] : tp_writers) {
-    std::apply([](auto&... w) { (w.clear(), ...); }, tpw);
-  }
-  // Clear all TA and TC writers
-  for( auto& [tag, taw] : ta_writers) {
-    std::apply([](auto&... w) { (w.clear(), ...); }, taw);
-  }
-  for( auto& [tag, tcw] : tc_writers) {
-    tcw.clear();
-  }
+  // Clear all TP, TA and TC writers
+  for (auto &[tag, ts] : tp_trees) ts.writers.clear();
+  for (auto &[tag, ts] : ta_trees) ts.writers.clear();
+  for (auto &[tag, ts] : tc_trees) ts.writers.clear();
 
   // Counters are incremented by the fill* functions below
   evsummary_buf->mctruths_count = 0;
@@ -522,7 +524,7 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 
 // fillTPs
 // Reads:    TriggerPrimitive collections matching tp_tag_regex
-// Produces: TP trees (tree_map/tp_writers "tp/<tag>"), info_data["tpg"]
+// Produces: TP trees (tp_trees[<tag>]), info_data["tpg"]
 //           (first event only)
 // Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
 //           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
@@ -563,19 +565,14 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
     }
 
 
-    std::string map_tag = "tp/" + tag;
-
-    make_tp_tree_if_needed(tag);
-
-    TTree *tp_tree = tree_map[map_tag];
-
-    auto& [tp_writer, tpbt_writer, tpass_writer] = tp_writers[map_tag];
+    auto &ts = get_or_create_tree(tp_trees, "TriggerPrimitives", "Trigger Primitive Trees",
+                                  tag, tp_backtracking, false);
 
     for (const TriggerPrimitive &tp : *tpHandle) {
-      auto chinfo = fill_tp_row(tp_writer, tp, geom);
+      auto chinfo = fill_tp_row(ts.writers, tp, geom);
 
       // TPC TP backtracking
-      if (tpbt_writer) {
+      if (ts.writers.bt) {
         // SimChannel writers are dense, so every simulated TPCSet must be in
         // bt_map: a missing one means simchannel_tag misses some collections.
         auto bt_it = bt_map.find(chinfo.tpcset_id);
@@ -587,13 +584,13 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
               << "\" matches the SimChannels of every TPCSet with TPs.";
         }
         auto& mbt = bt_it->second;
-        std::vector<sim::IDE> matched_ides = tp_bt_->match_ides(tp_writer.row, tp_tool_type, *mbt);
-        tp_bt_->fill_row(tpbt_writer.row, matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
-        tpbt_writer.push_back();
+        std::vector<sim::IDE> matched_ides = tp_bt_->match_ides(ts.writers.tp.row, tp_tool_type, *mbt);
+        tp_bt_->fill_row(ts.writers.bt.row, matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
+        ts.writers.bt.push_back();
       }
     }
 
-    tp_tree->Fill();
+    ts.tree->Fill();
   }
 
 }
@@ -601,7 +598,7 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
 // fillTAs
 // Reads:    TriggerActivityData collections matching ta_tag_regex,
 //           TA->TriggerPrimitive assns
-// Produces: TA trees ("ta/<tag>"), inTAs TP trees ("tp/<tag>inTAs")
+// Produces: TA trees (ta_trees[<tag>]), inTAs TP trees (tp_trees[<tag>inTAs])
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
@@ -616,42 +613,37 @@ void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutG
     if ( !std::regex_match(tag, ta_regex) ) {
       continue;
     }
-    std::string map_tag = "ta/" + tag;
-    make_ta_tree_if_needed(tag);
-    auto& [ta_writer, taass_writer] = ta_writers[map_tag];
+    auto &ta_ts = get_or_create_tree(ta_trees, "TriggerActivities", "Trigger Activity Trees",
+                                     tag, false, false);
     for (size_t i = 0; i < taHandle->size(); i++) {
       const TriggerActivityData &ta = *art::Ptr<TriggerActivityData>(taHandle, i);
       if (assns.isValid()) {
         art::InputTag ta_input_tag = taHandle.provenance()->inputTag();
-        std::string tpInTaTag =
-            art::InputTag(ta_input_tag.label(), ta_input_tag.instance() + "inTAs", ta_input_tag.process()).encode();
         size_t ta_idx = i;
         std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
 
 
-        std::string map_tpInTaTag = "tp/" + tpInTaTag;
-        make_tp_tree_if_needed(tpInTaTag, true);
-        TTree *tp_tree = tree_map[map_tpInTaTag];
-        auto& [tp_writer, tpbt_writer, tpass_writer] = tp_writers[map_tpInTaTag];
+        auto &tp_ts = get_or_create_tree(tp_trees, "TriggerPrimitives", "Trigger Primitive Trees",
+                                         assn_tag(ta_input_tag, "inTAs"), tp_backtracking, true);
 
         for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
-          fill_tp_row(tp_writer, *tp, geom);
-          if (tpbt_writer) tpbt_writer.push_back(); // push default (INVALID_NUM) row -- backtracking not computed for association TPs
-          tpass_writer->ta_number = ta_idx;
-          tpass_writer.push_back();
+          fill_tp_row(tp_ts.writers, *tp, geom);
+          if (tp_ts.writers.bt) tp_ts.writers.bt.push_back(); // push default (INVALID_NUM) row -- backtracking not computed for association TPs
+          tp_ts.writers.assn->ta_number = ta_idx;
+          tp_ts.writers.assn.push_back();
         }
-        tp_tree->Fill();
+        tp_ts.tree->Fill();
       }
-      ta_writer.push_back(ta);
+      ta_ts.writers.ta.push_back(ta);
     }
-    tree_map[map_tag]->Fill();
+    ta_ts.tree->Fill();
   }
 }
 
 // fillTCs
 // Reads:    TriggerCandidateData collections matching tc_tag_regex,
 //           TC->TriggerActivityData assns
-// Produces: TC trees ("tc/<tag>"), inTCs TA trees ("ta/<tag>inTCs")
+// Produces: TC trees (tc_trees[<tag>]), inTCs TA trees (ta_trees[<tag>inTCs])
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
   std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
@@ -665,40 +657,37 @@ void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
     if ( !std::regex_match(tag, tc_regex) ) {
       continue;
     }
-    std::string map_tag = "tc/" + tag;
-    make_tc_tree_if_needed(tag);
-    auto& tc_writer = tc_writers[map_tag];
+    auto &tc_ts = get_or_create_tree(tc_trees, "TriggerCandidates", "Trigger Candidate Trees",
+                                     tag, false, false);
     for (size_t i = 0; i < tcHandle->size(); i++) {
       const TriggerCandidateData &tc = *art::Ptr<TriggerCandidateData>(tcHandle, i);
       if (assns.isValid()) {
         art::InputTag tc_input_tag = tcHandle.provenance()->inputTag();
-        std::string taInTcTag =
-            art::InputTag(tc_input_tag.label(), tc_input_tag.instance() + "inTCs", tc_input_tag.process()).encode();
-        std::string map_taInTcTag = "ta/" + taInTcTag;
-        make_ta_tree_if_needed(taInTcTag, true);
-        auto& [ta_writer, taass_writer] = ta_writers[map_taInTcTag];
+        auto &ta_ts = get_or_create_tree(ta_trees, "TriggerActivities", "Trigger Activity Trees",
+                                         assn_tag(tc_input_tag, "inTCs"), false, true);
         std::vector<art::Ptr<TriggerActivityData>> matched_tas = assns.at(i);
         for (art::Ptr<TriggerActivityData> ta : matched_tas) {
-          ta_writer.push_back(*ta);
-          taass_writer->tc_number = i;
-          taass_writer.push_back();
+          ta_ts.writers.ta.push_back(*ta);
+          ta_ts.writers.assn->tc_number = i;
+          ta_ts.writers.assn.push_back();
         }
-        tree_map[map_taInTcTag]->Fill();
-        ta_writer.clear();
-        taass_writer.clear();
+        ta_ts.tree->Fill();
+        ta_ts.writers.ta.clear();
+        ta_ts.writers.assn.clear();
       }
-      tc_writer.push_back(tc);
+      tc_ts.writers.tc.push_back(tc);
     }
-    tree_map[map_tag]->Fill();
+    tc_ts.tree->Fill();
   }
 }
 
 // fill_tp_row
 // Fills the TP staging row from `tp` plus its channel info, commits it, and
 // returns the channel info for callers that need it (backtracking).
-dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::fill_tp_row(TriggerPrimitiveWriter &tpw,
+dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::fill_tp_row(TPWriters &writers,
                                                                   const TriggerPrimitive &tp,
                                                                   geo::WireReadoutGeom const *geom) {
+  auto &tpw = writers.tp;
   tpw->from_tp(tp);
   auto chinfo = get_channel_info_for_channel(geom, tp.channel);
   tpw->readout_plane_id = chinfo.rop_id;
@@ -716,71 +705,27 @@ void dunetrigger::TriggerAnaTree::endJob() {
 }
 
 
-void dunetrigger::TriggerAnaTree::make_tp_tree_if_needed(std::string tag, bool assn) {
-  std::string map_tag = "tp/" + tag;
-  if (!tree_map.count(map_tag)) {
-    art::TFileDirectory tp_dir = tfs->mkdir("TriggerPrimitives", "Trigger Primitive Trees");
-    std::cout << "Creating new TTree for " << tag << std::endl;
+template <typename Writers>
+dunetrigger::TriggerAnaTree::TreeSet<Writers> &dunetrigger::TriggerAnaTree::get_or_create_tree(
+    std::map<std::string, TreeSet<Writers>> &trees, const std::string &dir_name, const std::string &dir_title,
+    const std::string &tag, bool backtracking, bool association) {
+  auto it = trees.find(tag);
+  if (it != trees.end()) return it->second;
 
-    // Replace ":" with "_" in TTree names so that they can be used in ROOT's
-    // intepreter
-    std::string tree_name = tag;
-    std::replace(tree_name.begin(), tree_name.end(), ':', '_');
+  art::TFileDirectory dir = tfs->mkdir(dir_name, dir_title);
+  mf::LogInfo("TriggerAnaTree") << "Creating new TTree for " << tag;
 
-    
-    // Create tree
-    TTree* tree = tp_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
-    tree_map[map_tag] = tree;
+  // Replace ":" with "_" in TTree names so that they can be used in ROOT's
+  // intepreter
+  std::string tree_name = tag;
+  std::replace(tree_name.begin(), tree_name.end(), ':', '_');
 
-
-    ev_sbuf.make_branches(*tree);
-
-    auto& [tpw, tpbtw, tpassw] = tp_writers[map_tag];
-    tpbtw.enable(tp_backtracking);
-    tpassw.enable(assn);
-    tpw.make_branches(*tree);
-    tpbtw.make_branches(*tree);   // no-op if disabled
-    tpassw.make_branches(*tree);
-  }
-}
-
-void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool assn) {
-  std::string map_tag = "ta/" + tag;
-  if (!tree_map.count(map_tag)) {
-    art::TFileDirectory ta_dir = tfs->mkdir("TriggerActivities", "Trigger Activity Trees");
-    std::cout << "Creating new TTree for " << tag << std::endl;
-    // Replace ":" with "_" in TTree names so that they can be used in ROOT's
-    // intepreter
-    std::string tree_name = tag;
-    std::replace(tree_name.begin(), tree_name.end(), ':', '_');
-    TTree *tree = ta_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
-    tree_map[map_tag] = tree;
-
-    ev_sbuf.make_branches(*tree);
-
-    auto& [taw, taassw] = ta_writers[map_tag];
-    taassw.enable(assn);
-    taw.make_branches(*tree);
-    taassw.make_branches(*tree);   // no-op if disabled
-  }
-}
-
-void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
-  std::string map_tag = "tc/" + tag;
-  if (!tree_map.count(map_tag)) {
-    art::TFileDirectory tc_dir = tfs->mkdir("TriggerCandidates", "Trigger Candidate Trees");
-    std::cout << "Creating new TTree for " << tag << std::endl;
-    // Replace ":" with "_" in TTree names so that they can be used in ROOT's
-    // intepreter
-    std::string tree_name = tag;
-    std::replace(tree_name.begin(), tree_name.end(), ':', '_');
-    TTree *tree = tc_dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
-    tree_map[map_tag] = tree;
-
-    ev_sbuf.make_branches(*tree);
-
-    tc_writers[map_tag].make_branches(*tree);
-  }
+  auto &ts = trees[tag];
+  ts.tree = dir.make<TTree>(tree_name.c_str(), tree_name.c_str());
+  ev_sbuf.make_branches(*ts.tree);
+  ts.writers.enable(backtracking, association);
+  ts.writers.make_branches(*ts.tree);   // disabled writers add no branches
+  return ts;
 }
 
 dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_channel(geo::WireReadoutGeom const *geom,
