@@ -351,6 +351,23 @@ REGISTER_FIELD_NAMES(TriggerPrimitiveAssociationRow,
 
 
 //-----------------------------------------------------------------------
+struct TriggerActivityAssociationRow {
+  int tc_number = INVALID_NUM;
+};
+
+REGISTER_FIELD_NAMES(TriggerActivityAssociationRow,
+                         tc_number);
+
+// dunedaq data structs used directly as buffer rows
+REGISTER_FIELD_NAMES(dunedaq::trgdataformats::TriggerActivityData,
+                         version, time_start, time_end, time_peak, time_activity,
+                         channel_start, channel_end, channel_peak,
+                         adc_integral, adc_peak, detid, type, algorithm);
+
+REGISTER_FIELD_NAMES(dunedaq::trgdataformats::TriggerCandidateData,
+                         version, time_start, time_end, time_candidate, detid, type, algorithm);
+
+//-----------------------------------------------------------------------
 class TriggerAnaTree : public art::EDAnalyzer {
 public:
   explicit TriggerAnaTree(fhicl::ParameterSet const &p);
@@ -373,19 +390,20 @@ private:
   using TriggerPrimitiveWriter = VectorFieldsBuffer<TriggerPrimitiveRow>;
   using TriggerPrimitiveBacktrackingWriter = VectorFieldsBuffer<TriggerPrimitiveBacktrackingRow>;
   using TriggerPrimitiveAssociationWriter = VectorFieldsBuffer<TriggerPrimitiveAssociationRow>;
+  using TriggerActivityWriter = VectorFieldsBuffer<dunedaq::trgdataformats::TriggerActivityData>;
+  using TriggerActivityAssociationWriter = VectorFieldsBuffer<TriggerActivityAssociationRow>;
+  using TriggerCandidateWriter = VectorFieldsBuffer<dunedaq::trgdataformats::TriggerCandidateData>;
 
   art::ServiceHandle<art::TFileService> tfs;
   std::map<std::string, TTree *> tree_map;
-
-  size_t m_tc_number = 0;  // TC index bound to the "TCnumber" ROOT branch in TA-in-TC trees
 
   std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruth_handles;
   std::unordered_map<int, int> trkId_to_truthBlockId;
   std::unordered_map<int, std::string> truthBlockId_to_generator_name;
   std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
 
-  std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
-  std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
+  std::map<std::string, std::tuple<TriggerActivityWriter, TriggerActivityAssociationWriter>> ta_writers;
+  std::map<std::string, TriggerCandidateWriter> tc_writers;
   std::map<int, double> track_en_sums;
   std::map<int, double> track_electron_sums;
   // map for tracking true visible energy deposited on each apa rop (for ROI studies).
