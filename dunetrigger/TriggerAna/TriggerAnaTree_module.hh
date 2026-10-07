@@ -292,6 +292,19 @@ private:
 
   ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
 
+  // Per-product fill functions called by analyze(), in this order
+  void fillMCTruth(art::Event const &e);
+  void fillSimChannels(art::Event const &e, geo::WireReadoutGeom const *geom);
+  void fillSimIDESummary();
+  void fillMCParticles(art::Event const &e);
+  void fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom);
+  void fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom);
+  void fillTCs(art::Event const &e);
+
+  ChannelInfo fill_tp_row(TriggerPrimitiveWriter &tpw,
+                          const dunedaq::trgdataformats::TriggerPrimitive &tp,
+                          geo::WireReadoutGeom const *geom);
+
   // Event meta data buffer  
   ScalarFieldsBuffer<EventMetaData> ev_sbuf;
 
