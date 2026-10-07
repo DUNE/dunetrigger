@@ -83,7 +83,7 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
     dump_simides(p.get<bool>("dump_simides", true)),
     simchannel_tag(p.get<art::InputTag>("simchannel_tag", "tpcrawdecoder:simpleSC"))
 {
-  need_truth_maps = dump_mctruths || dump_mcparticles || (dump_tp && tp_backtracking);
+  need_truth_maps = dump_mctruths || dump_mcparticles || ((dump_tp || dump_ta) && tp_backtracking);
 
   consumesMany<std::vector<sim::SimChannel>>();
 
@@ -183,6 +183,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   track_electron_sums.clear();
   simide_tpc_energy_map.clear();
   bt_map.clear();
+  tp_tool_type_cache_.clear();
   mctruth_handles.clear();
   trkId_to_truthBlockId.clear();
   truthBlockId_to_generator_name.clear();
@@ -572,22 +573,7 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
       auto chinfo = fill_tp_row(ts.writers, tp, geom);
 
       // TPC TP backtracking
-      if (ts.writers.bt) {
-        // SimChannel writers are dense, so every simulated TPCSet must be in
-        // bt_map: a missing one means simchannel_tag misses some collections.
-        auto bt_it = bt_map.find(chinfo.tpcset_id);
-        if (bt_it == bt_map.end()) {
-          throw cet::exception("TriggerAnaTree")
-              << "No SimChannel collection covers TPCSet " << chinfo.tpcset_id
-              << " (TP on channel " << tp.channel << " from " << tag
-              << "). Check that simchannel_tag \"" << simchannel_tag.encode()
-              << "\" matches the SimChannels of every TPCSet with TPs.";
-        }
-        auto& mbt = bt_it->second;
-        std::vector<sim::IDE> matched_ides = tp_bt_->match_ides(ts.writers.tp.row, tp_tool_type, *mbt);
-        tp_bt_->fill_row(ts.writers.bt.row, matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
-        ts.writers.bt.push_back();
-      }
+      if (ts.writers.bt) backtrack_tp(ts.writers, chinfo, tp_tool_type, tag);
     }
 
     ts.tree->Fill();
@@ -599,7 +585,8 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
 // Reads:    TriggerActivityData collections matching ta_tag_regex,
 //           TA->TriggerPrimitive assns
 // Produces: TA trees (ta_trees[<tag>]), inTAs TP trees (tp_trees[<tag>inTAs])
-// Requires: nothing
+// Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
+//           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
       e.getMany<std::vector<TriggerActivityData>>();
@@ -615,24 +602,25 @@ void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutG
     }
     auto &ta_ts = get_or_create_tree(ta_trees, "TriggerActivities", "Trigger Activity Trees",
                                      tag, false, false);
+    const std::string tpInTaTag = assn_tag(taHandle.provenance()->inputTag(), "inTAs");
     for (size_t i = 0; i < taHandle->size(); i++) {
       const TriggerActivityData &ta = *art::Ptr<TriggerActivityData>(taHandle, i);
       if (assns.isValid()) {
-        art::InputTag ta_input_tag = taHandle.provenance()->inputTag();
         size_t ta_idx = i;
         std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
 
 
         auto &tp_ts = get_or_create_tree(tp_trees, "TriggerPrimitives", "Trigger Primitive Trees",
-                                         assn_tag(ta_input_tag, "inTAs"), tp_backtracking, true);
+                                         tpInTaTag, tp_backtracking, true);
 
         for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
-          fill_tp_row(tp_ts.writers, *tp, geom);
-          if (tp_ts.writers.bt) tp_ts.writers.bt.push_back(); // push default (INVALID_NUM) row -- backtracking not computed for association TPs
+          auto chinfo = fill_tp_row(tp_ts.writers, *tp, geom);
+          if (tp_ts.writers.bt) backtrack_tp(tp_ts.writers, chinfo, tp_tool_type_for(e, tp.id(), tag), tpInTaTag);
           tp_ts.writers.assn->ta_number = ta_idx;
           tp_ts.writers.assn.push_back();
         }
         tp_ts.tree->Fill();
+        tp_ts.writers.clear();
       }
       ta_ts.writers.ta.push_back(ta);
     }
@@ -695,6 +683,52 @@ dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::fill_tp_row(TPWriters &wri
   tpw->TPCSetID = chinfo.tpcset_id;
   tpw.push_back();
   return chinfo;
+}
+
+// backtrack_tp
+// Fills and commits the backtracking row for the TP last committed to w.tp.
+void dunetrigger::TriggerAnaTree::backtrack_tp(TPWriters &w, const ChannelInfo &chinfo,
+                                               const std::string &tool_type, const std::string &tag) {
+  // SimChannel writers are dense, so every simulated TPCSet must be in
+  // bt_map: a missing one means simchannel_tag misses some collections.
+  auto bt_it = bt_map.find(chinfo.tpcset_id);
+  if (bt_it == bt_map.end()) {
+    throw cet::exception("TriggerAnaTree")
+        << "No SimChannel collection covers TPCSet " << chinfo.tpcset_id
+        << " (TP on channel " << w.tp.row.channel << " from " << tag
+        << "). Check that simchannel_tag \"" << simchannel_tag.encode()
+        << "\" matches the SimChannels of every TPCSet with TPs.";
+  }
+  auto& mbt = bt_it->second;
+  std::vector<sim::IDE> matched_ides = tp_bt_->match_ides(w.tp.row, tool_type, *mbt);
+  tp_bt_->fill_row(w.bt.row, matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
+  w.bt.push_back();
+}
+
+// tp_tool_type_for
+// Returns tpalg.tool_type of the module that produced the TP collection `id`,
+// looked up through the product's provenance and cached for the event.
+const std::string &dunetrigger::TriggerAnaTree::tp_tool_type_for(art::Event const &e, art::ProductID id,
+                                                                 const std::string &ta_tag) {
+  auto it = tp_tool_type_cache_.find(id);
+  if (it != tp_tool_type_cache_.end()) return it->second;
+
+  auto prov = e.getProductProvenance(id);
+  if (!prov || !prov->isValid()) {
+    throw cet::exception("TriggerAnaTree")
+        << "Cannot find the provenance of TP collection " << id
+        << " associated to TA collection " << ta_tag
+        << "; its TP algorithm tool type cannot be determined.";
+  }
+  std::string tool_type =
+      prov->parameterSet().get<fhicl::ParameterSet>("tpalg").get<std::string>("tool_type");
+  if (tool_type.find("TPAlgTPC") != 0) {
+    throw cet::exception("TriggerAnaTree")
+        << "TP collection " << prov->inputTag().encode() << " associated to TA collection " << ta_tag
+        << " was produced by tool " << tool_type
+        << ", which is not a TPC TP algorithm. Only TPAlgTPC* collections are supported.";
+  }
+  return tp_tool_type_cache_.emplace(id, std::move(tool_type)).first->second;
 }
 
 
