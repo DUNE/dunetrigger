@@ -1,0 +1,92 @@
+# trigger_activity_makers_cfg.fcl
+
+# TA algorithm configurations and makers.
+# FD-HD configurations are the defaults.
+# VD configurations inherit from the HD definitions and override only
+# geometry-dependent parameters.
+#
+# HD may have 3 or 4 ROPs. If algconfig_rop3 is provided for a
+# single-sided APA, the TAMaker simply ignores it.
+
+BEGIN_PROLOG
+
+# ----------------------------------------------------------------------
+# TA algorithm configurations
+# ----------------------------------------------------------------------
+
+# ADC simple window
+
+ta_algconfig_simplewindow: {
+  window_length: 6000
+  adc_threshold: 2000
+}
+
+# Adjacency
+
+ta_algconfig_adjacencyplugin: {
+  window_length: 4000
+  adjacency_threshold: 15
+  adj_tolerance: 3
+}
+
+# SWIFT
+
+ta_algconfig_swift: {
+  window_length: 32000
+  inspect_energy_threshold_sadc: 15000
+  accept_energy_threshold_sadc: 55000
+  min_adc_peak: 80
+  min_samples_over_threshold: 256
+  cluster_energy_cut_sadc: 22000
+}
+
+# ----------------------------------------------------------------------
+# TA maker definitions
+# ----------------------------------------------------------------------
+
+# SWIFT
+
+tamakerTPC_SWIFT: {
+  module_type: TriggerActivityMakerTPC
+  # tp_tag is set by the producer chain that uses this maker.
+  algorithm: "TriggerActivityMakerSWIFTPlugin"
+  algconfig_rop0: @local::ta_algconfig_swift
+  algconfig_rop1: @local::ta_algconfig_swift
+  algconfig_rop2: @local::ta_algconfig_swift
+  algconfig_rop3: @local::ta_algconfig_swift
+  flush: true
+  verbosity: 0
+}
+
+# VD SWIFT; geometry has 3 ROPs (currently configured to use col. view only, for example)
+tamakerTPC_SWIFT_vd: {
+  @table::tamakerTPC_SWIFT
+  active_rops: [2]
+  algconfig_rop0: @erase
+  algconfig_rop1: @erase
+  algconfig_rop3: @erase
+  algconfig_rop2: {
+    @table::ta_algconfig_swift
+    inspect_energy_threshold_sadc: 8000
+    accept_energy_threshold_sadc: 20750
+    min_adc_peak: 45
+    min_samples_over_threshold: 10
+  }
+}
+
+
+# ADC simple window
+
+tamakerTPC_ADCSimpleWindow: {
+  module_type: TriggerActivityMakerTPC
+  # tp_tag is set by the producer chain that uses this maker.
+  algorithm: "TriggerActivityMakerADCSimpleWindowPlugin"
+  algconfig_rop0: @local::ta_algconfig_simplewindow
+  algconfig_rop1: @local::ta_algconfig_simplewindow
+  algconfig_rop2: @local::ta_algconfig_simplewindow
+  algconfig_rop3: @local::ta_algconfig_simplewindow
+  flush: true
+  verbosity: 1
+}
+
+END_PROLOG

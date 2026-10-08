@@ -1,6 +1,6 @@
 # triggersim_protodunehd_simpleThr_simpleWin_simpleWin.fcl
 
-#include "triggersim_hd_cfg.fcl"
+#include "triggersim_cfg.fcl"
 #include "services_refactored_pdune.fcl"
 # protodune_tools_dune.fcl is not prolog-only: include it after all the prolog files
 #include "protodune_tools_dune.fcl"

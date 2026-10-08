@@ -1,8 +1,14 @@
-# trigger_candidate_makers_hd_cfg.fcl
+# trigger_candidate_makers_cfg.fcl
 
-# HD TC makers and their algorithm configs
+# TC algorithm configurations and makers.
+# FD-HD configurations are the defaults.
 
 BEGIN_PROLOG
+
+# ----------------------------------------------------------------------
+# TC algorithm configurations
+# ----------------------------------------------------------------------
+
 
 # just the most basic and loose example
 tcconfig_simplewindow: {
@@ -23,6 +29,10 @@ tcconfig_simplewindow: {
   print_tp_info: 0
   window_length: 8000
 }
+
+# ----------------------------------------------------------------------
+# TC maker definitions
+# ----------------------------------------------------------------------
 
 tcmakerTPC_ADCSimpleWindow: {
   module_type: TriggerCandidateMakerTPC

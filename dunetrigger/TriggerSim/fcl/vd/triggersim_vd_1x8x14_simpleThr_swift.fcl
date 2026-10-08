@@ -1,10 +1,10 @@
 # triggersim_vd_1x8x14_simpleThr_swift.fcl
 
-#include "triggersim_vd_cfg.fcl"
+#include "triggersim_cfg.fcl"
 # tools_dune.fcl is not prolog-only: include it after all the prolog files
 #include "tools_dune.fcl"
 
-process_name: TriggerPrimitiveMaker
+process_name: TriggerSim
 
 services: {
   @table::services_triggersim

@@ -1,0 +1,67 @@
+# triggersim_cfg.fcl
+
+# High-level configuration included by the jobs: producer chains and the physics blocks that use them.
+# FD-HD chains are the defaults, VD chains carry a _vd_ tag.
+#
+# Every chain is a triplet:
+#   producers_*  the modules. The labels are picked here and every consumer's
+#                tp_tag/ta_tag is set to match, so the maker prologs stay label-agnostic.
+#   makers_*     the matching trigger path.
+#   physics_*    physics block to be used directly by a job (no analyzers, TriggerAna adds its own).
+# Labels name the algorithm (tpmakerTPCSimpleThreshold, tamakerTPCSWIFT, ...),
+# and they end up in product and TriggerAnaTree tree names.
+
+#include "triggersim_common_cfg.fcl"
+#include "trigger_primitive_makers_cfg.fcl"
+#include "trigger_activity_makers_cfg.fcl"
+#include "trigger_candidate_makers_cfg.fcl"
+
+BEGIN_PROLOG
+
+# ----------------------------------------------------------------------
+# FD-HD chains
+# ----------------------------------------------------------------------
+
+# Simplest baseline configuration: Simple threshold TPG -> ADC Simple Window TAM -> Simple Window TC
+
+producers_triggersim_simpleThr_simpleWin_simpleWin: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold
+  tamakerTPCSimpleWindow: { @table::tamakerTPC_ADCSimpleWindow tp_tag: "tpmakerTPCSimpleThreshold" }
+  tcmakerTPCSimpleWindow: { @table::tcmakerTPC_ADCSimpleWindow ta_tag: "tamakerTPCSimpleWindow" }
+}
+makers_triggersim_simpleThr_simpleWin_simpleWin: [ tpmakerTPCSimpleThreshold, tamakerTPCSimpleWindow, tcmakerTPCSimpleWindow ]
+
+physics_triggersim_simpleThr_simpleWin_simpleWin: {
+  producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
+  makers: @local::makers_triggersim_simpleThr_simpleWin_simpleWin
+  trigger_paths: [ makers ]
+  stream1: [ out1 ]
+  end_paths: [ stream1 ]
+}
+
+# Combined SimpleThreshold and AbsRS TPG chains 
+
+producers_triggersim_simpleThr_absRS: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold
+  tpmakerTPCAbsRunningSum: @local::tpmakerTPC_ABSRunningSum
+}
+makers_triggersim_simpleThr_absRS: [ tpmakerTPCSimpleThreshold, tpmakerTPCAbsRunningSum ]
+physics_triggersim_simpleThr_absRS: @local::physics_triggersim_simpleThr_simpleWin_simpleWin
+physics_triggersim_simpleThr_absRS.producers: @local::producers_triggersim_simpleThr_absRS
+physics_triggersim_simpleThr_absRS.makers: @local::makers_triggersim_simpleThr_absRS
+
+# ----------------------------------------------------------------------
+# FD-VD chains
+# ----------------------------------------------------------------------
+
+# SimpleThreshold TPG -> SWIFT TAM 
+producers_triggersim_vd_simpleThr_swift: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold_vd
+  tamakerTPCSWIFT: { @table::tamakerTPC_SWIFT_vd tp_tag: "tpmakerTPCSimpleThreshold" }
+}
+makers_triggersim_vd_simpleThr_swift: [ tpmakerTPCSimpleThreshold, tamakerTPCSWIFT ]
+physics_triggersim_vd_simpleThr_swift: @local::physics_triggersim_simpleThr_simpleWin_simpleWin
+physics_triggersim_vd_simpleThr_swift.producers: @local::producers_triggersim_vd_simpleThr_swift
+physics_triggersim_vd_simpleThr_swift.makers: @local::makers_triggersim_vd_simpleThr_swift
+
+END_PROLOG

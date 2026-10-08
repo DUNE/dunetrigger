@@ -1,6 +1,6 @@
 # triggersim_1x2x2_simpleThr_simpleWin_simpleWin.fcl
 
-#include "triggersim_hd_cfg.fcl"
+#include "triggersim_cfg.fcl"
 # tools_dune.fcl is not prolog-only: include it after all the prolog files
 #include "tools_dune.fcl"
 
