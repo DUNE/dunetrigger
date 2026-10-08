@@ -47,37 +47,23 @@ tpmakerTPC_ABSRunningSum: {
 # ----------------------------------------------------------------------
 
 # Same configuration as HD, only per-plane thresholds are varied.
-# The 4-sigma configuration is the default VD configuration.
+# The tpmakerTPC_SimpleThreshold_vd is the default VD configuration.
 
-tpmakerTPC_SimpleThreshold_vd_5sigma: {
-  @table::tpmakerTPC_SimpleThreshold
-  tpalg: {
-    @table::tpmakerTPC_SimpleThreshold.tpalg
-    threshold_tpg_plane0: 45
-    threshold_tpg_plane1: 45
-    threshold_tpg_plane2: 45
-  }
-}
+tpmakerTPC_SimpleThreshold_vd_5sigma: @local::tpmakerTPC_SimpleThreshold
+tpmakerTPC_SimpleThreshold_vd_5sigma.tpalg.threshold_tpg_plane0: 45
+tpmakerTPC_SimpleThreshold_vd_5sigma.tpalg.threshold_tpg_plane1: 45
+tpmakerTPC_SimpleThreshold_vd_5sigma.tpalg.threshold_tpg_plane2: 45
 
-tpmakerTPC_SimpleThreshold_vd_4sigma: {
-  @table::tpmakerTPC_SimpleThreshold_vd_5sigma
-  tpalg: {
-    @table::tpmakerTPC_SimpleThreshold_vd_5sigma.tpalg
-    threshold_tpg_plane0: 36
-    threshold_tpg_plane1: 36
-    threshold_tpg_plane2: 36
-  }
-}
+tpmakerTPC_SimpleThreshold_vd_4sigma: @local::tpmakerTPC_SimpleThreshold
+tpmakerTPC_SimpleThreshold_vd_4sigma.tpalg.threshold_tpg_plane0: 36
+tpmakerTPC_SimpleThreshold_vd_4sigma.tpalg.threshold_tpg_plane1: 36
+tpmakerTPC_SimpleThreshold_vd_4sigma.tpalg.threshold_tpg_plane2: 36
 
-tpmakerTPC_SimpleThreshold_vd_3sigma: {
-  @table::tpmakerTPC_SimpleThreshold_vd_5sigma
-  tpalg: {
-    @table::tpmakerTPC_SimpleThreshold_vd_5sigma.tpalg
-    threshold_tpg_plane0: 27
-    threshold_tpg_plane1: 27
-    threshold_tpg_plane2: 27
-  }
-}
+tpmakerTPC_SimpleThreshold_vd_3sigma: @local::tpmakerTPC_SimpleThreshold
+tpmakerTPC_SimpleThreshold_vd_3sigma.tpalg.threshold_tpg_plane0: 27
+tpmakerTPC_SimpleThreshold_vd_3sigma.tpalg.threshold_tpg_plane1: 27
+tpmakerTPC_SimpleThreshold_vd_3sigma.tpalg.threshold_tpg_plane2: 27
+
 
 tpmakerTPC_SimpleThreshold_vd: @local::tpmakerTPC_SimpleThreshold_vd_4sigma
 
