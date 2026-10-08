@@ -20,7 +20,7 @@ def main():
         evid = evids[args.index]
         cut_expr = f"Event == {evid}"
         tps = rootfile[
-            "triggerAna/TriggerPrimitives/tpmakerTPCsimpleThr__TriggerAnaTree1x2x6"
+            "triggerAna/TriggerPrimitives/tpmakerTPCSimpleThreshold__TriggerAnaTree1x2x6"
         ].arrays(library="pd", cut=cut_expr)
         simides = rootfile["triggerAna/simides"].arrays(
             library="pd", cut=cut_expr

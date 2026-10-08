@@ -1,0 +1,6 @@
+# triggersim_tpg_vd_1x8x14.fcl
+
+# Old name, kept so existing scripts keep working.
+# Use triggersim_vd_1x8x14_simpleThr_swift.fcl instead.
+
+#include "triggersim_vd_1x8x14_simpleThr_swift.fcl"

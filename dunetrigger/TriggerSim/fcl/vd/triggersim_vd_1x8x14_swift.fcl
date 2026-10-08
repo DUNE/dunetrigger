@@ -1,0 +1,6 @@
+# triggersim_vd_1x8x14_swift.fcl
+
+#include "triggersim_vd_1x8x14_simpleThr_swift.fcl"
+
+
+physics.makers: [ tamakerTPCSWIFT ]

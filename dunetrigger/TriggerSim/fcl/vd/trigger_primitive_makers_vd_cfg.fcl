@@ -1,0 +1,43 @@
+# trigger_primitive_makers_vd_cfg.fcl
+
+# VD TP makers. The _<N>sigma variants differ only in the per-plane thresholds;
+# tpmakerTPC_ADCSimpleThreshold_vd is the default one.
+
+BEGIN_PROLOG
+
+tpmakerTPC_ADCSimpleThreshold_vd_5sigma: {
+  module_type: TriggerPrimitiveMakerTPC
+  rawdigit_tag: "tpcrawdecoder:daq"
+  tpalg: {
+    tool_type: TPAlgTPCSimpleThreshold
+    threshold_tpg_plane0: 45
+    threshold_tpg_plane1: 45
+    threshold_tpg_plane2: 45
+    verbosity: 0
+  }
+}
+
+tpmakerTPC_ADCSimpleThreshold_vd_4sigma: {
+  @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma
+  tpalg: {
+    @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma.tpalg
+    threshold_tpg_plane0: 36
+    threshold_tpg_plane1: 36
+    threshold_tpg_plane2: 36
+  }
+}
+
+# not used by the jobs here
+tpmakerTPC_ADCSimpleThreshold_vd_3sigma: {
+  @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma
+  tpalg: {
+    @table::tpmakerTPC_ADCSimpleThreshold_vd_5sigma.tpalg
+    threshold_tpg_plane0: 27
+    threshold_tpg_plane1: 27
+    threshold_tpg_plane2: 27
+  }
+}
+
+tpmakerTPC_ADCSimpleThreshold_vd: @local::tpmakerTPC_ADCSimpleThreshold_vd_4sigma
+
+END_PROLOG

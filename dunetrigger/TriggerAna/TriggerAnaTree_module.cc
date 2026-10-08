@@ -44,6 +44,7 @@
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "larsim/MCCheater/BackTrackerService.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
+#include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 
 #include <algorithm>
 #include <iostream>
@@ -127,6 +128,16 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   // Geometry
   info_data["geo"] = {};
   info_data["geo"]["detector"] = geo->DetectorName();
+
+  // Detector Properties
+  auto const detProp =
+      art::ServiceHandle<detinfo::DetectorPropertiesService const>{}
+          ->DataForJob();
+
+  info_data["detector_properties"]["electrons_to_adc"] = detProp.ElectronsToADC();
+  info_data["detector_properties"]["electron_lifetime"] = detProp.ElectronLifetime();
+  info_data["detector_properties"]["readout_window"] = detProp.ReadOutWindowSize();
+  info_data["detector_properties"]["drift_velocity"] = detProp.DriftVelocity();
 
   if (tp_backtracking) {
     for (const auto &[tool, offsets] : bt_view_offsets) {

@@ -1,6 +1,6 @@
 # triggerana_tpc_infodisplay.fcl
 
-#include "triggersim.fcl"
+#include "triggersim_hd_cfg.fcl"
 
 # This configuration is made to run on an input file 
 # coming from protodune data, not simulation.
@@ -20,9 +20,9 @@ outputs_triggerana_tpc_infodisplay.out1.fileName: "triggerTPCInfodisplay.root"
 # generated from the algorithms in dunetrigger
 offlineTriggerTPCInfoDisplay: {
     module_type: TriggerTPCInfoDisplay
-    tp_tag: "tpmakerTPC"
-    ta_tag: "tamakerTPC"
-    tc_tag: "tcmakerTPC"
+    tp_tag: "tpmakerTPCSimpleThreshold"
+    ta_tag: "tamakerTPCSimpleWindow"
+    tc_tag: "tcmakerTPCSimpleWindow"
     verbosity: 1
 }
 
@@ -44,7 +44,7 @@ analyzers_trigger_tpc_infodisplay: {
 physics_triggerana_tpc_infodisplay_simpleThr_simpleWin_simpleWin: {
     
     producers: @local::producers_triggersim_simpleThr_simpleWin_simpleWin
-    makers: [ tpmakerTPC, tamakerTPC, tcmakerTPC ]
+    makers: @local::makers_triggersim_simpleThr_simpleWin_simpleWin
     trigger_paths: [ makers ]
 
     analyzers: @local::analyzers_trigger_tpc_infodisplay

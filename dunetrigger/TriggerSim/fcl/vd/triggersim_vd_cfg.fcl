@@ -1,0 +1,33 @@
+# triggersim_vd_cfg.fcl
+
+# This is the high-level configuration file for the VD dunetrigger tools,
+# the counterpart of triggersim_hd_cfg.fcl. It must never include HD files.
+# The detector-independent services/source/outputs live in triggersim_common_cfg.fcl
+
+#include "triggersim_common_cfg.fcl"
+
+#include "trigger_primitive_makers_vd_cfg.fcl"
+#include "trigger_activity_makers_vd_cfg.fcl"
+
+BEGIN_PROLOG
+
+# Producer chains. Each chain picks the module labels and sets every
+# consumer's input tag (tp_tag/ta_tag) to match, so the maker prologs stay
+# label-agnostic. makers_* is the matching trigger path.
+
+producers_triggersim_vd_simpleThr_swift: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold_vd
+  tamakerTPCSWIFT: { @table::tamakerTPC_SWIFT_vd tp_tag: "tpmakerTPCSimpleThreshold" }
+}
+makers_triggersim_vd_simpleThr_swift: [ tpmakerTPCSimpleThreshold, tamakerTPCSWIFT ]
+
+# this does not have analyzers! Add them
+physics_triggersim_vd_simpleThr_swift: {
+  producers: @local::producers_triggersim_vd_simpleThr_swift
+  makers: @local::makers_triggersim_vd_simpleThr_swift
+  trigger_paths: [ makers ]
+  stream1: [ out1 ]
+  end_paths: [ stream1 ]
+}
+
+END_PROLOG
