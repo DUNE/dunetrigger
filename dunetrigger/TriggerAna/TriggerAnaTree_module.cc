@@ -87,11 +87,18 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
 
   consumesMany<std::vector<sim::SimChannel>>();
 
-  std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets");
+  // Backtracking offsets are configured once per TP tool_type and shared by all
+  // TP collections of that tool; see the note on ViewOffsets in TPBacktracker.hh.
+  std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets", {});
   std::map<std::string, ViewOffsets> bt_offsets;
   for (const auto &offset : offsets) {
     bt_offsets[offset.get<std::string>("tool_type")] =
         ViewOffsets{offset.get<int>("U"), offset.get<int>("V"), offset.get<int>("X")};
+  }
+  if (tp_backtracking && bt_offsets.empty()) {
+    throw cet::exception("TriggerAnaTree")
+        << "tp_backtracking is enabled but bt_window_offsets is empty or missing: "
+           "provide one {tool_type, U, V, X} entry per TP algorithm to backtrack.";
   }
   if (tp_backtracking) {
     tp_bt_ = std::make_unique<TPBacktracker>(std::move(bt_offsets));
