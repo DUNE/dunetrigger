@@ -17,6 +17,16 @@
 
 namespace dunetrigger {
 
+// Sample-window offsets applied before matching a TP to the SimChannel IDEs,
+// one per readout view (U, V, W).
+//
+// NOTE (future improvement, not a bug): the right offsets depend on the TP
+// algorithm *and its configuration* (thresholds, running-sum window, ...), i.e.
+// on the TP collection, not only on the tool type. At the moment one set of
+// offsets is configured per tool_type (fcl `bt_window_offsets`) and applied to
+// every TP collection produced with that tool, whatever its parameters. Keying
+// the offsets by TP collection, or deriving them from the algorithm parameters
+// recorded in the producer's provenance, would remove this approximation.
 struct ViewOffsets {
   int u = 0, v = 0, w = 0;
   int for_view(geo::View_t view) const;   // kU->u, kV->v, kW->w, else 0
