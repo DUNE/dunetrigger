@@ -50,8 +50,7 @@ tamakerTPC_SWIFT: {
   module_type: TriggerActivityMakerTPC
   # tp_tag is set by the producer chain that uses this maker.
   algorithm: "TriggerActivityMakerSWIFTPlugin"
-  algconfig_rop0: @local::ta_algconfig_swift
-  algconfig_rop1: @local::ta_algconfig_swift
+  active_rops: [2,3]
   algconfig_rop2: @local::ta_algconfig_swift
   algconfig_rop3: @local::ta_algconfig_swift
   flush: true
@@ -62,9 +61,6 @@ tamakerTPC_SWIFT: {
 tamakerTPC_SWIFT_vd: {
   @table::tamakerTPC_SWIFT
   active_rops: [2]
-  algconfig_rop0: @erase
-  algconfig_rop1: @erase
-  algconfig_rop3: @erase
   algconfig_rop2: {
     @table::ta_algconfig_swift
     inspect_energy_threshold_sadc: 8000
@@ -81,8 +77,7 @@ tamakerTPC_ADCSimpleWindow: {
   module_type: TriggerActivityMakerTPC
   # tp_tag is set by the producer chain that uses this maker.
   algorithm: "TriggerActivityMakerADCSimpleWindowPlugin"
-  algconfig_rop0: @local::ta_algconfig_simplewindow
-  algconfig_rop1: @local::ta_algconfig_simplewindow
+  active_rops: [2,3]
   algconfig_rop2: @local::ta_algconfig_simplewindow
   algconfig_rop3: @local::ta_algconfig_simplewindow
   flush: true
