@@ -14,6 +14,7 @@
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "art_root_io/TFileDirectory.h"
 #include "art_root_io/TFileService.h"
+#include "canvas/Persistency/Common/Assns.h"
 #include "canvas/Persistency/Common/FindManyP.h"
 #include "canvas/Utilities/InputTag.h"
 #include "cetlib_except/exception.h"
@@ -83,7 +84,22 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
 {
   need_truth_maps = dump_mctruths || dump_mcparticles || ((dump_tp || dump_ta) && tp_backtracking);
 
-  consumesMany<std::vector<sim::SimChannel>>();
+  // Products read by analyze(), declared under the same conditions
+  consumesMany<std::vector<sim::SimChannel>>();                   // fillSimChannels, every event
+  if (need_truth_maps) {                                          // build_truth_maps (covers dump_mctruths)
+    consumesMany<std::vector<simb::MCTruth>>();
+    mayConsumeMany<art::Assns<simb::MCTruth, simb::MCParticle>>();   // FindManyP from "largeant"
+  }
+  if (dump_mcparticles) consumesMany<std::vector<simb::MCParticle>>();
+  if (dump_tp) consumesMany<std::vector<TriggerPrimitive>>();
+  if (dump_ta) {
+    consumesMany<std::vector<TriggerActivityData>>();
+    mayConsumeMany<art::Assns<TriggerActivityData, TriggerPrimitive>>();   // FindManyP TA->TP
+  }
+  if (dump_tc) {
+    consumesMany<std::vector<TriggerCandidateData>>();
+    mayConsumeMany<art::Assns<TriggerCandidateData, TriggerActivityData>>();   // FindManyP TC->TA
+  }
 
   // Backtracking offsets are configured once per TP tool_type and shared by all
   // TP collections of that tool; see the note on ViewOffsets in TPBacktracker.hh.
