@@ -11,6 +11,7 @@
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 #include "fhiclcpp/ParameterSet.h"
 #include "larcore/Geometry/WireReadout.h"
+#include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
 #include "lardataobj/Simulation/SimChannel.h"
 
 #include "FieldNames.hh"
@@ -24,7 +25,6 @@
 
 #include <nlohmann/json.hpp>
 
-#include <array>
 #include <map>
 #include <memory>
 #include <string>
@@ -90,7 +90,6 @@ private:
 
   art::ServiceHandle<art::TFileService> tfs;
 
-  std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruth_handles;
   std::unordered_map<int, int> trkid_to_truth_block_id;
   std::unordered_map<int, std::string> truth_block_id_to_generator_name;
   std::map<std::string, TreeSet<TPWriters>> tp_trees; // key: raw tag
@@ -102,8 +101,8 @@ private:
 
   struct TPCEnergyData
   {
-    double energy;
-    double num_electrons;
+    double energy = 0.;
+    double num_electrons = 0.;
   };
   
   std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
@@ -111,18 +110,18 @@ private:
   std::map<art::ProductID, std::string> tp_tool_type_cache_; // per event
 
 
-  bool dump_tp, dump_ta, dump_tc;
+  bool dump_tp = false, dump_ta = false, dump_tc = false;
   art::InputTag tp_tag_regex, ta_tag_regex, tc_tag_regex;
 
-  bool tp_backtracking;
-  bool need_truth_maps;
+  bool tp_backtracking = false;
+  bool need_truth_maps = false;
 
   template <typename Writers>
   TreeSet<Writers> &get_or_create_tree(std::map<std::string, TreeSet<Writers>> &trees,
                                        const std::string &dir_name, const std::string &dir_title,
                                        const std::string &tag, bool backtracking, bool association);
 
-  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
+  static ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, raw::ChannelID_t channel);
 
   // Per-product fill functions called by analyze(), in this order
   void build_truth_maps(art::Event const &e);
@@ -153,31 +152,31 @@ private:
   ScalarFieldsBuffer<EventMetaData> ev_sbuf;
 
   // visible energy for the event
-  TTree *summary_tree;
+  TTree *summary_tree = nullptr;
   ScalarFieldsBuffer<EventSummaryData> evsummary_buf;
 
   // MCTruth
-  bool dump_mctruths;
+  bool dump_mctruths = false;
 
-  TTree* mctruth_tree;
+  TTree* mctruth_tree = nullptr;
   VectorFieldsBuffer<MCTruthRow> mctruth_buffer;
 
-  TTree* mcneutrino_tree;
+  TTree* mcneutrino_tree = nullptr;
   VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_buffer;
 
-  bool dump_mcparticles;
+  bool dump_mcparticles = false;
 
-  TTree* mcparticle_tree;
+  TTree* mcparticle_tree = nullptr;
   VectorFieldsBuffer<MCParticleRow> mcparticle_buffer;
 
   std::unique_ptr<TPBacktracker> tp_bt_;
 
-  bool dump_simides;
+  bool dump_simides = false;
   art::InputTag simchannel_tag;
-  TTree* simide_tree;
+  TTree* simide_tree = nullptr;
   VectorFieldsBuffer<SimIDERow> simide_buffer;
 
-  TTree* simide_summary_tree;
+  TTree* simide_summary_tree = nullptr;
   ScalarFieldsBuffer<SimIDESummaryRow> simide_summary_buffer;
   VectorFieldsBuffer<SimIDETPCRow> simide_tpc_buffer;
 

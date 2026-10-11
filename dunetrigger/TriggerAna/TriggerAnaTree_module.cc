@@ -46,7 +46,6 @@
 #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
-#include <iostream>
 #include <map>
 #include <set>
 
@@ -205,7 +204,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   simide_tpc_energy_map.clear();
   bt_map.clear();
   tp_tool_type_cache_.clear();
-  mctruth_handles.clear();
   trkid_to_truth_block_id.clear();
   truth_block_id_to_generator_name.clear();
 
@@ -237,12 +235,12 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
 // build_truth_maps
 // Reads:    simb::MCTruth collections (all), MCTruth->MCParticle assns from largeant
-// Produces: mctruth_handles, trkid_to_truth_block_id, truth_block_id_to_generator_name,
+// Produces: trkid_to_truth_block_id, truth_block_id_to_generator_name,
 //           info_data["mctruth_blockid_map"] (first event only; warns once if a later event differs),
 //           evsummary_buf (mctruths_count, mcneutrinos_count)
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
-  mctruth_handles = e.getMany<std::vector<simb::MCTruth>>();
+  auto mctruth_handles = e.getMany<std::vector<simb::MCTruth>>();
 
   int truth_block_counter = 0;
 
@@ -280,10 +278,13 @@ void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
 }
 
 // fillMCTruth
-// Reads:    mctruth_handles
+// Reads:    MCTruth collections (all)
 // Produces: mctruth_buffer/mctruth_tree, mcneutrino_buffer/mcneutrino_tree
-// Requires: mctruth_handles (build_truth_maps)
+// Requires: nothing
+// Note: block_id must stay consistent with build_truth_maps, which relies on both functions
+//       iterating e.getMany<std::vector<simb::MCTruth>>() in the same (deterministic) order.
 void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
+  auto mctruth_handles = e.getMany<std::vector<simb::MCTruth>>();
   int truth_block_counter = 0;
 
   size_t mctruth_collection_size{0};
@@ -767,7 +768,7 @@ dunetrigger::TriggerAnaTree::TreeSet<Writers> &dunetrigger::TriggerAnaTree::get_
 }
 
 dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_channel(geo::WireReadoutGeom const *geom,
-                                                                                   int channel) {
+                                                                                   raw::ChannelID_t channel) {
   readout::ROPID rop = geom->ChannelToROP(channel);
   ChannelInfo result;
   result.rop_id = rop.ROP;

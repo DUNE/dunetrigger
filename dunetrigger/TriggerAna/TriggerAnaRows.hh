@@ -10,10 +10,10 @@
 #include <cstdint>
 #include <string>
 
+namespace dunetrigger {
+
 constexpr int INVALID_NUM = -99999;
 constexpr char INVALID_STR[] = "undef";
-
-namespace dunetrigger {
 
 //-----------------------------------------------------------------------
 struct ChannelInfo {
