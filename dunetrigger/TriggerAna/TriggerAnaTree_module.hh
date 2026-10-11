@@ -112,7 +112,7 @@ private:
 
 
   bool dump_tp, dump_ta, dump_tc;
-  std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
+  art::InputTag tp_tag_regex, ta_tag_regex, tc_tag_regex;
 
   bool tp_backtracking;
   bool need_truth_maps;

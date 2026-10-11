@@ -30,8 +30,6 @@
 #include "nusimdata/SimulationBase/MCParticle.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 
-#include <regex>
-
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <TNamed.h>
@@ -542,15 +540,11 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 // Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
 //           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
-  std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = e.getMany<std::vector<TriggerPrimitive>>();
+  std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = lar::util::getManyByRegexTag<std::vector<TriggerPrimitive>>(e, tp_tag_regex);
 
-  std::regex tp_regex(this->tp_tag_regex);
   for (auto const &tpHandle : tpHandles) {
 
     std::string tag = tpHandle.provenance()->inputTag().encode();
-    if ( !std::regex_match(tag, tp_regex) ) {
-      continue;
-    }
 
     fhicl::ParameterSet tp_params = tpHandle.provenance()->parameterSet().get<fhicl::ParameterSet>("tpalg");
     std::string tp_tool_type = tp_params.get<std::string>("tool_type");
@@ -593,17 +587,12 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
 //           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
-      e.getMany<std::vector<TriggerActivityData>>();
-
-  std::regex ta_regex(this->ta_tag_regex);
+      lar::util::getManyByRegexTag<std::vector<TriggerActivityData>>(e, ta_tag_regex);
 
   for (auto const &taHandle : taHandles) {
 
     art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
     std::string tag = taHandle.provenance()->inputTag().encode();
-    if ( !std::regex_match(tag, ta_regex) ) {
-      continue;
-    }
     auto &ta_ts = get_or_create_tree(ta_trees, "TriggerActivities", "Trigger Activity Trees",
                                      tag, false, false);
     const std::string tpInTaTag = assn_tag(taHandle.provenance()->inputTag(), "inTAs");
@@ -639,16 +628,11 @@ void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutG
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
   std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
-      e.getMany<std::vector<TriggerCandidateData>>();
-
-  std::regex tc_regex(this->tc_tag_regex);
+      lar::util::getManyByRegexTag<std::vector<TriggerCandidateData>>(e, tc_tag_regex);
 
   for (auto const &tcHandle : tcHandles) {
     art::FindManyP<TriggerActivityData> assns(tcHandle, e, tcHandle.provenance()->moduleLabel());
     std::string tag = tcHandle.provenance()->inputTag().encode();
-    if ( !std::regex_match(tag, tc_regex) ) {
-      continue;
-    }
     auto &tc_ts = get_or_create_tree(tc_trees, "TriggerCandidates", "Trigger Candidate Trees",
                                      tag, false, false);
     for (size_t i = 0; i < tcHandle->size(); i++) {
