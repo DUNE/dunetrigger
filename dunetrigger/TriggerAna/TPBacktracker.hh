@@ -2,13 +2,13 @@
 #define DUNETRIGGER_TPBACKTRACKER_HH
 
 #include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "larcoreobj/SimpleTypesAndConstants/geo_types.h"
 #include "lardataobj/Simulation/SimChannel.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 
 #include "MiniBackTracker.hh"
 #include "TriggerAnaRows.hh"
 
+#include <array>
 #include <map>
 #include <set>
 #include <string>
@@ -18,18 +18,21 @@
 namespace dunetrigger {
 
 // Sample-window offsets applied before matching a TP to the SimChannel IDEs,
-// one per readout view (U, V, W).
+// one per readout view, indexed by view number (geo::View_t value). DUNE TPCs
+// have three readout views: 0 = U, 1 = V, 2 = W/Z (collection); all three are
+// required in the configuration.
 //
 // NOTE (future improvement, not a bug): the right offsets depend on the TP
 // algorithm *and its configuration* (thresholds, running-sum window, ...), i.e.
 // on the TP collection, not only on the tool type. At the moment one set of
-// offsets is configured per tool_type (fcl `bt_window_offsets`) and applied to
+// per-view offsets is configured per tool_type (fcl `bt_window_offsets`) and applied to
 // every TP collection produced with that tool, whatever its parameters. Keying
 // the offsets by TP collection, or deriving them from the algorithm parameters
 // recorded in the producer's provenance, would remove this approximation.
 struct ViewOffsets {
-  int u = 0, v = 0, w = 0;
-  int for_view(geo::View_t view) const;   // kU->u, kV->v, kW->w, else 0
+  static constexpr int kNumViews = 3;
+  std::array<int, kNumViews> by_view{};        // view number -> sample offset
+  int for_view(int view) const;                // 0 if view is outside [0, kNumViews)
 };
 
 class TPBacktracker {

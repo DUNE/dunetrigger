@@ -9,17 +9,8 @@
 #include <iterator>
 #include <utility>
 
-int dunetrigger::ViewOffsets::for_view(geo::View_t view) const {
-  switch (view) {
-    case geo::kU:
-      return u;
-    case geo::kV:
-      return v;
-    case geo::kW:
-      return w;
-    default:
-      return 0;
-  }
+int dunetrigger::ViewOffsets::for_view(int view) const {
+  return (view >= 0 && view < kNumViews) ? by_view[view] : 0;
 }
 
 dunetrigger::TPBacktracker::TPBacktracker(std::map<std::string, ViewOffsets> offsets)
@@ -30,10 +21,10 @@ std::vector<sim::IDE> dunetrigger::TPBacktracker::match_ides(const TriggerPrimit
                                                              const MiniBackTracker& bt) const {
   auto it = offsets_.find(tool_type);
   if (it == offsets_.end() && warned_tool_types_.insert(tool_type).second) {
-    mf::LogWarning("TPBacktracker") << "No offsets found for tool type " << tool_type << ", using 0,0,0";
+    mf::LogWarning("TPBacktracker") << "No offsets found for tool type " << tool_type << ", using offset 0 for every view";
   }
   const ViewOffsets offsets = it != offsets_.end() ? it->second : ViewOffsets{};
-  int offset = offsets.for_view(static_cast<geo::View_t>(tp.readout_view));
+  int offset = offsets.for_view(tp.readout_view);
   int sample_start = tp.time_start / TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
   int sample_end = sample_start + tp.samples_over_threshold;
   sample_start += offset;

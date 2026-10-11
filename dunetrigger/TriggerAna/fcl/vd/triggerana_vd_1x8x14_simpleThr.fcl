@@ -26,9 +26,9 @@ physics: {
       bt_window_offsets: [
         {
           tool_type: "TPAlgTPCSimpleThreshold"
-          U: 8
-          V: 1
-          X: -7
+          roview_0: 8
+          roview_1: 1
+          roview_2: -7
         }
       ]
       dump_simides: true

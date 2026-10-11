@@ -25,6 +25,7 @@
 
 #include "larcore/Geometry/Geometry.h"
 #include "larcore/Geometry/WireReadout.h"
+#include "larcoreobj/SimpleTypesAndConstants/geo_types.h"
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "lardataobj/Simulation/SimChannel.h"
 
@@ -47,7 +48,6 @@
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
 #include <map>
-#include <set>
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/set_algorithm.hpp>
@@ -104,14 +104,15 @@ dunetrigger::TriggerAnaTree::TriggerAnaTree(fhicl::ParameterSet const &p)
   // TP collections of that tool; see the note on ViewOffsets in TPBacktracker.hh.
   std::vector<fhicl::ParameterSet> offsets = p.get<std::vector<fhicl::ParameterSet>>("bt_window_offsets", {});
   std::map<std::string, ViewOffsets> bt_offsets;
+  // Three readout views per DUNE TPC; all three keys are required (fhicl throws on a missing one).
   for (const auto &offset : offsets) {
     bt_offsets[offset.get<std::string>("tool_type")] =
-        ViewOffsets{offset.get<int>("U"), offset.get<int>("V"), offset.get<int>("X")};
+        ViewOffsets{{offset.get<int>("roview_0"), offset.get<int>("roview_1"), offset.get<int>("roview_2")}};
   }
   if (tp_backtracking && bt_offsets.empty()) {
     throw cet::exception("TriggerAnaTree")
         << "tp_backtracking is enabled but bt_window_offsets is empty or missing: "
-           "provide one {tool_type, U, V, X} entry per TP algorithm to backtrack.";
+           "provide one {tool_type, roview_0, roview_1, roview_2} entry per TP algorithm to backtrack.";
   }
   if (tp_backtracking) {
     tp_bt_ = std::make_unique<TPBacktracker>(std::move(bt_offsets));
@@ -176,9 +177,9 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   // Backtracking
   if (tp_backtracking) {
     for (const auto &[tool, offsets] : tp_bt_->offsets()) {
-      info_data["backtracker"][tool]["offset_U"] = offsets.u;
-      info_data["backtracker"][tool]["offset_V"] = offsets.v;
-      info_data["backtracker"][tool]["offset_X"] = offsets.w;
+      for (int view = 0; view < ViewOffsets::kNumViews; ++view) {
+        info_data["backtracker"][tool]["roview_" + std::to_string(view)] = offsets.by_view[view];
+      }
     }
   }
 
@@ -408,7 +409,7 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
           track_electron_sums[ide.trackID] += ide.numElectrons;
 
           // save visible energy only in collection views (for ROI studies)
-          if (chinfo.view == geo::kW) {
+          if (chinfo.view == geo::kW) {   // view 2 (geo::kW) is the collection view
             simide_tpc_energy_map[chinfo].energy  += ide.energy;
             simide_tpc_energy_map[chinfo].num_electrons += ide.numElectrons;
           }
