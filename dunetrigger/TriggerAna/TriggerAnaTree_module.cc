@@ -206,8 +206,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   bt_map.clear();
   tp_tool_type_cache_.clear();
   mctruth_handles.clear();
-  trkId_to_truthBlockId.clear();
-  truthBlockId_to_generator_name.clear();
+  trkid_to_truth_block_id.clear();
+  truth_block_id_to_generator_name.clear();
 
   // Clear all TP, TA and TC writers
   for (auto &[tag, ts] : tp_trees) ts.writers.clear();
@@ -237,7 +237,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
 
 // build_truth_maps
 // Reads:    simb::MCTruth collections (all), MCTruth->MCParticle assns from largeant
-// Produces: mctruth_handles, trkId_to_truthBlockId, truthBlockId_to_generator_name,
+// Produces: mctruth_handles, trkid_to_truth_block_id, truth_block_id_to_generator_name,
 //           info_data["mctruth_blockid_map"] (first event only; warns once if a later event differs),
 //           evsummary_buf (mctruths_count, mcneutrinos_count)
 // Requires: nothing
@@ -250,7 +250,7 @@ void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
     // Extract the generator name from the truth handle input label
     std::string generator_name = mctruthHandle.provenance()->inputTag().label();
     // Store generator name for TP backtracking
-    truthBlockId_to_generator_name[truth_block_counter] = generator_name;
+    truth_block_id_to_generator_name[truth_block_counter] = generator_name;
 
     // NOTE: here we are making an assumption that the geant4 stage's process
     // name is largeant. This should be safe mostly.
@@ -259,7 +259,7 @@ void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
       const simb::MCTruth &truthblock = *art::Ptr<simb::MCTruth>(mctruthHandle, i);
       std::vector<art::Ptr<simb::MCParticle>> matched_mcparts = assns.at(i);
       for (art::Ptr<simb::MCParticle> mcpart : matched_mcparts) {
-        trkId_to_truthBlockId[mcpart->TrackId()] = truth_block_counter;
+        trkid_to_truth_block_id[mcpart->TrackId()] = truth_block_counter;
       }
       if (truthblock.NeutrinoSet()) {
         ++evsummary_buf->mcneutrinos_count;
@@ -269,7 +269,7 @@ void dunetrigger::TriggerAnaTree::build_truth_maps(art::Event const &e) {
     }
   }
 
-  json j_mctruth_gen_map(truthBlockId_to_generator_name);
+  json j_mctruth_gen_map(truth_block_id_to_generator_name);
   if (!info_data.contains("mctruth_blockid_map")) {
     info_data["mctruth_blockid_map"] = j_mctruth_gen_map;
   } else if (info_data["mctruth_blockid_map"] != j_mctruth_gen_map && !mctruth_map_warned_) {
@@ -314,7 +314,7 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
         mcneutrino_buffer->leptonpdg = mcneutrino.Lepton().PdgCode();
         mcneutrino_buffer->ccnc = mcneutrino.CCNC();
         mcneutrino_buffer->mode = mcneutrino.Mode();
-        mcneutrino_buffer->interactionType = mcneutrino.InteractionType();
+        mcneutrino_buffer->interaction_type = mcneutrino.InteractionType();
         mcneutrino_buffer->target = mcneutrino.Target();
         mcneutrino_buffer->hitnuc = mcneutrino.HitNuc();
         mcneutrino_buffer->hitquark = mcneutrino.HitQuark();
@@ -438,8 +438,8 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
             simide_buffer->x = ide.x;
             simide_buffer->y = ide.y;
             simide_buffer->z = ide.z;
-            simide_buffer->trackID = ide.trackID;
-            simide_buffer->origTrackID = ide.origTrackID;
+            simide_buffer->track_id = ide.trackID;
+            simide_buffer->orig_track_id = ide.origTrackID;
             simide_buffer->readout_plane_id = chinfo.rop_id;
             simide_buffer->readout_view = chinfo.view;
             simide_buffer->detector_element = chinfo.tpcset_id;
@@ -501,7 +501,7 @@ void dunetrigger::TriggerAnaTree::fillSimIDESummary() {
 // Reads:    simb::MCParticle collections (all)
 // Produces: evsummary_buf (mcparticles_count), mcparticle_buffer/mcparticle_tree
 // Requires: track_en_sums, track_electron_sums (fillSimChannels);
-//           trkId_to_truthBlockId (build_truth_maps)
+//           trkid_to_truth_block_id (build_truth_maps)
 void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 
   std::vector<art::Handle<std::vector<simb::MCParticle>>> mcparticleHandles =
@@ -519,8 +519,8 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
       mcparticle_buffer->g4_track_id = part.TrackId();
       mcparticle_buffer->mother = part.Mother();
       int truth_block_id = -1;
-      auto it = trkId_to_truthBlockId.find(part.TrackId());
-      if (it != trkId_to_truthBlockId.end()) truth_block_id = it->second;
+      auto it = trkid_to_truth_block_id.find(part.TrackId());
+      if (it != trkid_to_truth_block_id.end()) truth_block_id = it->second;
       mcparticle_buffer->truth_block_id = truth_block_id;
       mcparticle_buffer->x = part.Vx();
       mcparticle_buffer->y = part.Vy();
@@ -553,8 +553,8 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 // Reads:    TriggerPrimitive collections matching tp_tag_regex
 // Produces: TP trees (tp_trees[<tag>]), info_data["tpg"][<tag>]
 //           (written when the TP tree for <tag> is created)
-// Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
-//           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
+// Requires: bt_map (fillSimChannels); trkid_to_truth_block_id,
+//           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = lar::util::getManyByRegexTag<std::vector<TriggerPrimitive>>(e, tp_tag_regex);
 
@@ -599,8 +599,8 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
 // Reads:    TriggerActivityData collections matching ta_tag_regex,
 //           TA->TriggerPrimitive assns
 // Produces: TA trees (ta_trees[<tag>]), inTAs TP trees (tp_trees[<tag>inTAs])
-// Requires: bt_map (fillSimChannels); trkId_to_truthBlockId,
-//           truthBlockId_to_generator_name (build_truth_maps) -- only if tp_backtracking
+// Requires: bt_map (fillSimChannels); trkid_to_truth_block_id,
+//           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
       lar::util::getManyByRegexTag<std::vector<TriggerActivityData>>(e, ta_tag_regex);
@@ -684,7 +684,7 @@ dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::fill_tp_row(TPWriters &wri
   auto chinfo = get_channel_info_for_channel(geom, tp.channel);
   tpw->readout_plane_id = chinfo.rop_id;
   tpw->readout_view = chinfo.view;
-  tpw->TPCSetID = chinfo.tpcset_id;
+  tpw->tpcset_id = chinfo.tpcset_id;
   tpw.push_back();
   return chinfo;
 }
@@ -705,7 +705,7 @@ void dunetrigger::TriggerAnaTree::backtrack_tp(TPWriters &w, const ChannelInfo &
   }
   auto& mbt = bt_it->second;
   std::vector<sim::IDE> matched_ides = tp_bt_->match_ides(w.tp.row, tool_type, *mbt);
-  tp_bt_->fill_row(w.bt.row, matched_ides, trkId_to_truthBlockId, truthBlockId_to_generator_name, *mbt);
+  tp_bt_->fill_row(w.bt.row, matched_ides, trkid_to_truth_block_id, truth_block_id_to_generator_name, *mbt);
   w.bt.push_back();
 }
 

@@ -114,7 +114,7 @@ struct MCNeutrinoRow {
   int leptonpdg = INVALID_NUM;
   int ccnc = INVALID_NUM;
   int mode = INVALID_NUM;
-  int interactionType = INVALID_NUM;
+  int interaction_type = INVALID_NUM;
   int target = INVALID_NUM;
   int hitnuc = INVALID_NUM;
   int hitquark = INVALID_NUM;
@@ -133,7 +133,7 @@ REGISTER_FIELD_NAMES(MCNeutrinoRow,
                          leptonpdg,
                          ccnc,
                          mode,
-                         interactionType,
+                         interaction_type,
                          target,
                          hitnuc,
                          hitquark,
@@ -207,11 +207,11 @@ struct SimIDERow {
   float x = 0.f;
   float y = 0.f;
   float z = 0.f;
-  int trackID = INVALID_NUM;
-  float origTrackID = 0.f;
-  float readout_plane_id = 0.f;
-  float readout_view = 0.f;
-  float detector_element = 0.f;
+  int track_id = INVALID_NUM;
+  int orig_track_id = 0;
+  unsigned int readout_plane_id = 0;
+  int readout_view = 0;
+  unsigned int detector_element = 0;
 };
 
 REGISTER_FIELD_NAMES(SimIDERow,
@@ -222,8 +222,8 @@ REGISTER_FIELD_NAMES(SimIDERow,
                          x,
                          y,
                          z,
-                         trackID,
-                         origTrackID,
+                         track_id,
+                         orig_track_id,
                          readout_plane_id,
                          readout_view,
                          detector_element);
@@ -266,7 +266,7 @@ struct TriggerPrimitiveRow {
   uint16_t adc_peak = 0;
   unsigned int readout_plane_id = 0;
   int readout_view = 0;
-  unsigned int TPCSetID = 0;
+  unsigned int tpcset_id = 0;
 
   void from_tp(const dunedaq::trgdataformats::TriggerPrimitive &tp);
 };
@@ -283,7 +283,7 @@ REGISTER_FIELD_NAMES(TriggerPrimitiveRow,
                          adc_peak,
                          readout_plane_id,
                          readout_view,
-                         TPCSetID);
+                         tpcset_id);
 
 //-----------------------------------------------------------------------
 struct TriggerPrimitiveBacktrackingRow {
