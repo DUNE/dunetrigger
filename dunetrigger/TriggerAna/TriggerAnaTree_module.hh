@@ -91,8 +91,8 @@ private:
   art::ServiceHandle<art::TFileService> tfs;
 
   std::vector<art::Handle<std::vector<simb::MCTruth>>> mctruth_handles;
-  std::unordered_map<int, int> trkId_to_truthBlockId;
-  std::unordered_map<int, std::string> truthBlockId_to_generator_name;
+  std::unordered_map<int, int> trkid_to_truth_block_id;
+  std::unordered_map<int, std::string> truth_block_id_to_generator_name;
   std::map<std::string, TreeSet<TPWriters>> tp_trees; // key: raw tag
   std::map<std::string, TreeSet<TAWriters>> ta_trees;
   std::map<std::string, TreeSet<TCWriters>> tc_trees;
