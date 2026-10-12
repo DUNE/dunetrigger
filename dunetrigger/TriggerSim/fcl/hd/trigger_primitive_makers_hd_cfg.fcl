@@ -4,7 +4,7 @@
 
 BEGIN_PROLOG
 
-tpmakerTPC_ADCSimpleThreshold: {
+tpmakerTPC_SimpleThreshold: {
   module_type: TriggerPrimitiveMakerTPC
   rawdigit_tag: "tpcrawdecoder:daq"
   tpalg: {

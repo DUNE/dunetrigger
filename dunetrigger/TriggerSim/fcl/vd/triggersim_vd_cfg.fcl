@@ -16,7 +16,7 @@ BEGIN_PROLOG
 # label-agnostic. makers_* is the matching trigger path.
 
 producers_triggersim_vd_simpleThr_swift: {
-  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold_vd
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold_vd
   tamakerTPCSWIFT: { @table::tamakerTPC_SWIFT_vd tp_tag: "tpmakerTPCSimpleThreshold" }
 }
 makers_triggersim_vd_simpleThr_swift: [ tpmakerTPCSimpleThreshold, tamakerTPCSWIFT ]

@@ -18,7 +18,7 @@ BEGIN_PROLOG
 
 # the simplest configurations are here as default
 producers_triggersim_simpleThr_simpleWin_simpleWin: {
-  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold
   tamakerTPCSimpleWindow: { @table::tamakerTPC_ADCSimpleWindow tp_tag: "tpmakerTPCSimpleThreshold" }
   tcmakerTPCSimpleWindow: { @table::tcmakerTPC_ADCSimpleWindow ta_tag: "tamakerTPCSimpleWindow" }
 }
@@ -26,7 +26,7 @@ makers_triggersim_simpleThr_simpleWin_simpleWin: [ tpmakerTPCSimpleThreshold, ta
 
 # Run both AbsRS and SimpleThreshold TPG
 producers_triggersim_simpleThr_absRS: {
-  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_ADCSimpleThreshold
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold
   tpmakerTPCAbsRunningSum: @local::tpmakerTPC_ABSRunningSum
 }
 makers_triggersim_simpleThr_absRS: [ tpmakerTPCSimpleThreshold, tpmakerTPCAbsRunningSum ]
