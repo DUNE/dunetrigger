@@ -16,9 +16,51 @@ int dunetrigger::ViewOffsets::for_view(int view) const {
 dunetrigger::TPBacktracker::TPBacktracker(std::map<std::string, ViewOffsets> offsets)
     : offsets_(std::move(offsets)) {}
 
+void dunetrigger::TPBacktracker::prep_event(
+    std::vector<art::Handle<std::vector<sim::SimChannel>>> const& simchannels) {
+  simchannels_.clear();
+  for (auto const& handle : simchannels) {
+    art::fill_ptr_vector(simchannels_, handle);
+  }
+  auto compare = [](art::Ptr<sim::SimChannel> const& a, art::Ptr<sim::SimChannel> const& b) {
+    return a->Channel() < b->Channel();
+  };
+  if (!std::is_sorted(simchannels_.begin(), simchannels_.end(), compare)) {
+    std::sort(simchannels_.begin(), simchannels_.end(), compare);
+  }
+}
+
+void dunetrigger::TPBacktracker::clear_event() { simchannels_.clear(); }
+
+art::Ptr<sim::SimChannel> dunetrigger::TPBacktracker::find_simchannel_ptr(raw::ChannelID_t channel) const {
+  auto ilb = std::lower_bound(simchannels_.begin(), simchannels_.end(), channel,
+                              [](art::Ptr<sim::SimChannel> const& a, raw::ChannelID_t ch) {
+                                return a->Channel() < ch;
+                              });
+  return (ilb != simchannels_.end() && (*ilb)->Channel() == channel) ? *ilb : art::Ptr<sim::SimChannel>{};
+}
+
+std::vector<double> dunetrigger::TPBacktracker::sim_ides_to_xyz(std::vector<sim::IDE> const& ides) const {
+  std::vector<double> xyz(3, 0.0);
+  double w = 0.0;
+  for (auto const& ide : ides) {
+    double weight = ide.numElectrons;
+    w += weight;
+    xyz[0] += (weight * ide.x);
+    xyz[1] += (weight * ide.y);
+    xyz[2] += (weight * ide.z);
+  }
+  if (w < 1.e-5)
+    throw cet::exception("TPBacktracker") << "No sim::IDEs providing non-zero number of electrons"
+                                          << " can't determine originating location from truth\n";
+  xyz[0] = xyz[0] / w;
+  xyz[1] = xyz[1] / w;
+  xyz[2] = xyz[2] / w;
+  return xyz;
+}
+
 std::vector<sim::IDE> dunetrigger::TPBacktracker::match_ides(const TriggerPrimitiveRow& tp,
-                                                             const std::string& tool_type,
-                                                             const MiniBackTracker& bt) const {
+                                                             const std::string& tool_type) const {
   auto it = offsets_.find(tool_type);
   if (it == offsets_.end() && warned_tool_types_.insert(tool_type).second) {
     mf::LogWarning("TPBacktracker") << "No offsets found for tool type " << tool_type << ", using offset 0 for every view";
@@ -36,7 +78,7 @@ std::vector<sim::IDE> dunetrigger::TPBacktracker::match_ides(const TriggerPrimit
     throw cet::exception("TPBacktracker") << "Invalid sample range";
   }
 
-  art::Ptr<sim::SimChannel> sim_channel = bt.findSimChannelPtr(tp.channel);
+  art::Ptr<sim::SimChannel> sim_channel = find_simchannel_ptr(tp.channel);
   // No SimChannel for this channel (e.g. a noise-only TP): nothing to match.
   if (sim_channel.isNull()) {
     return {};
@@ -48,8 +90,7 @@ std::vector<sim::IDE> dunetrigger::TPBacktracker::match_ides(const TriggerPrimit
 void dunetrigger::TPBacktracker::fill_row(TriggerPrimitiveBacktrackingRow& row,
                                           const std::vector<sim::IDE>& ides,
                                           const std::unordered_map<int, int>& trkid_to_truth_block,
-                                          const std::unordered_map<int, std::string>& truth_id_to_gen,
-                                          const MiniBackTracker& bt) const {
+                                          const std::unordered_map<int, std::string>& truth_id_to_gen) const {
   row.bt_primary_track_id = INVALID_NUM;
   row.bt_primary_track_numelectron_frac = INVALID_NUM;
   row.bt_primary_track_energy_frac = INVALID_NUM;
@@ -117,8 +158,8 @@ void dunetrigger::TPBacktracker::fill_row(TriggerPrimitiveBacktrackingRow& row,
   row.bt_primary_track_numelectron_frac = track_numelectrons[row.bt_primary_track_id] / row.bt_numelectrons;
   row.bt_primary_track_energy_frac = track_energies[row.bt_primary_track_id] / row.bt_edep;
 
-  std::vector<double> bt_position = bt.simIDEsToXYZ(ides);
-  std::vector<double> primary_bt_position = bt.simIDEsToXYZ(primary_ides);
+  std::vector<double> bt_position = sim_ides_to_xyz(ides);
+  std::vector<double> primary_bt_position = sim_ides_to_xyz(primary_ides);
 
   row.bt_x = bt_position[0];
   row.bt_y = bt_position[1];

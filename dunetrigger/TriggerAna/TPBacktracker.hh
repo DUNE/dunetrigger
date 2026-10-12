@@ -1,11 +1,13 @@
 #ifndef DUNETRIGGER_TPBACKTRACKER_HH
 #define DUNETRIGGER_TPBACKTRACKER_HH
 
+#include "art/Framework/Principal/Handle.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
+#include "canvas/Persistency/Common/Ptr.h"
+#include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
 #include "lardataobj/Simulation/SimChannel.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 
-#include "MiniBackTracker.hh"
 #include "TriggerAnaRows.hh"
 
 #include <array>
@@ -35,27 +37,39 @@ struct ViewOffsets {
   int for_view(int view) const;                // 0 if view is outside [0, kNumViews)
 };
 
+// Matches TPs to SimChannel IDEs and to MC truth. Owns a per-event, merged
+// SimChannel index (all matched collections, sorted by channel). The index is
+// a stopgap for larsim < v10_27_00, whose cheat::BackTracker cannot load
+// several SimChannel collections.
 class TPBacktracker {
 public:
   explicit TPBacktracker(std::map<std::string, ViewOffsets> offsets);
 
+  // Builds the per-event SimChannel index from all the given collections.
+  void prep_event(std::vector<art::Handle<std::vector<sim::SimChannel>>> const& simchannels);
+  void clear_event();
+
   // Returns IDEs on the TP's channel inside the TP's time window shifted by the
   // tool-specific view offset. Empty if no SimChannel exists for the channel.
   std::vector<sim::IDE> match_ides(const TriggerPrimitiveRow& tp,
-                                   const std::string& tool_type,
-                                   const MiniBackTracker& bt) const;
+                                   const std::string& tool_type) const;
 
   // Fills `row` from `ides`. Leaves INVALID_NUM defaults if `ides` is empty or
   // no IDE could be resolved to an MCParticle.
   void fill_row(TriggerPrimitiveBacktrackingRow& row,
                 const std::vector<sim::IDE>& ides,
                 const std::unordered_map<int,int>& trkid_to_truth_block,
-                const std::unordered_map<int,std::string>& truth_id_to_gen,
-                const MiniBackTracker& bt) const;
+                const std::unordered_map<int,std::string>& truth_id_to_gen) const;
 
   const std::map<std::string, ViewOffsets>& offsets() const { return offsets_; }
 
 private:
+  // The only two places that touch SimChannels. Step 9b replaces their bodies
+  // with cheat::BackTrackerService calls (provider()->FindSimChannelPtr / SimIDEsToXYZ).
+  art::Ptr<sim::SimChannel> find_simchannel_ptr(raw::ChannelID_t channel) const;
+  std::vector<double> sim_ides_to_xyz(std::vector<sim::IDE> const& ides) const;
+
+  std::vector<art::Ptr<sim::SimChannel>> simchannels_; // per event, sorted by channel
   std::map<std::string, ViewOffsets> offsets_;
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv_;
   mutable std::set<std::string> warned_tool_types_;

@@ -49,8 +49,8 @@
 #include <algorithm>
 #include <map>
 
-#include <boost/range/adaptor/map.hpp>
-#include <boost/range/algorithm/set_algorithm.hpp>
+#include <iterator>
+#include <set>
 
 
 #include <nlohmann/json.hpp>
@@ -203,7 +203,8 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   track_en_sums.clear();
   track_electron_sums.clear();
   simide_tpc_energy_map.clear();
-  bt_map.clear();
+  simchannel_tpcsets_.clear();
+  if (tp_bt_) tp_bt_->clear_event();
   tp_tool_type_cache_.clear();
   trkid_to_truth_block_id.clear();
   truth_block_id_to_generator_name.clear();
@@ -368,7 +369,7 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
 // fillSimChannels
 // Reads:    sim::SimChannel collections matching simchannel_tag
 // Produces: track_en_sums, track_electron_sums, simide_tpc_energy_map,
-//           bt_map, evsummary_buf (per-ROP sums, simides_count),
+//           simchannel_tpcsets_ and the TPBacktracker SimChannel index, evsummary_buf (per-ROP sums, simides_count),
 //           simide_buffer/simide_tree
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::WireReadoutGeom const *geom) {
@@ -455,8 +456,9 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
     // Each TPCSet must be covered by a single SimChannel collection,
     // otherwise backtracking would silently use only the last one.
     std::vector<int> overlap;
-    boost::set_intersection(tpcset_ids, bt_map | boost::adaptors::map_keys,
-                            std::back_inserter(overlap));
+    std::set_intersection(tpcset_ids.begin(), tpcset_ids.end(),
+                          simchannel_tpcsets_.begin(), simchannel_tpcsets_.end(),
+                          std::back_inserter(overlap));
     if (!overlap.empty()) {
       cet::exception ex("TriggerAnaTree");
       ex << "SimChannel collection " << simchannels.provenance()->inputTag().encode()
@@ -466,11 +468,10 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
       throw ex;
     }
 
-    auto mtb = std::make_shared<MiniBackTracker>(simchannels);
-    for (int tpcset_id : tpcset_ids) {
-      bt_map[tpcset_id] = mtb;
-    }
+    simchannel_tpcsets_.insert(tpcset_ids.begin(), tpcset_ids.end());
   }
+
+  if (tp_bt_) tp_bt_->prep_event(simchannels_many);
 
   if (dump_simides) simide_tree->Fill();
 }
@@ -555,7 +556,7 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 // Reads:    TriggerPrimitive collections matching tp_tag_regex
 // Produces: TP trees (tp_trees[<tag>]), info_data["tpg"][<tag>]
 //           (written when the TP tree for <tag> is created)
-// Requires: bt_map (fillSimChannels); trkid_to_truth_block_id,
+// Requires: simchannel_tpcsets_ and the TPBacktracker index (fillSimChannels); trkid_to_truth_block_id,
 //           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = lar::util::getManyByRegexTag<std::vector<TriggerPrimitive>>(e, tp_tag_regex);
@@ -601,7 +602,7 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
 // Reads:    TriggerActivityData collections matching ta_tag_regex,
 //           TA->TriggerPrimitive assns
 // Produces: TA trees (ta_trees[<tag>]), inTAs TP trees (tp_trees[<tag>inTAs])
-// Requires: bt_map (fillSimChannels); trkid_to_truth_block_id,
+// Requires: simchannel_tpcsets_ and the TPBacktracker index (fillSimChannels); trkid_to_truth_block_id,
 //           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
@@ -696,18 +697,16 @@ dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::fill_tp_row(TPWriters &wri
 void dunetrigger::TriggerAnaTree::backtrack_tp(TPWriters &w, const ChannelInfo &chinfo,
                                                const std::string &tool_type, const std::string &tag) {
   // SimChannel writers are dense, so every simulated TPCSet must be in
-  // bt_map: a missing one means simchannel_tag misses some collections.
-  auto bt_it = bt_map.find(chinfo.tpcset_id);
-  if (bt_it == bt_map.end()) {
+  // simchannel_tpcsets_: a missing one means simchannel_tag misses some collections.
+  if (!simchannel_tpcsets_.count(chinfo.tpcset_id)) {
     throw cet::exception("TriggerAnaTree")
         << "No SimChannel collection covers TPCSet " << chinfo.tpcset_id
         << " (TP on channel " << w.tp.row.channel << " from " << tag
         << "). Check that simchannel_tag \"" << simchannel_tag.encode()
         << "\" matches the SimChannels of every TPCSet with TPs.";
   }
-  auto& mbt = bt_it->second;
-  std::vector<sim::IDE> matched_ides = tp_bt_->match_ides(w.tp.row, tool_type, *mbt);
-  tp_bt_->fill_row(w.bt.row, matched_ides, trkid_to_truth_block_id, truth_block_id_to_generator_name, *mbt);
+  std::vector<sim::IDE> matched_ides = tp_bt_->match_ides(w.tp.row, tool_type);
+  tp_bt_->fill_row(w.bt.row, matched_ides, trkid_to_truth_block_id, truth_block_id_to_generator_name);
   w.bt.push_back();
 }
 
