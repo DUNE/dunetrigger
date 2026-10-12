@@ -3,27 +3,12 @@ include_directories("${dunedetdataformats_DIR}/../../../include") # there's a ne
 add_subdirectory(fcl)
 add_subdirectory(exe)
 
-# TPBacktracker.cc is the only non-plugin source here: art_make builds it into a
-# library (dunetrigger_TriggerAna) that the modules link against.
 art_make(BASENAME_ONLY
-  LIB_LIBRARIES
-  Boost::headers
-  canvas::canvas
-  lardataobj::Simulation
-  lardataobj::RawData
-  nusimdata::SimulationBase
-  larsim::MCCheater_ParticleInventoryService_service
-  nurandom::RandomUtils_NuRandomService_service  # brings CLHEP (pulled in by ParticleInventoryService headers)
-  art::Framework_Principal
-  art::Framework_Services_Registry
-  art::Persistency_Provenance
-  art::Persistency_Common
-  messagefacility::MF_MessageLogger
-  cetlib_except::cetlib_except
   MODULE_LIBRARIES
-  dunetrigger::TriggerAna
+  Boost::headers
   larcore::Geometry_Geometry_service
   lardataobj::RawData
+  lardataobj::Simulation
   dunecore::DuneObj
   lardata::ArtDataHelper
   lardata::DetectorPropertiesService
@@ -43,10 +28,10 @@ art_make(BASENAME_ONLY
   cetlib_except::cetlib_except
   ROOT::Tree
   larsim::MCCheater_ParticleInventoryService_service
+  nurandom::RandomUtils_NuRandomService_service  # brings CLHEP (pulled in by ParticleInventoryService headers)
   triggeralgs_module
   dunetrigger_vendor_lardata_ArtDataHelper
 )
-
 
 install_fhicl()
 install_headers()
