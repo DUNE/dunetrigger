@@ -1,0 +1,35 @@
+# trigger_candidate_makers_hd_cfg.fcl
+
+# HD TC makers and their algorithm configs
+
+BEGIN_PROLOG
+
+# just the most basic and loose example
+tcconfig_simplewindow: {
+  adc_threshold: 1000       # Very loose! All TAs will pass through
+  n_channels_threshold: 10  # Very loose! All TAs will pass through
+  trigger_on_adc: true
+  trigger_on_adjacency: 0
+  trigger_on_n_channels: true
+  adj_tolerance: 4
+  adjacency_threshold: 6
+  bundle_size: 100
+  eps: 20
+  max_channel_distance: 50
+  max_tp_count: 1000
+  min_pts: 7
+  min_tps: 20
+  prescale: 1
+  print_tp_info: 0
+  window_length: 8000
+}
+
+tcmakerTPC_ADCSimpleWindow: {
+  module_type: TriggerCandidateMakerTPC
+  # ta_tag is set by the producer chain that uses this maker, next to the TA maker label
+  algorithm: "TriggerCandidateMakerADCSimpleWindowPlugin"
+  algconfig: @local::tcconfig_simplewindow
+  verbosity: 1
+}
+
+END_PROLOG

@@ -1,4 +1,4 @@
-#include "triggersim.fcl"
+#include "triggersim_hd_cfg.fcl"
 #include "tools_dune.fcl"
 
 process_name: TPGen
@@ -13,7 +13,7 @@ outputs: @local::outputs_triggersim
 
 physics: {
   producers: @local::producers_triggersim_simpleThr_absRS
-  makers: [ tpmakerTPCsimpleThr, tpmakerTPCabsRS ]
+  makers: @local::makers_triggersim_simpleThr_absRS
   trigger_paths: [ makers ]
   stream1: [ out1 ]
   end_paths: [ stream1 ]

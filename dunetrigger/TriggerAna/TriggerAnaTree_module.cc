@@ -44,6 +44,7 @@
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "larsim/MCCheater/BackTrackerService.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
+#include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 
 #include <algorithm>
 #include <iostream>
@@ -127,6 +128,16 @@ void dunetrigger::TriggerAnaTree::beginJob() {
   // Geometry
   info_data["geo"] = {};
   info_data["geo"]["detector"] = geo->DetectorName();
+
+  // Detector Properties
+  auto const detProp =
+      art::ServiceHandle<detinfo::DetectorPropertiesService const>{}
+          ->DataForJob();
+
+  info_data["detector_properties"]["electrons_to_adc"] = detProp.ElectronsToADC();
+  info_data["detector_properties"]["electron_lifetime"] = detProp.ElectronLifetime();
+  info_data["detector_properties"]["readout_window"] = detProp.ReadOutWindowSize();
+  info_data["detector_properties"]["drift_velocity"] = detProp.DriftVelocity();
 
   if (tp_backtracking) {
     for (const auto &[tool, offsets] : bt_view_offsets) {
@@ -613,9 +624,10 @@ void dunetrigger::TriggerAnaTree::make_ta_tree_if_needed(std::string tag, bool a
     tree->Branch("adc_integral", &ta.adc_integral);
     tree->Branch("adc_peak", &ta.adc_peak);
     tree->Branch("detid", &ta.detid);
-    // HACK: assuming enums are ints here
-    tree->Branch("type", &ta.type);
-    tree->Branch("algorithm", &ta.algorithm);
+    // type and algorithm are enum classes (underlying int): ROOT has no dictionary
+    // for them, so give the leaf type explicitly.
+    tree->Branch("type", &ta.type, "type/I");
+    tree->Branch("algorithm", &ta.algorithm, "algorithm/I");
     if (assn)
       tree->Branch("TCnumber", &m_tc_number);
   }
@@ -639,8 +651,9 @@ void dunetrigger::TriggerAnaTree::make_tc_tree_if_needed(std::string tag) {
     tree->Branch("time_end", &tc.time_end);
     tree->Branch("time_candidate", &tc.time_candidate);
     tree->Branch("detid", &tc.detid);
-    tree->Branch("type", &tc.type);
-    tree->Branch("algorithm", &tc.algorithm);
+    // See make_ta_tree_if_needed: enum class fields need an explicit leaf type.
+    tree->Branch("type", &tc.type, "type/I");
+    tree->Branch("algorithm", &tc.algorithm, "algorithm/I");
   }
 }
 
