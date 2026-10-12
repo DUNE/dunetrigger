@@ -15,7 +15,6 @@
 #include "lardataobj/Simulation/SimChannel.h"
 
 #include "FieldNames.hh"
-#include "MiniBackTracker.hh"
 #include "TPBacktracker.hh"
 #include "TriggerAnaRows.hh"
 #include "ScalarFieldsBuffer.hh"
@@ -27,6 +26,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -106,7 +106,7 @@ private:
   };
   
   std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
-  std::map<int, std::shared_ptr<MiniBackTracker>> bt_map;
+  std::set<int> simchannel_tpcsets_; // TPCSets covered by the matched SimChannel collections (per event)
   std::map<art::ProductID, std::string> tp_tool_type_cache_; // per event
 
 
@@ -138,8 +138,8 @@ private:
                           geo::WireReadoutGeom const *geom);
 
   // Backtracks the TP whose row is in w.tp.row (already filled by fill_tp_row):
-  // finds the SimChannel backtracker for the TP's TPCSet, matches IDEs, fills
-  // and commits w.bt. Throws if no SimChannel collection covers the TPCSet.
+  // checks that the TP's TPCSet is covered by the SimChannel collections, matches
+  // IDEs, fills and commits w.bt. Throws if no SimChannel collection covers the TPCSet.
   void backtrack_tp(TPWriters &w, const ChannelInfo &chinfo,
                     const std::string &tool_type, const std::string &tag);
 
