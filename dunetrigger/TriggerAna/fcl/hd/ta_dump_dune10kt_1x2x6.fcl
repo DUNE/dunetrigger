@@ -18,7 +18,7 @@ physics: {
   analyzers: {
     taTxtDump: {
       module_type: TriggerActivityTxtDump
-      sim_ta_tag:  "tamakerTPC"
+      sim_ta_tag:  "tamakerTPCSimpleWindow"
       file_name:   "trigger_activities.txt"
     }
   }

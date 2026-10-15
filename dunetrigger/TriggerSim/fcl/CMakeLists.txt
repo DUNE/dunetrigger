@@ -1,3 +1,6 @@
+add_subdirectory(hd)
+add_subdirectory(vd)
+
 # Install fcl files in /job subdirectory.
 
 install_fhicl()

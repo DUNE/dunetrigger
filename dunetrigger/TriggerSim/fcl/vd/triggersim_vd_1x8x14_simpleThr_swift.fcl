@@ -1,0 +1,18 @@
+# triggersim_vd_1x8x14_simpleThr_swift.fcl
+
+#include "triggersim_vd_cfg.fcl"
+# tools_dune.fcl is not prolog-only: include it after all the prolog files
+#include "tools_dune.fcl"
+
+process_name: TriggerPrimitiveMaker
+
+services: {
+  @table::services_triggersim
+  @table::dunefdvd_1x8x14_3view_30deg_reco_services
+}
+
+source:  @local::source_triggersim
+outputs: @local::outputs_triggersim
+physics: @local::physics_triggersim_vd_simpleThr_swift
+
+outputs.out1.outputCommands: [ "keep *_*_*_*", "drop raw::RawDigit*_*_*_*" ]
