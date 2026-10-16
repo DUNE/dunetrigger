@@ -3,9 +3,12 @@ include_directories("${dunedetdataformats_DIR}/../../../include") # there's a ne
 add_subdirectory(fcl)
 add_subdirectory(exe)
 
-art_make(BASENAME_ONLY MODULE_LIBRARIES
+art_make(BASENAME_ONLY
+  MODULE_LIBRARIES
+  Boost::headers
   larcore::Geometry_Geometry_service
   lardataobj::RawData
+  lardataobj::Simulation
   dunecore::DuneObj
   lardata::ArtDataHelper
   lardata::DetectorPropertiesService
@@ -25,10 +28,10 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   cetlib_except::cetlib_except
   ROOT::Tree
   larsim::MCCheater_ParticleInventoryService_service
+  nurandom::RandomUtils_NuRandomService_service  # brings CLHEP (pulled in by ParticleInventoryService headers)
   triggeralgs_module
   dunetrigger_vendor_lardata_ArtDataHelper
 )
-
 
 install_fhicl()
 install_headers()
