@@ -1,17 +1,27 @@
 # Vendored lardata code (temporary)
 
 `ArtDataHelper/` contains copies of `lardata/ArtDataHelper/GetManyByRegexTag.h`
-and `lardata/ArtDataHelper/RegexTagMatcher.{h,cxx}`, which are not yet part of
+and `lardata/ArtDataHelper/RegexTagSelector.{h,cxx}`, which are not yet part of
 a LArSoft release.
 
-- Source: `alessandrothea/lardata`, branch `feature/getmanyregex_bugfix`,
-  commit `079e218a7d20`. That is lardata `develop` plus the fix making
-  `RegexTagMatcher::match()` build its regexes from the configured pattern.
+- Source: `alessandrothea/lardata`, branch `feature/getmanybyregex_explicitprocess`,
+  commit `8ec849769e3d`. It replaces the earlier `RegexTagMatcher` (vendored from
+  `feature/getmanyregex_bugfix`, commit `079e218a7d20`) with an `art::SelectorBase`,
+  `RegexTagSelector`, passed to `getInputTags()`. Semantics differ from the old
+  matcher:
+  - an empty label or instance pattern matches only an empty field (use `".*"`
+    for "any");
+  - an empty process keeps only the newest process with a *valid* matching
+    product, falling back to older processes like `e.getHandle<T>()`;
+  - an explicit process is a regex and keeps the products of *every* matching
+    process (e.g. `".*"` returns duplicates from all processes).
+
+  See the doc comment in `GetManyByRegexTag.h`.
 - Changes: a two-line provenance comment at the top of each file, and
   `#include "lardata/ArtDataHelper/..."` rewritten to
   `#include "dunetrigger/vendor/lardata/ArtDataHelper/..."`.
   Code and namespace (`lar::util`) are unchanged.
-- `RegexTagMatcher.cxx` is built as the library
+- `RegexTagSelector.cxx` is built as the library
   `dunetrigger_vendor_lardata_ArtDataHelper`.
 
 ## Users
@@ -20,6 +30,7 @@ a LArSoft release.
 |---|---|---|
 | `TriggerAna/TriggerAnaTree_module.cc` | `dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h` | `TriggerAna/CMakeLists.txt`: `dunetrigger_vendor_lardata_ArtDataHelper` in `MODULE_LIBRARIES` (`lardata::ArtDataHelper` is already linked there) |
 | `TriggerTools/RawDigitAna_module.cc` | same | `TriggerTools/CMakeLists.txt` |
+| `TriggerTools/SimChannelTPCDump_module.cc` | same | `TriggerTools/CMakeLists.txt` |
 | `TriggerSim/TriggerPrimitiveMakerTPC_module.cc` | same | `TriggerSim/CMakeLists.txt` |
 
 `grep -rn vendor/lardata dunetrigger` lists them.
@@ -27,22 +38,22 @@ a LArSoft release.
 ## Removal, once a LArSoft release ships these files (with the fix)
 
 The build stops with an error as soon as the lardata in use provides
-`lardata/ArtDataHelper/RegexTagMatcher.h` (guard in `ArtDataHelper/CMakeLists.txt`).
+`lardata/ArtDataHelper/RegexTagSelector.h` (guard in `ArtDataHelper/CMakeLists.txt`).
 
 **Check the fix first.** lardata `v10_01_00` already ships `GetManyByRegexTag.h`
-and `RegexTagMatcher.{h,cxx}` but *without* the fix: its `match()` builds the
-regexes from the candidate tag (`tag.instance()`, ...) instead of the configured
-pattern (`fRegexTag.instance()`, ...), so a pattern such as
-`"tpcrawdecoder:simpleSC.*"` matches nothing. Before removing the vendored copy,
-confirm that the installed source builds the regexes from `fRegexTag`:
+with the older `RegexTagMatcher.{h,cxx}`, *without* the fix: its `match()` builds
+the regexes from the candidate tag (`tag.instance()`, ...) instead of the
+configured pattern, so a pattern such as `"tpcrawdecoder:simpleSC.*"` matches
+nothing. That release does not trip the guard (no `RegexTagSelector.h`), but do
+not switch to it. Remove the vendored copy only once the installed lardata
+ships `RegexTagSelector`:
 
 ```
-grep -n fRegexTag $LARDATA_DIR/source/lardata/ArtDataHelper/RegexTagMatcher.cxx
+ls $LARDATA_DIR/source/lardata/ArtDataHelper/RegexTagSelector.cxx
 ```
 
-(`$LARDATA_DIR` from `ups active`.) If the fix is missing, the vendored copy has
-to stay and the CMake guard must not be used as the trigger; note that linking
-both libraries would define the same `lar::util` symbols twice.
+(`$LARDATA_DIR` from `ups active`.) Linking both libraries would define the
+same `lar::util` symbols twice.
 
 ### TriggerAnaTree (`dunetrigger/TriggerAna/`)
 
@@ -100,7 +111,7 @@ Once it is:
 
 ### Other users and the directory
 
-1. `RawDigitAna_module.cc` and `TriggerPrimitiveMakerTPC_module.cc`: same include
+1. `RawDigitAna_module.cc`, `SimChannelTPCDump_module.cc` and `TriggerPrimitiveMakerTPC_module.cc`: same include
    replacement; in `TriggerTools/CMakeLists.txt` and `TriggerSim/CMakeLists.txt`
    replace `dunetrigger_vendor_lardata_ArtDataHelper` with `lardata::ArtDataHelper`
    (or drop it where that is already linked).
