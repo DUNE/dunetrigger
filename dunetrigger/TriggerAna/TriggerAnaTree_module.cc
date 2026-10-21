@@ -287,7 +287,7 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   {
 
     auto simchannels_many =
-        lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
+        dunetrigger::vendor::lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
     if (simchannels_many.empty()) {
       throw cet::exception("TriggerAnaTree")
           << "Found no std::vector<sim::SimChannel> collections matching simchannel_tag \""
