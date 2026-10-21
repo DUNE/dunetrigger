@@ -1,10 +1,11 @@
 // TEMPORARY vendored copy of lardata/ArtDataHelper/GetManyByRegexTag.h from
-// alessandrothea/lardata@8ec849769e3d (feature/getmanybyregex_explicitprocess); see ../README.md.
+// alessandrothea/lardata@8ec849769e3d (feature/getmanybyregex_explicitprocess),
+// moved to namespace dunetrigger::vendor; see ../README.md.
 /// @file  GetManyByRegexTag.h
 /// @brief Utility to retrieve art data products whose input tags match a regex pattern.
 
-#ifndef LARDATA_LARDATA_ARTDATAHELPER_GETMANYBYREGEXTAG_H
-#define LARDATA_LARDATA_ARTDATAHELPER_GETMANYBYREGEXTAG_H
+#ifndef DUNETRIGGER_VENDOR_LARDATA_ARTDATAHELPER_GETMANYBYREGEXTAG_H
+#define DUNETRIGGER_VENDOR_LARDATA_ARTDATAHELPER_GETMANYBYREGEXTAG_H
 
 #include "canvas/Utilities/InputTag.h"
 #include "dunetrigger/vendor/lardata/ArtDataHelper/RegexTagSelector.h"
@@ -13,7 +14,7 @@
 #include <vector>
 
 /// LArSoft-specific namespace
-namespace lar {
+namespace dunetrigger::vendor::lar {
 
   /// LArSoft utility namespace
   namespace util {
@@ -128,6 +129,6 @@ namespace lar {
       return handles;
     }
   } // namespace util
-} // namespace lar
+} // namespace dunetrigger::vendor::lar
 
-#endif // LARDATA_LARDATA_ARTDATAHELPER_GETMANYBYREGEXTAG_H
+#endif // DUNETRIGGER_VENDOR_LARDATA_ARTDATAHELPER_GETMANYBYREGEXTAG_H

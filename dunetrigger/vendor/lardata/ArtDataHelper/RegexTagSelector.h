@@ -1,15 +1,16 @@
 // TEMPORARY vendored copy of lardata/ArtDataHelper/RegexTagSelector.h from
-// alessandrothea/lardata@8ec849769e3d (feature/getmanybyregex_explicitprocess); see ../README.md.
+// alessandrothea/lardata@8ec849769e3d (feature/getmanybyregex_explicitprocess),
+// moved to namespace dunetrigger::vendor; see ../README.md.
 
-#ifndef LARDATA_LARDATA_ARTDATAHELPER_REGEXTAGSELECTOR_H
-#define LARDATA_LARDATA_ARTDATAHELPER_REGEXTAGSELECTOR_H
+#ifndef DUNETRIGGER_VENDOR_LARDATA_ARTDATAHELPER_REGEXTAGSELECTOR_H
+#define DUNETRIGGER_VENDOR_LARDATA_ARTDATAHELPER_REGEXTAGSELECTOR_H
 
 #include "art/Framework/Principal/SelectorBase.h"
 
 #include <regex>
 #include <string>
 
-namespace lar::util::detail {
+namespace dunetrigger::vendor::lar::util::detail {
   /// art selector accepting the products whose label, instance and process
   /// names each fully match the corresponding regex pattern.
   class RegexTagSelector : public art::SelectorBase {
@@ -30,4 +31,4 @@ namespace lar::util::detail {
   };
 }
 
-#endif // LARDATA_LARDATA_ARTDATAHELPER_REGEXTAGSELECTOR_H
+#endif // DUNETRIGGER_VENDOR_LARDATA_ARTDATAHELPER_REGEXTAGSELECTOR_H
