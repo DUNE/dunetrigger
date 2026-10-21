@@ -17,10 +17,13 @@ a LArSoft release.
     process (e.g. `".*"` returns duplicates from all processes).
 
   See the doc comment in `GetManyByRegexTag.h`.
-- Changes: a two-line provenance comment at the top of each file, and
+- Changes: a three-line provenance comment at the top of each file,
   `#include "lardata/ArtDataHelper/..."` rewritten to
-  `#include "dunetrigger/vendor/lardata/ArtDataHelper/..."`.
-  Code and namespace (`lar::util`) are unchanged.
+  `#include "dunetrigger/vendor/lardata/ArtDataHelper/..."`, namespace
+  `lar::util` wrapped as `dunetrigger::vendor::lar::util`, and include guards
+  prefixed with `DUNETRIGGER_VENDOR_`. The code is otherwise unchanged. Thanks
+  to the namespace and guards, the vendored copy coexists with lardata's: both
+  can be linked, and both headers included, without clashes.
 - `RegexTagSelector.cxx` is built as the library
   `dunetrigger_vendor_lardata_ArtDataHelper`.
 
@@ -33,18 +36,20 @@ a LArSoft release.
 | `TriggerTools/SimChannelTPCDump_module.cc` | same | `TriggerTools/CMakeLists.txt` |
 | `TriggerSim/TriggerPrimitiveMakerTPC_module.cc` | same | `TriggerSim/CMakeLists.txt` |
 
-`grep -rn vendor/lardata dunetrigger` lists them.
+`grep -rn vendor/lardata dunetrigger` lists them; each calls
+`dunetrigger::vendor::lar::util::getManyByRegexTag`.
 
 ## Removal, once a LArSoft release ships these files (with the fix)
 
-The build stops with an error as soon as the lardata in use provides
-`lardata/ArtDataHelper/RegexTagSelector.h` (guard in `ArtDataHelper/CMakeLists.txt`).
+CMake prints a warning as soon as the lardata in use provides
+`lardata/ArtDataHelper/RegexTagSelector.h` (check in `ArtDataHelper/CMakeLists.txt`);
+the build carries on with the vendored copy.
 
 **Check the fix first.** lardata `v10_01_00` already ships `GetManyByRegexTag.h`
 with the older `RegexTagMatcher.{h,cxx}`, *without* the fix: its `match()` builds
 the regexes from the candidate tag (`tag.instance()`, ...) instead of the
 configured pattern, so a pattern such as `"tpcrawdecoder:simpleSC.*"` matches
-nothing. That release does not trip the guard (no `RegexTagSelector.h`), but do
+nothing. That release does not trigger the warning (no `RegexTagSelector.h`), but do
 not switch to it. Remove the vendored copy only once the installed lardata
 ships `RegexTagSelector`:
 
@@ -52,8 +57,9 @@ ships `RegexTagSelector`:
 ls $LARDATA_DIR/source/lardata/ArtDataHelper/RegexTagSelector.cxx
 ```
 
-(`$LARDATA_DIR` from `ups active`.) Linking both libraries would define the
-same `lar::util` symbols twice.
+(`$LARDATA_DIR` from `ups active`.) Also check that its process semantics match
+the vendored commit (see `GetManyByRegexTag.h`), since the jobs here rely on
+them.
 
 ### TriggerAnaTree (`dunetrigger/TriggerAna/`)
 
@@ -61,8 +67,9 @@ same `lar::util` symbols twice.
    `#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"` with
    `#include "lardata/ArtDataHelper/GetManyByRegexTag.h"`. It is used in
    `fillSimChannels` (`simchannel_tag`), `fillTPs`, `fillTAs`, `fillTCs`
-   (`tp_tag_regex`, `ta_tag_regex`, `tc_tag_regex`). No code change: the API
-   (`lar::util::getManyByRegexTag<T>(e, art::InputTag)`) is the same.
+   (`tp_tag_regex`, `ta_tag_regex`, `tc_tag_regex`). Replace
+   `dunetrigger::vendor::lar::util::getManyByRegexTag` with
+   `lar::util::getManyByRegexTag`; the signature `(e, art::InputTag)` is the same.
 2. `TriggerAna/CMakeLists.txt`: delete the `dunetrigger_vendor_lardata_ArtDataHelper`
    line from `MODULE_LIBRARIES`; `lardata::ArtDataHelper` is already there.
 3. Rebuild and rerun the reference job
@@ -111,7 +118,7 @@ Once it is:
 
 ### Other users and the directory
 
-1. `RawDigitAna_module.cc`, `SimChannelTPCDump_module.cc` and `TriggerPrimitiveMakerTPC_module.cc`: same include
+1. `RawDigitAna_module.cc`, `SimChannelTPCDump_module.cc` and `TriggerPrimitiveMakerTPC_module.cc`: same include and namespace
    replacement; in `TriggerTools/CMakeLists.txt` and `TriggerSim/CMakeLists.txt`
    replace `dunetrigger_vendor_lardata_ArtDataHelper` with `lardata::ArtDataHelper`
    (or drop it where that is already linked).

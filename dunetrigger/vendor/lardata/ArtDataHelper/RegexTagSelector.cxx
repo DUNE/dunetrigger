@@ -1,12 +1,13 @@
 // TEMPORARY vendored copy of lardata/ArtDataHelper/RegexTagSelector.cxx from
-// alessandrothea/lardata@8ec849769e3d (feature/getmanybyregex_explicitprocess); see ../README.md.
+// alessandrothea/lardata@8ec849769e3d (feature/getmanybyregex_explicitprocess),
+// moved to namespace dunetrigger::vendor; see ../README.md.
 #include "dunetrigger/vendor/lardata/ArtDataHelper/RegexTagSelector.h"
 
 #include "canvas/Persistency/Provenance/BranchDescription.h"
 
 #include <utility>
 
-namespace lar::util::detail {
+namespace dunetrigger::vendor::lar::util::detail {
   RegexTagSelector::RegexTagSelector(std::string label, std::string instance, std::string process)
     : fLabelPattern{std::move(label)}
     , fInstancePattern{std::move(instance)}
