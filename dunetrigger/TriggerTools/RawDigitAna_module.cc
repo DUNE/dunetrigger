@@ -24,6 +24,7 @@
 #include "canvas/Utilities/InputTag.h"
 #include "cetlib_except/exception.h"
 #include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
+#include "dunetrigger/Utilities/ChannelOverlap.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -214,6 +215,13 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
         << "Found no std::vector<sim::SimChannel> collections matching simchannels_tag \""
         << simchans_tag_.encode() << "\"";
   }
+  if (auto overlaps = channel_overlap::find(channel_overlap::from_handles(simchans_many)); !overlaps.empty()) {
+    channel_overlap::annotate(overlaps, wireReadout);
+    throw cet::exception("RawDigitAna")
+        << "simchannels_tag \"" << simchans_tag_.encode()
+        << "\" matches sim::SimChannel collections sharing channels:\n"
+        << channel_overlap::describe(overlaps);
+  }
 
   for( auto simchans_handle : simchans_many) {
     auto i = simchans_handle.provenance()->inputTag();
@@ -238,6 +246,13 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
     throw cet::exception("RawDigitAna")
         << "Found no std::vector<raw::RawDigit> collections matching rawdigits_tag \""
         << rawdigits_tag_.encode() << "\"";
+  }
+  if (auto overlaps = channel_overlap::find(channel_overlap::from_handles(rawdigit_many)); !overlaps.empty()) {
+    channel_overlap::annotate(overlaps, wireReadout);
+    throw cet::exception("RawDigitAna")
+        << "rawdigits_tag \"" << rawdigits_tag_.encode()
+        << "\" matches raw::RawDigit collections sharing channels:\n"
+        << channel_overlap::describe(overlaps);
   }
 
   size_t channel_count(0);

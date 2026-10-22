@@ -1,0 +1,38 @@
+# rawdigit_tpc_dump_vd10kt.fcl
+#
+# Prints, for each std::vector<raw::RawDigit> collection matching rawdigit_tag
+# in the input art file, the TPCSets / TPCs its channels map to, and flags
+# overlaps.
+#
+#   lar -c rawdigit_tpc_dump_vd10kt.fcl -s <artfile.root> -n 1
+#
+# The geometry must match the one used to produce the file: swap the
+# services table below (e.g. for 1x2x2, 10kt or VD) as needed.
+
+#include "triggerana_tree.fcl"
+#include "tools_dune.fcl"
+
+process_name: RawDigitTPCDump
+
+services: {
+  @table::services_triggersim
+  @table::dunefdvd_reco_services
+}
+
+source: {
+  module_type: RootInput
+  maxEvents: 1
+}
+
+physics: {
+  analyzers: {
+    rawdigittpcdump: {
+      module_type: RawDigitTPCDump
+      rawdigit_tag: "tpcrawdecoder:daq.*:detsim.*"  # regex label:instance:process
+      max_events:  1      # 0 = dump every event
+      verbose:     true   # per-TPCSet channel counts by view
+    }
+  }
+  ana: [ rawdigittpcdump ]
+  end_paths: [ ana ]
+}

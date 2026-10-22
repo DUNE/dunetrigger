@@ -31,6 +31,7 @@ art_make(BASENAME_ONLY
   nurandom::RandomUtils_NuRandomService_service  # brings CLHEP (pulled in by ParticleInventoryService headers)
   triggeralgs_module
   dunetrigger_vendor_lardata_ArtDataHelper
+  dunetrigger_Utilities
 )
 
 install_fhicl()

@@ -44,6 +44,7 @@
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
+#include "dunetrigger/Utilities/ChannelOverlap.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
@@ -564,6 +565,20 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
   // if doesn't exist -> handle
   // else continue as it is
 
+  // Collections sharing channels would double-count IDEs in the sums below and
+  // leave the TP backtracker with two SimChannels per channel. Checked here,
+  // with or without backtracking, on the channels themselves: a TPCSet can
+  // legitimately be split over several collections, a channel cannot.
+  auto overlaps = channel_overlap::find(channel_overlap::from_handles(simchannels_many));
+  if (!overlaps.empty()) {
+    channel_overlap::annotate(overlaps, *geom);
+    throw cet::exception("TriggerAnaTree")
+        << "simchannel_tag \"" << simchannel_tag.encode()
+        << "\" matches sim::SimChannel collections sharing channels:\n"
+        << channel_overlap::describe(overlaps)
+        << "\nCheck that simchannel_tag matches only one set of SimChannel collections.";
+  }
+
   for ( auto simchannels : simchannels_many ) {
 
     std::set<int> tpcset_ids;
@@ -628,21 +643,8 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
       }
     }
 
-    // Each TPCSet must be covered by a single SimChannel collection,
-    // otherwise backtracking would silently use only the last one.
-    std::vector<int> overlap;
-    std::set_intersection(tpcset_ids.begin(), tpcset_ids.end(),
-                          simchannel_tpcsets_.begin(), simchannel_tpcsets_.end(),
-                          std::back_inserter(overlap));
-    if (!overlap.empty()) {
-      cet::exception ex("TriggerAnaTree");
-      ex << "SimChannel collection " << simchannels.provenance()->inputTag().encode()
-         << " covers TPCSets already provided by another collection:";
-      for (int tpcset_id : overlap) ex << " " << tpcset_id;
-      ex << ". Check that simchannel_tag matches only one set of SimChannel collections.";
-      throw ex;
-    }
-
+    // TPCSets covered so far, for the coverage check in backtrack_tp. Not an
+    // overlap check: a TPCSet may be shared by several collections.
     simchannel_tpcsets_.insert(tpcset_ids.begin(), tpcset_ids.end());
   }
 
