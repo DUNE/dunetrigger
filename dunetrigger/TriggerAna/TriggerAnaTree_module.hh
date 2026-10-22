@@ -3,16 +3,24 @@
 
 #include "art/Framework/Core/EDAnalyzer.h"
 #include "art/Framework/Principal/Event.h"
+#include "art/Framework/Principal/Handle.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "art_root_io/TFileService.h"
+#include "canvas/Persistency/Common/Ptr.h"
+#include "canvas/Persistency/Provenance/ProductID.h"
 #include "detdataformats/trigger/TriggerActivityData.hpp"
 #include "detdataformats/trigger/TriggerCandidateData.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 #include "fhiclcpp/ParameterSet.h"
 #include "larcore/Geometry/WireReadout.h"
+#include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
 #include "lardataobj/Simulation/SimChannel.h"
+#include "larsim/MCCheater/ParticleInventoryService.h"
 
-#include "MiniBackTracker.hh"
+#include "dunetrigger/Utilities/ChannelOverlap.h"
+
+#include "FieldNames.hh"
+#include "TriggerAnaRows.hh"
 #include "ScalarFieldsBuffer.hh"
 #include "VectorFieldsBuffer.hh"
 
@@ -22,213 +30,69 @@
 
 #include <array>
 #include <map>
+#include <memory>
+#include <set>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <vector>
 
-constexpr int INVALID_NUM = -99999;
-constexpr char INVALID_STR[] = "undef";
-
 namespace dunetrigger {
 
-//-----------------------------------------------------------------------
-struct ChannelInfo {
-  unsigned int rop_id;
-  int view;
-  unsigned int tpcset_id;
-
-  bool operator<(const ChannelInfo& other) const {
-    if (rop_id != other.rop_id) return rop_id < other.rop_id;
-    return tpcset_id < other.tpcset_id; }
+// Sample-window offsets applied before matching a TP to the SimChannel IDEs,
+// one per readout view, indexed by view number (geo::View_t value). DUNE TPCs
+// have three readout views: 0 = U, 1 = V, 2 = W/Z (collection); all three are
+// required in the configuration.
+//
+// NOTE (future improvement, not a bug): the right offsets depend on the TP
+// algorithm *and its configuration* (thresholds, running-sum window, ...), i.e.
+// on the TP collection, not only on the tool type. At the moment one set of
+// per-view offsets is configured per tool_type (fcl `bt_window_offsets`) and applied to
+// every TP collection produced with that tool, whatever its parameters. Keying
+// the offsets by TP collection, or deriving them from the algorithm parameters
+// recorded in the producer's provenance, would remove this approximation.
+struct ViewOffsets {
+  static constexpr int kNumViews = 3;
+  std::array<int, kNumViews> by_view{};        // view number -> sample offset
+  int for_view(int view) const;                // 0 if view is outside [0, kNumViews)
 };
 
-//-----------------------------------------------------------------------
-struct EventMetaData {
-  int event = INVALID_NUM;
-  int run = INVALID_NUM;
-  int subrun = INVALID_NUM;
+// Matches TPs to SimChannel IDEs and to MC truth. Owns a per-event, merged
+// SimChannel index (all matched collections, sorted by channel). The index is
+// a stopgap for larsim < v10_27_00, whose cheat::BackTracker cannot load
+// several SimChannel collections.
+class TPBacktracker {
+public:
+  explicit TPBacktracker(std::map<std::string, ViewOffsets> offsets);
+
+  // Builds the per-event SimChannel index from all the given collections.
+  void prep_event(std::vector<art::Handle<std::vector<sim::SimChannel>>> const& simchannels);
+  void clear_event();
+
+  // Returns IDEs on the TP's channel inside the TP's time window shifted by the
+  // tool-specific view offset. Empty if no SimChannel exists for the channel.
+  std::vector<sim::IDE> match_ides(const TriggerPrimitiveRow& tp,
+                                   const std::string& tool_type) const;
+
+  // Fills `row` from `ides`. Leaves INVALID_NUM defaults if `ides` is empty or
+  // no IDE could be resolved to an MCParticle.
+  void fill_row(TriggerPrimitiveBacktrackingRow& row,
+                const std::vector<sim::IDE>& ides,
+                const std::unordered_map<int,int>& trkid_to_truth_block,
+                const std::unordered_map<int,std::string>& truth_id_to_gen) const;
+
+  const std::map<std::string, ViewOffsets>& offsets() const { return offsets_; }
+
+private:
+  // The only two places that touch SimChannels. Step 9b replaces their bodies
+  // with cheat::BackTrackerService calls (provider()->FindSimChannelPtr / SimIDEsToXYZ).
+  art::Ptr<sim::SimChannel> find_simchannel_ptr(raw::ChannelID_t channel) const;
+  std::vector<double> sim_ides_to_xyz(std::vector<sim::IDE> const& ides) const;
+
+  std::vector<art::Ptr<sim::SimChannel>> simchannels_; // per event, sorted by channel
+  std::map<std::string, ViewOffsets> offsets_;
+  art::ServiceHandle<cheat::ParticleInventoryService> pi_serv_;
+  mutable std::set<std::string> warned_tool_types_;
 };
-
-//-----------------------------------------------------------------------
-struct EventSummaryData {
-  int mctruths_count = INVALID_NUM;
-  int mcparticles_count = INVALID_NUM;
-  int mcneutrinos_count = INVALID_NUM;
-  int simides_count = INVALID_NUM;
-  double tot_visible_energy_rop0 = 0.;
-  double tot_visible_energy_rop1 = 0.;
-  double tot_visible_energy_rop2 = 0.;
-  double tot_visible_energy_rop3 = 0.;
-  double tot_numelectrons_rop0 = 0.;
-  double tot_numelectrons_rop1 = 0.;
-  double tot_numelectrons_rop2 = 0.;
-  double tot_numelectrons_rop3 = 0.;
-};
-
-//-----------------------------------------------------------------------
-struct MCTruthRow {
-  int pdg = INVALID_NUM;
-  std::string process = INVALID_STR;
-  int status_code = INVALID_NUM;
-  int block_id = INVALID_NUM;
-  int truth_track_id = INVALID_NUM;
-  std::string generator_name = INVALID_STR;
-  double x = 0.;
-  double y = 0.;
-  double z = 0.;
-  double t = 0.;
-  double px = 0.;
-  double py = 0.;
-  double pz = 0.;
-  double p = 0.;
-  double energy = 0.;
-  double kinetic_energy = 0.;
-
-  MCTruthRow() = default;
-};
-
-//-----------------------------------------------------------------------
-struct MCNeutrinoRow {
-  int block_id = INVALID_NUM;
-  std::string generator_name = INVALID_STR;
-  int nupdg = INVALID_NUM;
-  int leptonpdg = INVALID_NUM;
-  int ccnc = INVALID_NUM;
-  int mode = INVALID_NUM;
-  int interactionType = INVALID_NUM;
-  int target = INVALID_NUM;
-  int hitnuc = INVALID_NUM;
-  int hitquark = INVALID_NUM;
-  double w = 0.;
-  double x = 0.;
-  double y = 0.;
-  double qsqr = 0.;
-  double pt = 0.;
-  double theta = 0.;
-
-  MCNeutrinoRow() = default;
-};
-
-//-----------------------------------------------------------------------
-struct MCParticleRow {
-  int pdg = INVALID_NUM;
-  std::string generator_name = INVALID_STR;
-  int status_code = INVALID_NUM;
-  int g4_track_id = INVALID_NUM;
-  int mother = INVALID_NUM;
-  int truth_block_id = INVALID_NUM;
-  double x = 0.;
-  double y = 0.;
-  double z = 0.;
-  double t = 0.;
-  double end_x = 0.;
-  double end_y = 0.;
-  double end_z = 0.;
-  double end_t = 0.;
-  double px = 0.;
-  double py = 0.;
-  double pz = 0.;
-  double energy = 0.;
-  double kinetic_energy = 0.;
-  double edep = 0.;
-  double numelectrons = 0.;
-  double shower_edep = 0.;
-  double shower_numelectrons = 0.;
-  std::string process = INVALID_STR;
-
-  MCParticleRow() = default;
-};
-
-//-----------------------------------------------------------------------
-struct SimIDERow {
-  unsigned int channel = 0;
-  int timestamp = INVALID_NUM;
-  float numelectrons = 0.f;
-  float energy = 0.f;
-  float x = 0.f;
-  float y = 0.f;
-  float z = 0.f;
-  int trackID = INVALID_NUM;
-  float origTrackID = 0.f;
-  float readout_plane_id = 0.f;
-  float readout_view = 0.f;
-  float detector_element = 0.f;
-
-  SimIDERow() = default;
-};
-
-//-----------------------------------------------------------------------
-struct SimIDESummaryRow {
-  double total_visible_energy = 0.;
-  double total_numelectrons = 0.;
-
-  SimIDESummaryRow() = default;
-};
-
-
-//-----------------------------------------------------------------------
-struct SimIDETPCRow {
-  int readout_plane_id = INVALID_NUM;
-  int detector_element = INVALID_NUM;
-  double energy_per_tpc = 0.;
-  double numelectrons_per_tpc = 0.;
-
-  SimIDETPCRow() = default;
-};
-
-//-----------------------------------------------------------------------
-struct TriggerPrimitiveRow {
-  uint8_t version = 0;
-  uint8_t flag = 0;
-  uint8_t detid = 0;
-  uint32_t channel = 0;
-  uint16_t samples_over_threshold = 0;
-  uint64_t time_start = 0;
-  uint16_t samples_to_peak = 0;
-  uint32_t adc_integral = 0;
-  uint16_t adc_peak = 0;
-  unsigned int readout_plane_id = 0;
-  int readout_view = 0;
-  unsigned int TPCSetID = 0;
-
-  void from_tp(const dunedaq::trgdataformats::TriggerPrimitive &tp);
-
-  TriggerPrimitiveRow() = default;
-};
-
-//-----------------------------------------------------------------------
-struct TriggerPrimitiveBacktrackingRow {
-  int bt_primary_track_id = INVALID_NUM;
-  double bt_primary_track_numelectron_frac = INVALID_NUM;
-  double bt_primary_track_energy_frac = INVALID_NUM;
-  double bt_edep = INVALID_NUM;
-  double bt_numelectrons = INVALID_NUM;
-  double bt_x = INVALID_NUM;
-  double bt_y = INVALID_NUM;
-  double bt_z = INVALID_NUM;
-  double bt_primary_x = INVALID_NUM;
-  double bt_primary_y = INVALID_NUM;
-  double bt_primary_z = INVALID_NUM;
-  int bt_truth_block_id = INVALID_NUM;
-  std::string bt_generator_name = INVALID_STR;
-
-  void populate_backtracking_info(const std::vector<sim::IDE> &ides,
-                                  const std::unordered_map<int, int> &trkid_to_truth_block,
-                                  const std::unordered_map<int, std::string> &truth_id_to_gen,
-                                  const MiniBackTracker& bt
-                                );
-
-  TriggerPrimitiveBacktrackingRow() = default;
-};
-
-//-----------------------------------------------------------------------
-struct TriggerPrimitiveAssociationRow {
-  int ta_number = INVALID_NUM;
-
-  TriggerPrimitiveAssociationRow() = default;
-};
-
 
 //-----------------------------------------------------------------------
 class TriggerAnaTree : public art::EDAnalyzer {
@@ -253,80 +117,135 @@ private:
   using TriggerPrimitiveWriter = VectorFieldsBuffer<TriggerPrimitiveRow>;
   using TriggerPrimitiveBacktrackingWriter = VectorFieldsBuffer<TriggerPrimitiveBacktrackingRow>;
   using TriggerPrimitiveAssociationWriter = VectorFieldsBuffer<TriggerPrimitiveAssociationRow>;
+  using TriggerActivityWriter = VectorFieldsBuffer<dunedaq::trgdataformats::TriggerActivityData>;
+  using TriggerActivityAssociationWriter = VectorFieldsBuffer<TriggerActivityAssociationRow>;
+  using TriggerCandidateWriter = VectorFieldsBuffer<dunedaq::trgdataformats::TriggerCandidateData>;
+
+  // Writers bound to one output tree, per tree kind
+  struct TPWriters {
+    TriggerPrimitiveWriter             tp;
+    TriggerPrimitiveBacktrackingWriter bt;
+    TriggerPrimitiveAssociationWriter  assn;
+    void enable(bool backtracking, bool association) { bt.enable(backtracking); assn.enable(association); }
+    void clear() { tp.clear(); bt.clear(); assn.clear(); }
+    void make_branches(TTree &t) { tp.make_branches(t); bt.make_branches(t); assn.make_branches(t); }
+  };
+  struct TAWriters {
+    TriggerActivityWriter            ta;
+    TriggerActivityAssociationWriter assn;
+    void enable(bool /*backtracking*/, bool association) { assn.enable(association); }
+    void clear() { ta.clear(); assn.clear(); }
+    void make_branches(TTree &t) { ta.make_branches(t); assn.make_branches(t); }
+  };
+  struct TCWriters {
+    TriggerCandidateWriter tc;
+    void enable(bool /*backtracking*/, bool /*association*/) {}
+    void clear() { tc.clear(); }
+    void make_branches(TTree &t) { tc.make_branches(t); }
+  };
+  template <typename Writers>
+  struct TreeSet {
+    TTree  *tree = nullptr;
+    Writers writers;
+  };
 
   art::ServiceHandle<art::TFileService> tfs;
-  std::map<std::string, TTree *> tree_map;
 
-  size_t m_tc_number = 0;  // TC index bound to the "TCnumber" ROOT branch in TA-in-TC trees
-
-  std::unordered_map<int, int> trkId_to_truthBlockId;
-  std::unordered_map<int, std::string> truthBlockId_to_generator_name;
-  std::map<std::string, std::tuple<TriggerPrimitiveWriter, TriggerPrimitiveBacktrackingWriter, TriggerPrimitiveAssociationWriter>> tp_writers;
-
-  std::map<std::string, dunedaq::trgdataformats::TriggerActivityData> ta_bufs;
-  std::map<std::string, dunedaq::trgdataformats::TriggerCandidateData> tc_bufs;
+  std::unordered_map<int, int> trkid_to_truth_block_id;
+  std::unordered_map<int, std::string> truth_block_id_to_generator_name;
+  std::map<std::string, TreeSet<TPWriters>> tp_trees; // key: raw tag
+  std::map<std::string, TreeSet<TAWriters>> ta_trees;
+  std::map<std::string, TreeSet<TCWriters>> tc_trees;
   std::map<int, double> track_en_sums;
   std::map<int, double> track_electron_sums;
   // map for tracking true visible energy deposited on each apa rop (for ROI studies).
 
   struct TPCEnergyData
   {
-    double energy;
-    double num_electrons;
+    double energy = 0.;
+    double num_electrons = 0.;
   };
   
   std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
-  std::map<int, std::shared_ptr<MiniBackTracker>> bt_map;
+  std::set<int> simchannel_tpcsets_; // TPCSets covered by the matched SimChannel collections (per event)
+  // SimChannel collections sharing channels (fillSimChannels)
+  ChannelOverlapCheck overlap_check_{&art::ServiceHandle<geo::WireReadout>()->Get()};
+  std::map<art::ProductID, std::string> tp_tool_type_cache_; // per event
 
 
-  bool dump_tp, dump_ta, dump_tc;
-  std::string tp_tag_regex, ta_tag_regex, tc_tag_regex;
+  bool dump_tp = false, dump_ta = false, dump_tc = false;
+  art::InputTag tp_tag_regex, ta_tag_regex, tc_tag_regex;
 
-  bool tp_backtracking;
+  bool tp_backtracking = false;
+  bool need_truth_maps = false;
 
-  void make_tp_tree_if_needed(std::string tag, bool assn = false);
-  void make_ta_tree_if_needed(std::string tag, bool assn = false);
-  void make_tc_tree_if_needed(std::string tag);
+  template <typename Writers>
+  TreeSet<Writers> &get_or_create_tree(std::map<std::string, TreeSet<Writers>> &trees,
+                                       const std::string &dir_name, const std::string &dir_title,
+                                       const std::string &tag, bool backtracking, bool association);
 
-  std::vector<sim::IDE> match_simides_to_tps(const TriggerPrimitiveRow &tp, const std::string &tool_type, const MiniBackTracker& bt) const;
+  static ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, raw::ChannelID_t channel);
 
-  ChannelInfo get_channel_info_for_channel(geo::WireReadoutGeom const *geom, int channel);
+  // Per-product fill functions called by analyze(), in this order
+  void build_truth_maps(art::Event const &e);
+  void fillMCTruth(art::Event const &e);
+  void fillSimChannels(art::Event const &e, geo::WireReadoutGeom const *geom);
+  void fillSimIDESummary();
+  void fillMCParticles(art::Event const &e);
+  void fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom);
+  void fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom);
+  void fillTCs(art::Event const &e);
+
+  ChannelInfo fill_tp_row(TPWriters &tpw,
+                          const dunedaq::trgdataformats::TriggerPrimitive &tp,
+                          geo::WireReadoutGeom const *geom);
+
+  // Backtracks the TP whose row is in w.tp.row (already filled by fill_tp_row):
+  // checks that the TP's TPCSet is covered by the SimChannel collections, matches
+  // IDEs, fills and commits w.bt. Throws if no SimChannel collection covers the TPCSet.
+  void backtrack_tp(TPWriters &w, const ChannelInfo &chinfo,
+                    const std::string &tool_type, const std::string &tag);
+
+  // tpalg.tool_type of the producer of the TP collection `id` (cached per
+  // event). Throws if it cannot be determined or is not a TPC TP algorithm.
+  const std::string &tp_tool_type_for(art::Event const &e, art::ProductID id,
+                                      const std::string &ta_tag);
 
   // Event meta data buffer  
   ScalarFieldsBuffer<EventMetaData> ev_sbuf;
 
   // visible energy for the event
-  TTree *summary_tree;
+  TTree *summary_tree = nullptr;
   ScalarFieldsBuffer<EventSummaryData> evsummary_buf;
 
   // MCTruth
-  bool dump_mctruths;
+  bool dump_mctruths = false;
 
-  TTree* mctruth_tree;
+  TTree* mctruth_tree = nullptr;
   VectorFieldsBuffer<MCTruthRow> mctruth_buffer;
 
-  TTree* mcneutrino_tree;
+  TTree* mcneutrino_tree = nullptr;
   VectorFieldsBuffer<MCNeutrinoRow> mcneutrino_buffer;
 
-  bool dump_mcparticles;
+  bool dump_mcparticles = false;
 
-  TTree* mcparticle_tree;
+  TTree* mcparticle_tree = nullptr;
   VectorFieldsBuffer<MCParticleRow> mcparticle_buffer;
 
-  std::map<std::string, std::array<int, 3>> bt_view_offsets;
+  std::unique_ptr<TPBacktracker> tp_bt_;
 
-  bool dump_simides;
+  bool dump_simides = false;
   art::InputTag simchannel_tag;
-  TTree* simide_tree;
+  TTree* simide_tree = nullptr;
   VectorFieldsBuffer<SimIDERow> simide_buffer;
 
-  TTree* simide_summary_tree;
+  TTree* simide_summary_tree = nullptr;
   ScalarFieldsBuffer<SimIDESummaryRow> simide_summary_buffer;
   VectorFieldsBuffer<SimIDETPCRow> simide_tpc_buffer;
 
   // JSON metadata
   nlohmann::json info_data;
-  bool first_event_flag;
+  bool mctruth_map_warned_ = false;
 };
 
 } // namespace dunetrigger

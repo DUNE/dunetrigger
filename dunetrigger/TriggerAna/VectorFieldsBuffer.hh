@@ -12,7 +12,7 @@
  * @par Field-name reflection
  * In C++20 mode (Boost >= 1.80) real struct field names are used for
  * branch names (e.g. `trk_px`).  In C++17 mode use
- * `REGISTER_FIELD_NAMES(StructType, field1, ...)` at namespace scope.
+ * `REGISTER_FIELD_NAMES(StructType, field1, ...)` inside the struct's namespace.
  *
  */
 
@@ -33,13 +33,25 @@
 /** @internal Internal implementation helpers — not part of the public API. */
 namespace soa_detail {
 
+/// @brief Column element type: enums are stored as their underlying integer
+///        type (ROOT has no dictionary for `std::vector<EnumClass>`); every
+///        other type is stored unchanged.
+template<typename T, bool = std::is_enum_v<T>>
+struct storage { using type = T; };
+
+template<typename T>
+struct storage<T, true> { using type = std::underlying_type_t<T>; };
+
+template<typename T>
+using storage_t = typename storage<T>::type;
+
 /// @brief Maps `tuple<T0, T1, ...>` to `tuple<vector<T0>, vector<T1>, ...>`.
 template<typename Tuple>
 struct TupleToVectors;
 
 template<typename... Ts>
 struct TupleToVectors<std::tuple<Ts...>> {
-    using type = std::tuple<std::vector<Ts>...>;
+    using type = std::tuple<std::vector<storage_t<Ts>>...>;
 };
 
 /// @brief Maps `tuple<T0, T1, ...>` to `tuple<vector<T0>*, vector<T1>*, ...>`.
@@ -49,7 +61,7 @@ struct TupleToVectorPtrs;
 
 template<typename... Ts>
 struct TupleToVectorPtrs<std::tuple<Ts...>> {
-    using type = std::tuple<std::vector<Ts>*...>;
+    using type = std::tuple<std::vector<storage_t<Ts>>*...>;
 };
 
 } // namespace soa_detail
@@ -76,6 +88,10 @@ struct TupleToVectorPtrs<std::tuple<Ts...>> {
  *     buf.get(i);        // reconstruct one AoS element
  * }
  * @endcode
+ *
+ * @par Enum fields
+ * Fields of enum type (including `enum class`) are stored in their column as
+ * the underlying integer type, since ROOT has no dictionary for vectors of enums.
  *
  * @tparam Struct A default-constructible, copy-constructible aggregate whose
  *                fields are stored as parallel `std::vector` columns.
@@ -124,12 +140,14 @@ public:
 
     /// @brief Move constructor — re-initialises ptrs_ to point at the new arrays_.
     VectorFieldsBuffer(VectorFieldsBuffer&& o) noexcept
-        : arrays_(std::move(o.arrays_))
+        : enabled_(o.enabled_)
+        , arrays_(std::move(o.arrays_))
         , ptrs_(make_ptrs(std::make_index_sequence<kNFields>{})) {}
 
     /// @brief Move assignment — re-initialises ptrs_ to point at the new arrays_.
     VectorFieldsBuffer& operator=(VectorFieldsBuffer&& o) noexcept {
         if (this != &o) {
+            enabled_ = o.enabled_;
             arrays_ = std::move(o.arrays_);
             ptrs_   = make_ptrs(std::make_index_sequence<kNFields>{});
         }
@@ -151,8 +169,8 @@ public:
 
     /// @brief Activate or deactivate write operations.
     /// @param e @c true to enable (default), @c false to disable.
-    /// @note When disabled, make_branches(), push_back(), commit_and_reset(),
-    ///       and clear() are all no-ops.  Must be called before make_branches().
+    /// @note When disabled, make_branches(), push_back() and commit_and_reset()
+    ///       are no-ops (clear() always works).    Must be called before make_branches().
     void enable(bool e = true) noexcept { enabled_ = e; }
 
     /// @return @c true if write operations are active.
@@ -224,12 +242,9 @@ public:
     }
 
     /// @brief Empty storage and zero-initialise the staging row.
-    /// @note No-op when disabled.
     void clear() {
-        if (enabled_) {
-            std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
-            reset_row();
-        }
+        std::apply([](auto&... vecs) { (vecs.clear(), ...); }, arrays_);
+        reset_row();
     }
 
     // ------------------------------------------------------------------
@@ -315,13 +330,14 @@ private:
 
     template<std::size_t... Is>
     void push_impl(const Struct& s, std::index_sequence<Is...>) {
-        (std::get<Is>(arrays_).push_back(boost::pfr::get<Is>(s)), ...);
+        (std::get<Is>(arrays_).push_back(
+            static_cast<soa_detail::storage_t<std::remove_cv_t<std::remove_reference_t<decltype(boost::pfr::get<Is>(s))>>>>(boost::pfr::get<Is>(s))), ...);
     }
 
     template<std::size_t... Is>
     Struct get_impl(std::size_t i, std::index_sequence<Is...>) const {
         Struct s{};
-        ((boost::pfr::get<Is>(s) = std::get<Is>(arrays_)[i]), ...);
+        ((boost::pfr::get<Is>(s) = static_cast<std::remove_cv_t<std::remove_reference_t<decltype(boost::pfr::get<Is>(s))>>>(std::get<Is>(arrays_)[i])), ...);
         return s;
     }
 

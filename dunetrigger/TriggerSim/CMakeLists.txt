@@ -24,6 +24,8 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   ROOT::Tree
   triggeralgs_module
   dunetrigger_vendor_lardata_ArtDataHelper
+  dunetrigger_Utilities
+  larcore::Geometry_Geometry_service
 )
 
 install_fhicl()
