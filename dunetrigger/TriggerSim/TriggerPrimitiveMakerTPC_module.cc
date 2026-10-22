@@ -67,6 +67,8 @@ private:
   std::unique_ptr<TPAlgTPCTool> tpalg_;
   uint64_t default_timestamp_;
   int verbosity_;
+  // RawDigit collections sharing channels would produce duplicated TPs
+  ChannelOverlapCheck overlap_check_{&art::ServiceHandle<geo::WireReadout>()->Get()};
 };
 
 dunetrigger::TriggerPrimitiveMakerTPC::TriggerPrimitiveMakerTPC(
@@ -100,14 +102,11 @@ void dunetrigger::TriggerPrimitiveMakerTPC::produce(art::Event &e) {
         << rawdigit_tag_.encode() << "\"";
   }
 
-  // Collections sharing channels would silently produce duplicated TPs
-  auto overlaps = channel_overlap::find(channel_overlap::from_handles(rawdigit_many));
-  if (!overlaps.empty()) {
-    channel_overlap::annotate(overlaps, art::ServiceHandle<geo::WireReadout>()->Get());
+  if (auto overlaps = overlap_check_(rawdigit_many); !overlaps.empty()) {
     throw cet::exception("TriggerPrimitiveMakerTPC")
         << "rawdigit_tag \"" << rawdigit_tag_.encode()
         << "\" matches raw::RawDigit collections sharing channels:\n"
-        << channel_overlap::describe(overlaps)
+        << overlaps.describe()
         << "\nCheck that rawdigit_tag matches only one set of collections, e.g. by pinning the process name.";
   }
 

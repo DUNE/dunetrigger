@@ -98,6 +98,8 @@ private:
   // Producer module, configurable from fhicl
   art::InputTag rawdigits_tag_; // raw digi label
   art::InputTag simchans_tag_; // sim channel label
+  // Collections sharing channels, for both RawDigits and SimChannels
+  dunetrigger::ChannelOverlapCheck overlap_check_{&art::ServiceHandle<geo::WireReadout>()->Get()};
 
   bool save_waveforms_;
   bool save_channels_with_ides_only_;
@@ -215,12 +217,11 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
         << "Found no std::vector<sim::SimChannel> collections matching simchannels_tag \""
         << simchans_tag_.encode() << "\"";
   }
-  if (auto overlaps = channel_overlap::find(channel_overlap::from_handles(simchans_many)); !overlaps.empty()) {
-    channel_overlap::annotate(overlaps, wireReadout);
+  if (auto overlaps = overlap_check_(simchans_many); !overlaps.empty()) {
     throw cet::exception("RawDigitAna")
         << "simchannels_tag \"" << simchans_tag_.encode()
         << "\" matches sim::SimChannel collections sharing channels:\n"
-        << channel_overlap::describe(overlaps);
+        << overlaps.describe();
   }
 
   for( auto simchans_handle : simchans_many) {
@@ -247,12 +248,11 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
         << "Found no std::vector<raw::RawDigit> collections matching rawdigits_tag \""
         << rawdigits_tag_.encode() << "\"";
   }
-  if (auto overlaps = channel_overlap::find(channel_overlap::from_handles(rawdigit_many)); !overlaps.empty()) {
-    channel_overlap::annotate(overlaps, wireReadout);
+  if (auto overlaps = overlap_check_(rawdigit_many); !overlaps.empty()) {
     throw cet::exception("RawDigitAna")
         << "rawdigits_tag \"" << rawdigits_tag_.encode()
         << "\" matches raw::RawDigit collections sharing channels:\n"
-        << channel_overlap::describe(overlaps);
+        << overlaps.describe();
   }
 
   size_t channel_count(0);

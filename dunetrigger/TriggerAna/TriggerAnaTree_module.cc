@@ -44,7 +44,6 @@
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
-#include "dunetrigger/Utilities/ChannelOverlap.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
@@ -569,13 +568,11 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
   // leave the TP backtracker with two SimChannels per channel. Checked here,
   // with or without backtracking, on the channels themselves: a TPCSet can
   // legitimately be split over several collections, a channel cannot.
-  auto overlaps = channel_overlap::find(channel_overlap::from_handles(simchannels_many));
-  if (!overlaps.empty()) {
-    channel_overlap::annotate(overlaps, *geom);
+  if (auto overlaps = overlap_check_(simchannels_many); !overlaps.empty()) {
     throw cet::exception("TriggerAnaTree")
         << "simchannel_tag \"" << simchannel_tag.encode()
         << "\" matches sim::SimChannel collections sharing channels:\n"
-        << channel_overlap::describe(overlaps)
+        << overlaps.describe()
         << "\nCheck that simchannel_tag matches only one set of SimChannel collections.";
   }
 

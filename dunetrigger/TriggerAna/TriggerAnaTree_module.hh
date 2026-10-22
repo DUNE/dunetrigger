@@ -17,6 +17,8 @@
 #include "lardataobj/Simulation/SimChannel.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 
+#include "dunetrigger/Utilities/ChannelOverlap.h"
+
 #include "FieldNames.hh"
 #include "TriggerAnaRows.hh"
 #include "ScalarFieldsBuffer.hh"
@@ -166,6 +168,8 @@ private:
   
   std::map<ChannelInfo, TPCEnergyData> simide_tpc_energy_map;
   std::set<int> simchannel_tpcsets_; // TPCSets covered by the matched SimChannel collections (per event)
+  // SimChannel collections sharing channels (fillSimChannels)
+  ChannelOverlapCheck overlap_check_{&art::ServiceHandle<geo::WireReadout>()->Get()};
   std::map<art::ProductID, std::string> tp_tool_type_cache_; // per event
 
 

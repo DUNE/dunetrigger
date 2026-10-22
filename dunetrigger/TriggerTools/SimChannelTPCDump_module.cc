@@ -58,6 +58,7 @@ private:
   unsigned max_events_;
   bool verbose_;
   unsigned n_dumped_ = 0;
+  ChannelOverlapCheck overlap_check_{&art::ServiceHandle<geo::WireReadout>()->Get()};
 };
 
 dunetrigger::SimChannelTPCDump::SimChannelTPCDump(Parameters const &p)
@@ -143,13 +144,11 @@ void dunetrigger::SimChannelTPCDump::analyze(art::Event const &e) {
   }
 
   // Same check as TriggerPrimitiveMakerTPC and TriggerAnaTree, reported instead of thrown
-  auto overlaps = channel_overlap::find(channel_overlap::from_handles(handles));
+  auto const overlaps = overlap_check_(handles);
   if (overlaps.empty()) {
     out << "\nNo channel is present in more than one collection.\n";
   } else {
-    channel_overlap::annotate(overlaps, geom);
-    out << "\nOVERLAPS (channels present in more than one collection):\n"
-        << channel_overlap::describe(overlaps) << "\n";
+    out << "\nOVERLAPS (channels present in more than one collection):\n" << overlaps.describe() << "\n";
   }
 
   // std::cout rather than mf::LogInfo: DUNE message configs often suppress INFO
