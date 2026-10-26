@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
         {"vd_1x8x6", "dunevd10kt_1x8x6_3view_30deg_geo"},
         {"vd_1x8x14", "dunevd10kt_1x8x14_3view_30deg_geo"},
         {"hd_1x2x6", "dune10kt_1x2x6_geo"},
-        {"hd_10k", "dune10kt_geo"}
+        {"hd_10kt", "dune10kt_geo"}
     };
 
     std::string geo_id(argv[1]);

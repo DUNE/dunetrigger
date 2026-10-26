@@ -3,16 +3,25 @@
 // Plugin Type: analyzer
 // File:        RawDigitAna_module.cc
 //
-// Generated at Fri Nov 15 01:56:30 2024 by Klaudia Wawrowska
+// Module for studying raw TPC waveforms (RawDigits) and their ADC
+// distributions, split into signal and noise using SimChannel IDEs.
 //
-// Module for dumping TPG and associated MC information to TTree for analysis.
+// For each event:
+//  - Channels with at least one IDE in any SimChannel collection matching
+//    simchannels_tag are flagged as "signal" channels.
+//  - The ADCs of every RawDigit collection matching rawdigits_tag are
+//    histogrammed per plane (U, V, X) and in a 2D ADC-vs-plane histogram.
+//    The "Noise" histograms are filled only from channels without IDEs.
+//  - Optionally, the full waveforms are stored in rawdigis_tree, one branch
+//    per channel (branch name = channel number), along with event/run/subrun.
 //
-// Simulation producers to specify: tp_tag, gen_tag (generator - singles, marley, genie etc.), simch_tag, 
-// Booleans which allow user to choose which information to save: SaveNeutrino, SaveMC (MCTruth not G4), SaveTPs
-// 
-// The association between MC and TP information uses IDEs. This requires some tweaks to make it work 
-// Specify ADC_SAMPLING_RATE_IN_DTS to go back to TPC ticks used in the simulation (1 tick = 500 ns or whatever) 
-// U/V window offsets for algs which work only on +ve induction pulses has to be set for 11 for U and 10/9 for V.
+// FHiCL parameters:
+//  - rawdigits_tag   (InputTag, regex allowed; default "tpcrawdecoder:daq.*")
+//  - simchannels_tag (InputTag, regex allowed; default "tpcrawdecoder:simpleSC.*")
+//  - save_waveforms  (bool, default true): fill rawdigis_tree with waveforms
+//  - save_channels_with_ides_only (bool, default false): only store waveforms
+//    of signal channels (other branches are left empty) and add the
+//    active_channels branch listing the signal channels.
 ////////////////////////////////////////////////////////////////////////
 
 #include "art/Framework/Core/EDAnalyzer.h"
