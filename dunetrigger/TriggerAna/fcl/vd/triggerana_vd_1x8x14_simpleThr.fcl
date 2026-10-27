@@ -18,6 +18,7 @@ physics: {
   analyzers: {
     triggerAna: {
       @table::triggerAnaTree_dumpAll
+      simchannel_tag: "tpcrawdecoder:simpleSC.*:.*"
       # tp_tag_regex is parsed as an art InputTag "label:instance:process"; each
       # field is a std::regex matched in full against that field of the product
       # tag, and an empty field matches anything. TP algorithm names live in the
