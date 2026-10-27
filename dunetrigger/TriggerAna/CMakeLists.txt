@@ -3,8 +3,26 @@ include_directories("${dunedetdataformats_DIR}/../../../include") # there's a ne
 add_subdirectory(fcl)
 add_subdirectory(exe)
 
-art_make(BASENAME_ONLY
-  MODULE_LIBRARIES
+# Library with the analysis helpers shared by the modules (dunetrigger::TriggerAna)
+cet_make_library(
+  SOURCE
+  TPBacktracker.cc
+  LIBRARIES
+  PUBLIC
+  lardataobj::Simulation
+  larsim::MCCheater_ParticleInventoryService_service
+  nurandom::RandomUtils_NuRandomService_service  # brings CLHEP (pulled in by ParticleInventoryService headers)
+  nusimdata::SimulationBase
+  art::Framework_Principal
+  art::Framework_Services_Registry
+  canvas::canvas
+  PRIVATE
+  messagefacility::MF_MessageLogger
+  cetlib_except::cetlib_except
+)
+
+# Libraries used by all the modules of this directory
+set(triggerana_module_libraries
   Boost::headers
   larcore::Geometry_Geometry_service
   lardataobj::RawData
@@ -27,10 +45,26 @@ art_make(BASENAME_ONLY
   cetlib::cetlib
   cetlib_except::cetlib_except
   ROOT::Tree
-  larsim::MCCheater_ParticleInventoryService_service
-  nurandom::RandomUtils_NuRandomService_service  # brings CLHEP (pulled in by ParticleInventoryService headers)
   triggeralgs_module
   dunetrigger_vendor_lardata_ArtDataHelper
+)
+
+cet_build_plugin(TriggerAnaTree art::module BASENAME_ONLY
+  LIBRARIES PRIVATE
+  dunetrigger::TriggerAna
+  ${triggerana_module_libraries}
+)
+
+cet_build_plugin(TriggerActivityTxtDump art::module BASENAME_ONLY
+  LIBRARIES PRIVATE ${triggerana_module_libraries}
+)
+
+cet_build_plugin(TriggerTPCInfoComparator art::module BASENAME_ONLY
+  LIBRARIES PRIVATE ${triggerana_module_libraries}
+)
+
+cet_build_plugin(TriggerTPCInfoDisplay art::module BASENAME_ONLY
+  LIBRARIES PRIVATE ${triggerana_module_libraries}
 )
 
 install_fhicl()
