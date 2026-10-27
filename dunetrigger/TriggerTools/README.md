@@ -11,8 +11,8 @@ RawDigitAna_module.cc     art analyzer: ADC histograms and (optionally) waveform
 exe/geo_inspector.cxx     standalone executable: print a detector geometry and save it as JSON
 fcl/
   hydra_filter.fcl                                   HydraFilter job (VD 1x8x14)
-  save_vd_<geom>_3view_30deg_rawdigi_hists.fcl       RawDigitAna jobs, histograms only
-  save_vd_<geom>_3view_30deg_rawdigi_waveforms.fcl   RawDigitAna jobs, histograms + waveform tree
+  save_vd_<geom>_3view_30deg_rawdigit_hists.fcl       RawDigitAna jobs, histograms only
+  save_vd_<geom>_3view_30deg_rawdigit_waveforms.fcl   RawDigitAna jobs, histograms + waveform tree
 ```
 
 ## HydraFilter (filter)
