@@ -7,12 +7,12 @@ a raw-waveform analyzer and a geometry dump executable.
 
 ```
 HydraFilter_module.cc     art filter: keep events with energy deposits in a chosen TPC set (APA/CRM)
-RawDigitAna_module.cc     art analyzer: ADC histograms and (optionally) waveforms from RawDigits
+RawDigitTreeDumper_module.cc     art analyzer: ADC histograms and (optionally) waveforms from RawDigits
 exe/geo_inspector.cxx     standalone executable: print a detector geometry and save it as JSON
 fcl/
   hydra_filter.fcl                                   HydraFilter job (VD 1x8x14)
-  save_vd_<geom>_3view_30deg_rawdigit_hists.fcl       RawDigitAna jobs, histograms only
-  save_vd_<geom>_3view_30deg_rawdigit_waveforms.fcl   RawDigitAna jobs, histograms + waveform tree
+  save_vd_<geom>_3view_30deg_rawdigit_hists.fcl       RawDigitTreeDumper jobs, histograms only
+  save_vd_<geom>_3view_30deg_rawdigit_waveforms.fcl   RawDigitTreeDumper jobs, histograms + waveform tree
 ```
 
 ## HydraFilter (filter)
@@ -32,7 +32,7 @@ point inside the active bounding box of any TPC belonging to TPC set `tpcset_id`
 - `fcl/hydra_filter.fcl` runs it on the VD 1x8x14 geometry with `tpcset_id: 66` and writes the
   selected events (all products kept) to `hydra_filtered_%ifb.root`.
 
-## RawDigitAna (analyzer)
+## RawDigitTreeDumper (analyzer)
 
 Studies raw TPC waveforms (`raw::RawDigit`) and their ADC distributions, separating signal from noise
 using the truth in `sim::SimChannel`.

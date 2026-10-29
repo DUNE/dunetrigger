@@ -23,7 +23,7 @@ physics:
   analyzers:
   {
   triggerana: {
-   module_type: RawDigitAna
+   module_type: RawDigitTreeDumper
    rawdigits_tag: "tpcrawdecoder:daq.*" #input to TPG-> Raw Digits
    simchannels_tag: "tpcrawdecoder:simpleSC.*" #input to TPG-> Raw Digits
 

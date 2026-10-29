@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       RawDigitAna
+// Class:       RawDigitTreeDumper
 // Plugin Type: analyzer
-// File:        RawDigitAna_module.cc
+// File:        RawDigitTreeDumper_module.cc
 //
 // Module for studying raw TPC waveforms (RawDigits) and their ADC
 // distributions, split into signal and noise using SimChannel IDEs.
@@ -81,19 +81,19 @@
 
 
 
-namespace duneana {
-  class RawDigitAna;
+namespace dunetrigger {
+  class RawDigitTreeDumper;
 }
 
 
-class duneana::RawDigitAna : public art::EDAnalyzer {
+class dunetrigger::RawDigitTreeDumper : public art::EDAnalyzer {
 public:
-  explicit RawDigitAna(fhicl::ParameterSet const& p);
+  explicit RawDigitTreeDumper(fhicl::ParameterSet const& p);
 
-  RawDigitAna(RawDigitAna const&) = delete;
-  RawDigitAna(RawDigitAna&&) = delete;
-  RawDigitAna& operator=(RawDigitAna const&) = delete;
-  RawDigitAna& operator=(RawDigitAna&&) = delete;
+  RawDigitTreeDumper(RawDigitTreeDumper const&) = delete;
+  RawDigitTreeDumper(RawDigitTreeDumper&&) = delete;
+  RawDigitTreeDumper& operator=(RawDigitTreeDumper const&) = delete;
+  RawDigitTreeDumper& operator=(RawDigitTreeDumper&&) = delete;
 
   
   void analyze(art::Event const& e) override;
@@ -133,7 +133,7 @@ private:
 
 
 // -- Constructor --
-duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
+dunetrigger::RawDigitTreeDumper::RawDigitTreeDumper(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
   rawdigits_tag_(p.get<art::InputTag>("rawdigits_tag", "tpcrawdecoder:daq.*")),
   simchans_tag_(p.get<art::InputTag>("simchannels_tag", "tpcrawdecoder:simpleSC.*")),
@@ -147,7 +147,7 @@ duneana::RawDigitAna::RawDigitAna(fhicl::ParameterSet const& p)
   }
 
 
-void duneana::RawDigitAna::beginJob()
+void dunetrigger::RawDigitTreeDumper::beginJob()
 {
   art::ServiceHandle<art::TFileService> tfs; 
 
@@ -197,7 +197,7 @@ void duneana::RawDigitAna::beginJob()
 
 
 }
-void duneana::RawDigitAna::analyze(art::Event const& e)
+void dunetrigger::RawDigitTreeDumper::analyze(art::Event const& e)
 {
   reset_variables();  // initialise/reset all variables
 
@@ -219,7 +219,7 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
   
   auto simchans_many = lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchans_tag_);
   if (simchans_many.empty()) {
-    throw cet::exception("RawDigitAna")
+    throw cet::exception("RawDigitTreeDumper")
         << "Found no std::vector<sim::SimChannel> collections matching simchannels_tag \""
         << simchans_tag_.encode() << "\"";
   }
@@ -244,7 +244,7 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
   // ------------------------
   auto rawdigit_many = lar::util::getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigits_tag_);
   if (rawdigit_many.empty()) {
-    throw cet::exception("RawDigitAna")
+    throw cet::exception("RawDigitTreeDumper")
         << "Found no std::vector<raw::RawDigit> collections matching rawdigits_tag \""
         << rawdigits_tag_.encode() << "\"";
   }
@@ -324,7 +324,7 @@ void duneana::RawDigitAna::analyze(art::Event const& e)
 }
 
 
-void duneana::RawDigitAna::reset_variables()
+void dunetrigger::RawDigitTreeDumper::reset_variables()
 {
   // Run information
   fEvent = fRun = fSubRun = -1; 
@@ -336,4 +336,4 @@ void duneana::RawDigitAna::reset_variables()
 
 }
 
-DEFINE_ART_MODULE(duneana::RawDigitAna)
+DEFINE_ART_MODULE(dunetrigger::RawDigitTreeDumper)
