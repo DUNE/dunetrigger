@@ -1,0 +1,38 @@
+# triggerana_vd_1x8x14_simpleThr.fcl
+
+#include "triggerana_common.fcl"
+# tools_dune.fcl is not prolog-only: include it after all the prolog files
+#include "tools_dune.fcl"
+
+process_name: TriggerTreeMaker
+
+services: {
+  @table::services_triggerana_tree
+  @table::dunefdvd_reco_services
+}
+services.TFileService.fileName: "trigtree_%ifb.root"
+
+source: @local::source_triggerana_tree
+
+physics: {
+  analyzers: {
+    triggerAna: {
+      @table::triggerAnaTree_dumpAll
+      simchannel_tag: "tpcrawdecoder:simpleSC.*:.*"
+      # field is a std::regex matched in full against that field of the product
+      # tag, and an empty field matches anything. TP algorithm names live in the
+      # module label, so a label-only pattern is enough.
+      tp_tag_regex: ".*SimpleThreshold.*"
+      bt_window_offsets: [
+        {
+          tool_type: "TPAlgTPCSimpleThreshold"
+          roview_0: 8
+          roview_1: 1
+          roview_2: -7
+        }
+      ]
+    }
+  }
+  ana:       [ triggerAna ]
+  end_paths: [ ana ]
+}

@@ -8,6 +8,7 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   lardataalg::DetectorInfo
   larcorealg::Geometry
   lardataobj::RawData
+  lardataobj::Simulation
   dunecore::DuneObj
   lardata::ArtDataHelper
   nusimdata::SimulationBase

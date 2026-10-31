@@ -32,19 +32,21 @@ triggerAnaTree_dumpAll:
   dump_simides: true
   # If true, perform backtracking to find energy depositions for each TP.
   tp_backtracking: true
-  # Offset to apply for the backtracker
+  # Offset to apply for the backtracker, in samples, per TP tool_type.
+  # roview_<N> is the offset for readout view N (geo::View_t: 0=U, 1=V,
+  # 2=W/Z collection). DUNE TPCs have three views; all three keys are required.
   bt_window_offsets: [
     {
       tool_type: "TPAlgTPCSimpleThreshold"
-      U: 8
-      V: 4
-      X: -3
+      roview_0: 8
+      roview_1: 4
+      roview_2: -3
     },
     {
       tool_type: "TPAlgTPCAbsRunningSum"
-      U: -1
-      V: -5
-      X: -5
+      roview_0: -1
+      roview_1: -5
+      roview_2: -5
     }
   ]
 
