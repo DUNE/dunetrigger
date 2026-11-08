@@ -26,7 +26,6 @@ art_make(BASENAME_ONLY MODULE_LIBRARIES
   ROOT::Tree
   larsim::MCCheater_ParticleInventoryService_service
   triggeralgs_module
-  dunetrigger_vendor_lardata_ArtDataHelper
 )
 
 

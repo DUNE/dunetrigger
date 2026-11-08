@@ -32,7 +32,7 @@
 #include "art/Framework/Principal/SubRun.h"
 #include "canvas/Utilities/InputTag.h"
 #include "cetlib_except/exception.h"
-#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
+#include "lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 

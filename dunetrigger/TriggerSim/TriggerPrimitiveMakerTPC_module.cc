@@ -27,7 +27,7 @@
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include "canvas/Persistency/Common/FindOneP.h"
-#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
+#include "lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
 
 #include <algorithm>
