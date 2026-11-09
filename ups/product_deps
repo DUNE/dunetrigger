@@ -27,6 +27,7 @@ incdir  product_dir     include
 libdir  fq_dir          lib
 bindir  fq_dir          bin
 fcldir  product_dir     fcl
+wpdir   product_dir     wire-cell-cfg
 
 # With "product  version" table below, we now define depdendencies
 # Add the dependent product and version
@@ -44,6 +45,12 @@ e26:prof    e26:prof
 c14:debug   c14:debug    
 c14:prof    c14:prof     
 end_qualifier_list
+
+# Wire-Cell jsonnet for the in-graph TPG (TriggerSim/WireCell/cfg). Prepended,
+# so it must be set up after anything that resets WIRECELL_PATH (dunereco).
+table_fragment_begin
+    pathPrepend(WIRECELL_PATH, ${UPS_PROD_DIR}/wire-cell-cfg)
+table_fragment_end
 
 # Preserve tabs and formatting in emacs and vi / vim:
 

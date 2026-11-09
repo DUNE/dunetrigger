@@ -23,6 +23,8 @@ set(${PROJECT_NAME}_CMAKE_PROJECT_VERSION_STRING 10.30.00d00)
 find_package(cetmodules REQUIRED)
 
 set(${PROJECT_NAME}_FW_DIR "config_data")
+# Wire-Cell jsonnet (install_wp), see TriggerSim/WireCell/cfg
+set(${PROJECT_NAME}_WP_DIR wire-cell-cfg)
 
 # Project variable defaults (_INIT) and overrides.
 set(${PROJECT_NAME}_SCRIPTS_DIR_INIT scripts)
@@ -59,6 +61,10 @@ find_ups_product( TRACE ) # this seems to be deprecated but I can't find other w
 #dune packages
 find_package( dunecore REQUIRED EXPORT )
 find_package( dunedetdataformats REQUIRED EXPORT )
+
+# Wire-Cell Toolkit + its LArSoft interface (TriggerSim/WireCell)
+find_package( larwirecell REQUIRED EXPORT )
+find_package( WireCell REQUIRED EXPORT )
 
 # macros for dictionary and simple_plugin
 include(ArtDictionary)

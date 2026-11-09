@@ -1,0 +1,87 @@
+# wirecell_tpg_vd_cfg.fcl
+#
+# WireCellToolkit (tpcrawdecoder) configurations for the VD 1x8x14 3view 30deg
+# detector simulation with trigger primitive generation (TPG) inside the
+# Wire-Cell graph. The TPs are made from the raw digitized waveforms (no noise
+# filtering, no signal processing) of every simulated CRM and saved as ONE
+# std::vector<dunedaq::trgdataformats::TriggerPrimitive>, product
+# "tpcrawdecoder" (no instance name). No raw::RawDigits are written.
+#
+# See dunetrigger/TriggerSim/WireCell/README.md.
+
+#include "wirecell_dune.fcl"
+#include "trigger_primitive_makers_vd_cfg.fcl"
+
+BEGIN_PROLOG
+
+# ---------------------------------------------------------------------------
+# TP algorithm. The SAME settings have to be given twice:
+#   tpalg: FHiCL table, not used by the simulation. It is put at the top level
+#          of the tpcrawdecoder module so that TriggerAnaTree (and anything
+#          else reading the producer's "tpalg" from provenance) works.
+#   wct:   Jsonnet code passed to the Wire-Cell graph (the WCLS "structs" only
+#          accept strings). Fields: tpalg (as in FHiCL), detid (default 3 =
+#          kHD_TPC, as TriggerPrimitiveMakerTPC), default_timestamp (default 0).
+# Keep them in sync when adding variants.
+# ---------------------------------------------------------------------------
+wctpg_vd_simpleThr: {
+  tpalg: @local::tpmakerTPC_SimpleThreshold_vd.tpalg
+  wct: "{tpalg: {tool_type: 'TPAlgTPCSimpleThreshold', threshold_tpg_plane0: 36, threshold_tpg_plane1: 36, threshold_tpg_plane2: 36, verbosity: 0}, detid: 3, default_timestamp: 0}"
+}
+
+# ---------------------------------------------------------------------------
+# Base: hydra, TPG only. No signal processing, so no recob::Wires.
+# Saves: SimChannels (tpcrawdecoder:simpleSC) + TPs (tpcrawdecoder).
+# ---------------------------------------------------------------------------
+wctpg_dunevd10kt_1x8x14_3view_30deg_sim: {
+  @table::dune10kt_dunefd_vertdrift_1x8x14_3view_30deg_sim_nfsp
+  tpalg: @local::wctpg_vd_simpleThr.tpalg
+  wcls_main: {
+    @table::dune10kt_dunefd_vertdrift_1x8x14_3view_30deg_sim_nfsp.wcls_main
+    plugins: [ @sequence::dune10kt_dunefd_vertdrift_1x8x14_3view_30deg_sim_nfsp.wcls_main.plugins,
+               "WireCellDuneTrigger" ]
+    configs: [ "dunetrigger/dune-vd/wcls-sim-drift-simchannel-tpg.jsonnet" ]
+    outputers: [ "wclsDepoFluxWriter:postdrift", "wclsTPGSaver:tpgsaver" ]
+    structs: {
+      @table::dune10kt_dunefd_vertdrift_1x8x14_3view_30deg_sim_nfsp.wcls_main.structs
+      use_tpg: true
+      run_sp: false
+      tpg: @local::wctpg_vd_simpleThr.wct
+    }
+  }
+}
+
+# TPG + the standard signal processing (recob::Wires tpcrawdecoder:gauss etc.),
+# so the same file can go through reco.
+wctpg_dunevd10kt_1x8x14_3view_30deg_sim_sp: {
+  @table::wctpg_dunevd10kt_1x8x14_3view_30deg_sim
+  wcls_main: {
+    @table::wctpg_dunevd10kt_1x8x14_3view_30deg_sim.wcls_main
+    outputers: [ "wclsDepoFluxWriter:postdrift", "wclsFrameSaver:spsignals", "wclsTPGSaver:tpgsaver" ]
+    structs: {
+      @table::wctpg_dunevd10kt_1x8x14_3view_30deg_sim.wcls_main.structs
+      run_sp: true
+    }
+  }
+}
+
+# Validation: also save one RawDigit collection per CRM (tpcrawdecoder:daqtpc<N>,
+# the dunereco "_multidigits" layout) so TriggerPrimitiveMakerTPC can be run on
+# the same waveforms in the same job.
+wctpg_dunevd10kt_1x8x14_3view_30deg_sim_multidigits: {
+  @table::wctpg_dunevd10kt_1x8x14_3view_30deg_sim
+  wcls_main: {
+    @table::wctpg_dunevd10kt_1x8x14_3view_30deg_sim.wcls_main
+    outputers: [ @sequence::dunevd_nfsp_outputers_multidigits, "wclsTPGSaver:tpgsaver" ]
+    params: {
+      @table::wctpg_dunevd10kt_1x8x14_3view_30deg_sim.wcls_main.params
+      process_mode: "full-sim-sp"
+    }
+    structs: {
+      @table::wctpg_dunevd10kt_1x8x14_3view_30deg_sim.wcls_main.structs
+      run_sp: true
+    }
+  }
+}
+
+END_PROLOG

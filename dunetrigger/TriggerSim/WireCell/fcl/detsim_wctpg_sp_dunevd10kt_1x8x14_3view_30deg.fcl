@@ -1,0 +1,9 @@
+# detsim_wctpg_sp_dunevd10kt_1x8x14_3view_30deg.fcl
+#
+# As detsim_wctpg_dunevd10kt_1x8x14_3view_30deg.fcl, but also runs the standard
+# signal processing (recob::Wires), so the output can go through reco.
+
+#include "wirecell_tpg_vd_cfg.fcl"
+#include "standard_detsim_dunevd10kt_1x8x14_3view_30deg.fcl"
+
+physics.producers.tpcrawdecoder: @local::wctpg_dunevd10kt_1x8x14_3view_30deg_sim_sp

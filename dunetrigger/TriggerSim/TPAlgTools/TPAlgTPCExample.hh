@@ -14,11 +14,22 @@ namespace dunetrigger {
       verbosity_(ps.get<int>("verbosity",0))
     {}
 
-    void process_waveform(std::vector<short> const& adcs, 
+    void process_waveform(std::vector<short> const& adcs,
                           dunedaq::trgdataformats::channel_t const channel,
                           dunedaq::trgdataformats::detid_t const detid,
                           dunedaq::trgdataformats::timestamp_t const start_time,
-                          std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) 
+                          std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) override
+    {
+      // this example does not use the plane
+      process_waveform(adcs, channel, 0, detid, start_time, tps_out);
+    }
+
+    void process_waveform(std::vector<short> const& adcs,
+                          dunedaq::trgdataformats::channel_t const channel,
+                          unsigned int const /*plane*/,
+                          dunedaq::trgdataformats::detid_t const detid,
+                          dunedaq::trgdataformats::timestamp_t const start_time,
+                          std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) override
     {
       
       //do processing of waveform here to form a TP and add it to the output collection

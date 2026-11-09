@@ -1,0 +1,16 @@
+# detsim_wctpg_validate_dunevd10kt_1x8x14_3view_30deg.fcl
+#
+# Validation of the Wire-Cell TPG: in one job,
+#   tpcrawdecoder              TPs made inside the Wire-Cell graph, and
+#                              RawDigits tpcrawdecoder:daqtpc<N> of the same waveforms
+#   tpmakerTPCSimpleThreshold  TPs made by TriggerPrimitiveMakerTPC from those RawDigits
+# The two TP collections must be identical. The RawDigits are dropped on output.
+
+#include "wirecell_tpg_vd_cfg.fcl"
+#include "standard_detsim_dunevd10kt_1x8x14_3view_30deg.fcl"
+
+physics.producers.tpcrawdecoder: @local::wctpg_dunevd10kt_1x8x14_3view_30deg_sim_multidigits
+physics.producers.tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold_vd
+physics.simulate: [ @sequence::physics.simulate, tpmakerTPCSimpleThreshold ]
+
+outputs.out1.outputCommands: [ "keep *_*_*_*", "drop raw::RawDigit*_tpcrawdecoder_*_*" ]

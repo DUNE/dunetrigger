@@ -3,10 +3,7 @@
 
 #include "fhiclcpp/ParameterSet.h"
 
-#include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "larcore/CoreUtils/ServiceUtil.h"
-#include "larcore/Geometry/Geometry.h"
-#include "larcore/Geometry/WireReadout.h"
+#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCGeometry.hh"
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "dunetrigger/TriggerSim/Verbosity.hh"
@@ -28,13 +25,9 @@ public:
         threshold_tpg_plane1_(ps.get<int16_t>("threshold_tpg_plane1")),
         threshold_tpg_plane2_(ps.get<int16_t>("threshold_tpg_plane2")) {}
 
-  void initialize_channel_state(dunedaq::trgdataformats::channel_t const &channel, std::vector<short> const &adcs) {
-
-    // grab the geometry service
-    art::ServiceHandle<geo::Geometry> geom;
-    geo::WireReadoutGeom const &wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
-
-    auto plane = wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(channel)).at(0).Plane;
+  void initialize_channel_state(dunedaq::trgdataformats::channel_t const& channel,
+                                unsigned int const plane,
+                                std::vector<short> const& adcs) {
 
     if (plane == 0)
       threshold_ = threshold_tpg_plane0_;
@@ -105,9 +98,19 @@ public:
   }
 
 
-  void process_waveform(std::vector<short> const &adcs, dunedaq::trgdataformats::channel_t const channel,
+  // art entry point: look up the plane from the geometry service
+  void process_waveform(std::vector<short> const& adcs,
+                        dunedaq::trgdataformats::channel_t const channel,
+                        dunedaq::trgdataformats::detid_t const detid,
+                        dunedaq::trgdataformats::timestamp_t const start_time,
+                        std::vector<dunedaq::trgdataformats::TriggerPrimitive> &tps_out) override {
+    process_waveform(adcs, channel, tpc_plane_of_channel(channel), detid, start_time, tps_out);
+  }
+
+  // plane-aware entry point: no art services used
+  void process_waveform(std::vector<short> const& adcs, dunedaq::trgdataformats::channel_t const channel, unsigned int const plane,
                         dunedaq::trgdataformats::detid_t const detid,  dunedaq::trgdataformats::timestamp_t const start_time,
-                        std::vector<dunedaq::trgdataformats::TriggerPrimitive> &tps_out) {
+                        std::vector<dunedaq::trgdataformats::TriggerPrimitive> &tps_out) override {
 
     // setup a TP and initialize it with the common things for this algorithm/channel
     dunedaq::trgdataformats::TriggerPrimitive this_tp;
@@ -119,7 +122,7 @@ public:
     this_tp.flag = 0;
 
     // for this channel, reinitialize the channel state variables
-    initialize_channel_state(channel, adcs);
+    initialize_channel_state(channel, plane, adcs);
 
     for (size_t i_t = 0; i_t < adcs.size(); ++i_t) {
 

@@ -1,0 +1,11 @@
+# detsim_wctpg_dunevd10kt_1x8x14_3view_30deg.fcl
+#
+# Standard VD 1x8x14 3view 30deg detsim, with the TPC simulation replaced by
+# the Wire-Cell TPG version: TPs from the raw waveforms, no signal processing,
+# no RawDigits. TPs: std::vector<dunedaq::trgdataformats::TriggerPrimitive>
+# "tpcrawdecoder". Use tp_tag: "tpcrawdecoder" in the TA makers.
+
+#include "wirecell_tpg_vd_cfg.fcl"
+#include "standard_detsim_dunevd10kt_1x8x14_3view_30deg.fcl"
+
+physics.producers.tpcrawdecoder: @local::wctpg_dunevd10kt_1x8x14_3view_30deg_sim

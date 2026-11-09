@@ -16,9 +16,22 @@ namespace dunetrigger {
 
     virtual ~TPAlgTPCTool() noexcept = default; 
 
-    //take in a waveform, add trigger primitives to it
+    //take in a waveform, add trigger primitives to it.
+    //The readout plane of `channel` is looked up from the LArSoft geometry
+    //service, so this must be called from an art context.
     virtual void process_waveform(std::vector<short> const& adcs,
                                   dunedaq::trgdataformats::channel_t const channel,
+                                  dunedaq::trgdataformats::detid_t const detid,
+                                  dunedaq::trgdataformats::timestamp_t const start_time,
+                                  std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) = 0;
+
+    //Same as above, but the caller supplies the readout plane index (0, 1, 2)
+    //of `channel`, so no art/LArSoft service is touched. This is the entry
+    //point used from Wire-Cell graph nodes (see TriggerSim/WireCell), which
+    //run in TBB worker threads.
+    virtual void process_waveform(std::vector<short> const& adcs,
+                                  dunedaq::trgdataformats::channel_t const channel,
+                                  unsigned int const plane,
                                   dunedaq::trgdataformats::detid_t const detid,
                                   dunedaq::trgdataformats::timestamp_t const start_time,
                                   std::vector<dunedaq::trgdataformats::TriggerPrimitive> & tps_out) = 0;
