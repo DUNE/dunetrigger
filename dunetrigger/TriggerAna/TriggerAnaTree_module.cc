@@ -204,7 +204,6 @@ void dunetrigger::TriggerAnaTree::analyze(art::Event const &e) {
   track_electron_sums.clear();
   simide_tpc_energy_map.clear();
   simchannel_tpcsets_.clear();
-  if (tp_bt_) tp_bt_->clear_event();
   tp_tool_type_cache_.clear();
   trkid_to_truth_block_id.clear();
   truth_block_id_to_generator_name.clear();
@@ -369,7 +368,7 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
 // fillSimChannels
 // Reads:    sim::SimChannel collections matching simchannel_tag
 // Produces: track_en_sums, track_electron_sums, simide_tpc_energy_map,
-//           simchannel_tpcsets_ and the TPBacktracker SimChannel index, evsummary_buf (per-ROP sums, simides_count),
+//           simchannel_tpcsets_, evsummary_buf (per-ROP sums, simides_count),
 //           simide_buffer/simide_tree
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::WireReadoutGeom const *geom) {
@@ -471,7 +470,11 @@ void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::Wire
     simchannel_tpcsets_.insert(tpcset_ids.begin(), tpcset_ids.end());
   }
 
-  if (tp_bt_) tp_bt_->prep_event(simchannels_many);
+  if (tp_bt_) {
+    std::size_t n_simchannels = 0;
+    for (auto const &handle : simchannels_many) n_simchannels += handle->size();
+    tp_bt_->check_simchannels(n_simchannels, simchannel_tag.encode());
+  }
 
   if (dump_simides) simide_tree->Fill();
 }
@@ -556,7 +559,7 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 // Reads:    TriggerPrimitive collections matching tp_tag_regex
 // Produces: TP trees (tp_trees[<tag>]), info_data["tpg"][<tag>]
 //           (written when the TP tree for <tag> is created)
-// Requires: simchannel_tpcsets_ and the TPBacktracker index (fillSimChannels); trkid_to_truth_block_id,
+// Requires: simchannel_tpcsets_ and the SimChannel check of the TPBacktracker (fillSimChannels); trkid_to_truth_block_id,
 //           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = lar::util::getManyByRegexTag<std::vector<TriggerPrimitive>>(e, tp_tag_regex);
@@ -602,7 +605,7 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
 // Reads:    TriggerActivityData collections matching ta_tag_regex,
 //           TA->TriggerPrimitive assns
 // Produces: TA trees (ta_trees[<tag>]), inTAs TP trees (tp_trees[<tag>inTAs])
-// Requires: simchannel_tpcsets_ and the TPBacktracker index (fillSimChannels); trkid_to_truth_block_id,
+// Requires: simchannel_tpcsets_ and the SimChannel check of the TPBacktracker (fillSimChannels); trkid_to_truth_block_id,
 //           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =

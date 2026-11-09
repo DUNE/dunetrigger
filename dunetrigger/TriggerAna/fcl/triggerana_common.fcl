@@ -10,6 +10,9 @@ BEGIN_PROLOG
 
 services_triggerana_tree: @local::services_triggersim
 services_triggerana_tree.TFileService.fileName: "triggerAna.ntuple.root"
+# services.BackTrackerService.BackTracker.SimChannelModuleLabel must equal the
+# analyzer's simchannel_tag (TPBacktracker checks it every event). Set it in the
+# job fcl, after the *_reco_services tables, which reset it.
 
 source_triggerana_tree: @local::source_triggersim
 

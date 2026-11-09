@@ -6,6 +6,7 @@
 #include "canvas/Persistency/Common/Ptr.h"
 #include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
 #include "lardataobj/Simulation/SimChannel.h"
+#include "larsim/MCCheater/BackTrackerService.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
 
 #include "dunetrigger/TriggerAna/TriggerAnaRows.hh"
@@ -37,17 +38,19 @@ struct ViewOffsets {
   int for_view(int view) const;                // 0 if view is outside [0, kNumViews)
 };
 
-// Matches TPs to SimChannel IDEs and to MC truth. Owns a per-event, merged
-// SimChannel index (all matched collections, sorted by channel). The index is
-// a stopgap for larsim < v10_27_00, whose cheat::BackTracker cannot load
-// several SimChannel collections.
+// Matches TPs to SimChannel IDEs and to MC truth. SimChannel lookup goes
+// through cheat::BackTrackerService, which merges every SimChannel collection
+// matching its BackTracker.SimChannelModuleLabel. That label must equal the
+// analyzer's simchannel_tag; check_simchannels() verifies it every event.
 class TPBacktracker {
 public:
   explicit TPBacktracker(std::map<std::string, ViewOffsets> offsets);
 
-  // Builds the per-event SimChannel index from all the given collections.
-  void prep_event(std::vector<art::Handle<std::vector<sim::SimChannel>>> const& simchannels);
-  void clear_event();
+  // Throws if the number of SimChannels held by cheat::BackTrackerService
+  // differs from n_expected (the count in the collections matching
+  // simchannel_tag), i.e. if services.BackTrackerService.BackTracker.
+  // SimChannelModuleLabel does not match simchannel_tag.
+  void check_simchannels(std::size_t n_expected, std::string const& simchannel_tag) const;
 
   // Returns IDEs on the TP's channel inside the TP's time window shifted by the
   // tool-specific view offset. Empty if no SimChannel exists for the channel.
@@ -64,13 +67,13 @@ public:
   const std::map<std::string, ViewOffsets>& offsets() const { return offsets_; }
 
 private:
-  // The only two places that touch SimChannels. Step 9b replaces their bodies
-  // with cheat::BackTrackerService calls (provider()->FindSimChannelPtr / SimIDEsToXYZ).
+  // The only two places that look up SimChannels / IDE positions: thin wrappers
+  // around cheat::BackTrackerService (provider()->FindSimChannelPtr / SimIDEsToXYZ).
   art::Ptr<sim::SimChannel> find_simchannel_ptr(raw::ChannelID_t channel) const;
   std::vector<double> sim_ides_to_xyz(std::vector<sim::IDE> const& ides) const;
 
-  std::vector<art::Ptr<sim::SimChannel>> simchannels_; // per event, sorted by channel
   std::map<std::string, ViewOffsets> offsets_;
+  art::ServiceHandle<cheat::BackTrackerService const> bt_serv_;
   art::ServiceHandle<cheat::ParticleInventoryService> pi_serv_;
   mutable std::set<std::string> warned_tool_types_;
 };

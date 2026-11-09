@@ -11,6 +11,8 @@ services: {
   @table::dunefdvd_reco_services
 }
 services.TFileService.fileName: "trigtree_%ifb.root"
+# Must match simchannel_tag of the analyzer below (checked every event)
+services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC.*:.*"
 
 source: @local::source_triggerana_tree
 

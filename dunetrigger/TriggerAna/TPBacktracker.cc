@@ -16,47 +16,23 @@ int dunetrigger::ViewOffsets::for_view(int view) const {
 dunetrigger::TPBacktracker::TPBacktracker(std::map<std::string, ViewOffsets> offsets)
     : offsets_(std::move(offsets)) {}
 
-void dunetrigger::TPBacktracker::prep_event(
-    std::vector<art::Handle<std::vector<sim::SimChannel>>> const& simchannels) {
-  simchannels_.clear();
-  for (auto const& handle : simchannels) {
-    art::fill_ptr_vector(simchannels_, handle);
-  }
-  auto compare = [](art::Ptr<sim::SimChannel> const& a, art::Ptr<sim::SimChannel> const& b) {
-    return a->Channel() < b->Channel();
-  };
-  if (!std::is_sorted(simchannels_.begin(), simchannels_.end(), compare)) {
-    std::sort(simchannels_.begin(), simchannels_.end(), compare);
+void dunetrigger::TPBacktracker::check_simchannels(std::size_t n_expected,
+                                                   std::string const& simchannel_tag) const {
+  std::size_t const n_service = bt_serv_->SimChannels().size();
+  if (n_service != n_expected) {
+    throw cet::exception("TPBacktracker")
+        << "cheat::BackTrackerService holds " << n_service << " SimChannels but the collections matching simchannel_tag \""
+        << simchannel_tag << "\" hold " << n_expected
+        << ". services.BackTrackerService.BackTracker.SimChannelModuleLabel must match simchannel_tag.\n";
   }
 }
 
-void dunetrigger::TPBacktracker::clear_event() { simchannels_.clear(); }
-
 art::Ptr<sim::SimChannel> dunetrigger::TPBacktracker::find_simchannel_ptr(raw::ChannelID_t channel) const {
-  auto ilb = std::lower_bound(simchannels_.begin(), simchannels_.end(), channel,
-                              [](art::Ptr<sim::SimChannel> const& a, raw::ChannelID_t ch) {
-                                return a->Channel() < ch;
-                              });
-  return (ilb != simchannels_.end() && (*ilb)->Channel() == channel) ? *ilb : art::Ptr<sim::SimChannel>{};
+  return bt_serv_->provider()->FindSimChannelPtr(channel);
 }
 
 std::vector<double> dunetrigger::TPBacktracker::sim_ides_to_xyz(std::vector<sim::IDE> const& ides) const {
-  std::vector<double> xyz(3, 0.0);
-  double w = 0.0;
-  for (auto const& ide : ides) {
-    double weight = ide.numElectrons;
-    w += weight;
-    xyz[0] += (weight * ide.x);
-    xyz[1] += (weight * ide.y);
-    xyz[2] += (weight * ide.z);
-  }
-  if (w < 1.e-5)
-    throw cet::exception("TPBacktracker") << "No sim::IDEs providing non-zero number of electrons"
-                                          << " can't determine originating location from truth\n";
-  xyz[0] = xyz[0] / w;
-  xyz[1] = xyz[1] / w;
-  xyz[2] = xyz[2] / w;
-  return xyz;
+  return bt_serv_->SimIDEsToXYZ(ides);
 }
 
 std::vector<sim::IDE> dunetrigger::TPBacktracker::match_ides(const TriggerPrimitiveRow& tp,

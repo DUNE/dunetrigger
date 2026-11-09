@@ -10,6 +10,7 @@ cet_make_library(
   LIBRARIES
   PUBLIC
   lardataobj::Simulation
+  larsim::MCCheater_BackTrackerService_service
   larsim::MCCheater_ParticleInventoryService_service
   nurandom::RandomUtils_NuRandomService_service  # brings CLHEP (pulled in by ParticleInventoryService headers)
   nusimdata::SimulationBase
