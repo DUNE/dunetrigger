@@ -46,7 +46,6 @@ set(triggerana_module_libraries
   cetlib_except::cetlib_except
   ROOT::Tree
   triggeralgs_module
-  dunetrigger_vendor_lardata_ArtDataHelper
 )
 
 cet_build_plugin(TriggerAnaTree art::module BASENAME_ONLY

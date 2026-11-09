@@ -43,7 +43,7 @@
 #include "TriggerAnaTree_module.hh"
 
 #include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
-#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
+#include "lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
 #include <map>
@@ -375,7 +375,7 @@ void dunetrigger::TriggerAnaTree::fillMCTruth(art::Event const &e) {
 void dunetrigger::TriggerAnaTree::fillSimChannels(art::Event const &e, geo::WireReadoutGeom const *geom) {
 
   auto simchannels_many =
-      dunetrigger::vendor::lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
+      lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchannel_tag);
   if (simchannels_many.empty()) {
     throw cet::exception("TriggerAnaTree")
         << "Found no std::vector<sim::SimChannel> collections matching simchannel_tag \""
@@ -559,7 +559,7 @@ void dunetrigger::TriggerAnaTree::fillMCParticles(art::Event const &e) {
 // Requires: simchannel_tpcsets_ and the TPBacktracker index (fillSimChannels); trkid_to_truth_block_id,
 //           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
-  std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = dunetrigger::vendor::lar::util::getManyByRegexTag<std::vector<TriggerPrimitive>>(e, tp_tag_regex);
+  std::vector<art::Handle<std::vector<TriggerPrimitive>>> tpHandles = lar::util::getManyByRegexTag<std::vector<TriggerPrimitive>>(e, tp_tag_regex);
 
   for (auto const &tpHandle : tpHandles) {
 
@@ -606,7 +606,7 @@ void dunetrigger::TriggerAnaTree::fillTPs(art::Event const &e, geo::WireReadoutG
 //           truth_block_id_to_generator_name (build_truth_maps) -- only if tp_backtracking
 void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   std::vector<art::Handle<std::vector<TriggerActivityData>>> taHandles =
-      dunetrigger::vendor::lar::util::getManyByRegexTag<std::vector<TriggerActivityData>>(e, ta_tag_regex);
+      lar::util::getManyByRegexTag<std::vector<TriggerActivityData>>(e, ta_tag_regex);
 
   for (auto const &taHandle : taHandles) {
 
@@ -647,7 +647,7 @@ void dunetrigger::TriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutG
 // Requires: nothing
 void dunetrigger::TriggerAnaTree::fillTCs(art::Event const &e) {
   std::vector<art::Handle<std::vector<TriggerCandidateData>>> tcHandles =
-      dunetrigger::vendor::lar::util::getManyByRegexTag<std::vector<TriggerCandidateData>>(e, tc_tag_regex);
+      lar::util::getManyByRegexTag<std::vector<TriggerCandidateData>>(e, tc_tag_regex);
 
   for (auto const &tcHandle : tcHandles) {
     art::FindManyP<TriggerActivityData> assns(tcHandle, e, tcHandle.provenance()->moduleLabel());

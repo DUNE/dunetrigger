@@ -32,7 +32,7 @@
 #include "art/Framework/Principal/SubRun.h"
 #include "canvas/Utilities/InputTag.h"
 #include "cetlib_except/exception.h"
-#include "dunetrigger/vendor/lardata/ArtDataHelper/GetManyByRegexTag.h"
+#include "lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -217,7 +217,7 @@ void dunetrigger::RawDigitTreeDumper::analyze(art::Event const& e)
   
   std::set<unsigned int> signal_chans;
   
-  auto simchans_many = dunetrigger::vendor::lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchans_tag_);
+  auto simchans_many = lar::util::getManyByRegexTag<std::vector<sim::SimChannel>>(e, simchans_tag_);
   if (simchans_many.empty()) {
     throw cet::exception("RawDigitTreeDumper")
         << "Found no std::vector<sim::SimChannel> collections matching simchannels_tag \""
@@ -242,7 +242,7 @@ void dunetrigger::RawDigitTreeDumper::analyze(art::Event const& e)
 
   // Callect rawdigit handles
   // ------------------------
-  auto rawdigit_many = dunetrigger::vendor::lar::util::getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigits_tag_);
+  auto rawdigit_many = lar::util::getManyByRegexTag<std::vector<raw::RawDigit>>(e, rawdigits_tag_);
   if (rawdigit_many.empty()) {
     throw cet::exception("RawDigitTreeDumper")
         << "Found no std::vector<raw::RawDigit> collections matching rawdigits_tag \""
