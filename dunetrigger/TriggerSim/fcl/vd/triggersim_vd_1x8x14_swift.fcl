@@ -2,5 +2,6 @@
 
 #include "triggersim_vd_1x8x14_simpleThr_swift.fcl"
 
+process_name: TriggerActivityMaker
 
 physics.makers: [ tamakerTPCSWIFT ]

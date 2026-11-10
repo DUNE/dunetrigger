@@ -7,6 +7,8 @@ services: {
     @table::services_triggerana_tree
     @table::dunefd_1x2x6_reco_services
 }
+# Must match simchannel_tag of the analyzer (checked every event)
+services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC.*"
 
 source:  @local::source_triggerana_tree
 outputs: @local::outputs_triggerana_tree

@@ -10,12 +10,19 @@
 //    trg_detail::get_field_names<S>() -- runtime std::array of branch names
 //
 //  C++20: names are derived automatically via boost::pfr::names_as_array.
-//  C++17: call REGISTER_FIELD_NAMES at namespace scope after the struct.
+//          Requires Boost >= 1.84 (boost::pfr::names_as_array); checked below.
+//  C++17: call REGISTER_FIELD_NAMES inside the struct's namespace (dunetrigger)
+//          after the struct.  The macro checks at compile time that the names
+//          match the struct members in declaration order and in number, so the
+//          registered names equal what Boost.PFR yields in C++20.
 // =============================================================================
 
 #include <boost/pfr.hpp>
+#include <boost/version.hpp>
 
 #include <array>
+#include <cstddef>
+#include <initializer_list>
 #include <string>
 #include <utility>
 
@@ -29,10 +36,25 @@
 //  Specialisable trait.  The primary template only marks the struct as
 //  unregistered; REGISTER_FIELD_NAMES provides the specialisation with get().
 // ---------------------------------------------------------------------------
+namespace dunetrigger {
 template<typename Struct>
 struct FieldNames {
     static constexpr bool registered = false;
 };
+} // namespace dunetrigger
+
+// ---------------------------------------------------------------------------
+//  Helpers for the REGISTER_FIELD_NAMES declaration-order check.
+// ---------------------------------------------------------------------------
+namespace trg_detail {
+constexpr bool strictly_increasing(std::initializer_list<std::size_t> o) {
+    const std::size_t* p = o.begin();
+    for (std::size_t i = 1; i < o.size(); ++i)
+        if (p[i] <= p[i-1]) return false;
+    return true;
+}
+constexpr std::size_t count(std::initializer_list<std::size_t> o) { return o.size(); }
+} // namespace trg_detail
 
 // ---------------------------------------------------------------------------
 //  Boost.PP stringify helpers -- internal, prefixed TRG_ to avoid clashes.
@@ -44,19 +66,28 @@ struct FieldNames {
             TRG_PP_STRINGIFY_OP, _,                             \
             BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
 
+#define TRG_PP_OFFSETOF_OP(r, Type, elem) offsetof(Type, elem)
+#define TRG_PP_OFFSETOF_EACH(Type, ...)                                           \
+    BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(TRG_PP_OFFSETOF_OP, Type,            \
+                      BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+
 // ---------------------------------------------------------------------------
 //  REGISTER_FIELD_NAMES(StructType, field1, field2, ...)
-//  Specialises FieldNames<StructType>.  Place at namespace scope after the
-//  struct definition.  Enforces that the name count matches the field count.
+//  Specialises FieldNames<StructType>.  Must be invoked inside namespace dunetrigger,
+//  after the struct definition.  Enforces that the name count
+//  matches the field count.  Invoke with a trailing semicolon.
 //  In C++20 mode field names are derived automatically via Boost.PFR and
-//  this macro is ignored; a compiler warning is emitted to alert the user.
+//  this macro is ignored (it expands to nothing).
+//  C++17 check: offsetof of each name must be strictly increasing and the
+//  count must equal the field count.  offsetof on non-standard-layout types
+//  (rows with std::string) is only conditionally supported; GCC supports it
+//  and merely warns, hence the targeted -Winvalid-offsetof suppression.
 // ---------------------------------------------------------------------------
 #if __cplusplus >= 202002L
-#define REGISTER_FIELD_NAMES(StructType, ...)                                  \
-    static_assert(sizeof(StructType) == 0,                                     \
-        "REGISTER_FIELD_NAMES is not needed in C++20 mode: "                   \
-        "field names are derived automatically via boost::pfr::names_as_array. "\
-        "Remove this macro call.");
+static_assert(BOOST_VERSION >= 108400,
+    "FieldNames.hh: the C++20 path needs boost::pfr::names_as_array (Boost >= 1.84). "
+    "This stack has an older Boost; build in C++17 mode or upgrade Boost.");
+#define REGISTER_FIELD_NAMES(StructType, ...) static_assert(true)
 #else
 #define REGISTER_FIELD_NAMES(StructType, ...)                                   \
 template<>                                                                       \
@@ -79,14 +110,23 @@ private:                                                                        
     get_impl(std::index_sequence<Is...>, const char* const* n) {                \
         return { std::string(n[Is])... };                                        \
     }                                                                            \
-};
+};                                                                               \
+_Pragma("GCC diagnostic push")                                                  \
+_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")                        \
+static_assert(::trg_detail::strictly_increasing(                                \
+    { TRG_PP_OFFSETOF_EACH(StructType, __VA_ARGS__) }),                         \
+    "REGISTER_FIELD_NAMES: names are not in declaration order for " #StructType); \
+static_assert(boost::pfr::tuple_size_v<StructType> ==                           \
+    ::trg_detail::count({ TRG_PP_OFFSETOF_EACH(StructType, __VA_ARGS__) }),     \
+    "REGISTER_FIELD_NAMES: name count mismatch for " #StructType);              \
+_Pragma("GCC diagnostic pop")
 #endif // __cplusplus >= 202002L
 
 // ---------------------------------------------------------------------------
 //  trg_detail::get_field_names<Struct>()
 //  Returns a runtime std::array of branch-name strings.
 //  C++20: automatic via boost::pfr::names_as_array.
-//  C++17: delegates to FieldNames<Struct>::get() (must be registered).
+//  C++17: delegates to dunetrigger::FieldNames<Struct>::get() (must be registered).
 // ---------------------------------------------------------------------------
 namespace trg_detail {
 
@@ -107,13 +147,13 @@ get_field_names() {
     return get_names_impl<Struct>(pfr_names,
         std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
 #else
-    static_assert(FieldNames<Struct>::registered,
+    static_assert(::dunetrigger::FieldNames<Struct>::registered,
         "C++17 mode: field names not registered for this struct. "
         "Use REGISTER_FIELD_NAMES(StructType, field1, ...) "
-        "at namespace scope, or compile with -std=c++20.");
+        "inside namespace dunetrigger after the struct, or compile with -std=c++20.");
     // Guarded so an unregistered struct reports only the static_assert above.
-    if constexpr (FieldNames<Struct>::registered)
-        return FieldNames<Struct>::get();
+    if constexpr (::dunetrigger::FieldNames<Struct>::registered)
+        return ::dunetrigger::FieldNames<Struct>::get();
     else
         return {};
 #endif

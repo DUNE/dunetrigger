@@ -11,6 +11,8 @@ services: {
   @table::dunefdvd_1x8x14_3view_30deg_reco_services
 }
 services.TFileService.fileName: "trigtree_%ifb.root"
+# Must match simchannel_tag of the analyzer below (checked every event)
+services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC.*:.*"
 
 source: @local::source_triggerana_tree
 
@@ -18,16 +20,20 @@ physics: {
   analyzers: {
     triggerAna: {
       @table::triggerAnaTree_dumpAll
+      simchannel_tag: "tpcrawdecoder:simpleSC.*:.*"
+      # tp_tag_regex is parsed as an art InputTag "label:instance:process"; each
+      # field is a std::regex matched in full against that field of the product
+      # tag, and an empty field matches anything. TP algorithm names live in the
+      # module label, so a label-only pattern is enough.
       tp_tag_regex: ".*SimpleThreshold.*"
       bt_window_offsets: [
         {
           tool_type: "TPAlgTPCSimpleThreshold"
-          U: 8
-          V: 1
-          X: -7
+          roview_0: 8
+          roview_1: 1
+          roview_2: -7
         }
       ]
-      dump_simides: true
     }
   }
   ana:       [ triggerAna ]

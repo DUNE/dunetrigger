@@ -14,7 +14,7 @@
  * @par Field-name reflection
  * - C++20: real field names via `boost::pfr::names_as_array` (automatic).
  * - C++17: use `REGISTER_FIELD_NAMES(StructType, field1, field2, ...)`
- *   at namespace scope (provided by FieldNames.hpp).
+ *   inside the struct's namespace (provided by FieldNames.hpp).
  */
 
 #include "FieldNames.hh"
@@ -24,6 +24,7 @@
 
 #include <array>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -117,7 +118,9 @@ public:
         auto names = trg_detail::get_field_names<Struct>();
         std::size_t i = 0;
         std::apply([&](auto&... fields) {
-            ((tree.SetBranchAddress((prefix + names[i++]).c_str(), &fields)), ...);
+            ((check_set_address(
+                tree.SetBranchAddress((prefix + names[i]).c_str(), &fields),
+                prefix + names[i]), ++i), ...);
         }, boost::pfr::structure_tie(data));
     }
 
@@ -152,6 +155,13 @@ public:
 
 private:
     bool enabled_ = true;
+
+    static void check_set_address(Int_t status, const std::string& branch_name) {
+        if (status < 0)
+            throw std::runtime_error(
+                "ScalarFieldsBuffer::set_branch_addresses: failed to bind branch \"" +
+                branch_name + "\" (ROOT error code " + std::to_string(status) + ")");
+    }
 };
 
 #endif // SCALAR_FIELDS_BUFFER_HH
