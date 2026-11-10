@@ -7,6 +7,7 @@ add_subdirectory(exe)
 cet_make_library(
   SOURCE
   TPBacktracker.cc
+  TriggerAnaRows.cc
   LIBRARIES
   PUBLIC
   lardataobj::Simulation
