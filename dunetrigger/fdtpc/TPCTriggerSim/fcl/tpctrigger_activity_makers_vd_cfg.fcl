@@ -1,11 +1,11 @@
-# trigger_activity_makers_vd_cfg.fcl
+# tpctrigger_activity_makers_vd_cfg.fcl
 
 # VD TA makers and their algorithm configs.
 # VD has 3 ROPs: induction 1, induction 2, collection.
 
 BEGIN_PROLOG
 
-ta_algconfig_swift_vd: {
+tpc_ta_algconfig_swift_vd: {
   window_length: 32000
   inspect_energy_threshold_sadc: 8000
   accept_energy_threshold_sadc: 20750
@@ -14,14 +14,14 @@ ta_algconfig_swift_vd: {
   cluster_energy_cut_sadc: 22000
 }
 
-tamakerTPC_SWIFT_vd: {
-  module_type: TriggerActivityMakerTPC
+tpc_tamakerTPC_SWIFT_vd: {
+  module_type: TriggerROPActivityMakerTPC
   # tp_tag is set by the producer chain that uses this maker, next to the TP maker label
   algorithm: "TriggerActivityMakerSWIFTPlugin"
   #active_rops: []
-  algconfig_rop0: @local::ta_algconfig_swift_vd # induction 1
-  algconfig_rop1: @local::ta_algconfig_swift_vd # induction 2
-  algconfig_rop2: @local::ta_algconfig_swift_vd # collection
+  algconfig_rop0: @local::tpc_ta_algconfig_swift_vd # induction 1
+  algconfig_rop1: @local::tpc_ta_algconfig_swift_vd # induction 2
+  algconfig_rop2: @local::tpc_ta_algconfig_swift_vd # collection
   flush: true
   verbosity: 0
 }

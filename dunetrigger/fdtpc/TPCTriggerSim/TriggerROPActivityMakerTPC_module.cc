@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       TriggerActivityMakerTPC
+// Class:       TriggerROPActivityMakerTPC
 // Plugin Type: producer
-// File:        TriggerActivityMakerTPC_module.cc
+// File:        TriggerROPActivityMakerTPC_module.cc
 //
 // Applies a configurable TriggerActivityMaker algorithm to each
 // Readout Plane (ROP) of every detector element (APA/CRP).
-// One algorithm instance per ROP is built in beginJob() 
+// A fresh algorithm instance is built for each ROP in every event,
 // so that each plane has independent internal state.
 ////////////////////////////////////////////////////////////////////////
 
@@ -39,19 +39,19 @@
 #include <utility>
 #include <vector>
 
-namespace dunetrigger {
+namespace dunetrigger::fdtpc {
 
   using tpctriggeralgs::TriggerActivityData;
   using tpctriggeralgs::TriggerPrimitive;
 
-  class TriggerActivityMakerTPC : public art::EDProducer {
+  class TriggerROPActivityMakerTPC : public art::EDProducer {
   public:
-    explicit TriggerActivityMakerTPC(fhicl::ParameterSet const &p);
+    explicit TriggerROPActivityMakerTPC(fhicl::ParameterSet const &p);
 
-    TriggerActivityMakerTPC(TriggerActivityMakerTPC const &) = delete;
-    TriggerActivityMakerTPC(TriggerActivityMakerTPC &&) = delete;
-    TriggerActivityMakerTPC &operator=(TriggerActivityMakerTPC const &) = delete;
-    TriggerActivityMakerTPC &operator=(TriggerActivityMakerTPC &&) = delete;
+    TriggerROPActivityMakerTPC(TriggerROPActivityMakerTPC const &) = delete;
+    TriggerROPActivityMakerTPC(TriggerROPActivityMakerTPC &&) = delete;
+    TriggerROPActivityMakerTPC &operator=(TriggerROPActivityMakerTPC const &) = delete;
+    TriggerROPActivityMakerTPC &operator=(TriggerROPActivityMakerTPC &&) = delete;
 
     void beginJob() override;
     void produce(art::Event &e) override;
@@ -106,7 +106,7 @@ namespace dunetrigger {
       for (unsigned int r : active_rops) {
         const std::string key = "algconfig_rop" + std::to_string(r);
         if (!p.has_key(key)) {
-          throw cet::exception("TPCTriggerActivityMakerTPC") 
+          throw cet::exception("TriggerROPActivityMakerTPC") 
             << "active_rops includes ROP " << r << " but no matching '" << key << "' was provided.\n";
         }
         configs[r] = toJson(p.get<fhicl::ParameterSet>(key));
@@ -135,7 +135,7 @@ namespace dunetrigger {
 
   // Constructor
 
-  TriggerActivityMakerTPC::TriggerActivityMakerTPC(fhicl::ParameterSet const &p)
+  TriggerROPActivityMakerTPC::TriggerROPActivityMakerTPC(fhicl::ParameterSet const &p)
     : EDProducer{p}
     , algname_(p.get<std::string>("algorithm"))
     , tp_tag_(p.get<art::InputTag>("tp_tag"))
@@ -151,7 +151,7 @@ namespace dunetrigger {
     }
 
   //  beginJob
-  void TriggerActivityMakerTPC::beginJob() {
+  void TriggerROPActivityMakerTPC::beginJob() {
 
     std::cout << "Producing TAs for ROP planes: ";
     for (const auto &[rop, _] : algconfigs_) std::cout << rop << " ";
@@ -165,7 +165,7 @@ namespace dunetrigger {
   }
 
   // producer
-  void TriggerActivityMakerTPC::produce(art::Event &e) {
+  void TriggerROPActivityMakerTPC::produce(art::Event &e) {
 
     auto ta_vec = std::make_unique<std::vector<TriggerActivityData>>();
     auto assns  = std::make_unique<art::Assns<TriggerActivityData, TriggerPrimitive>>();
@@ -190,7 +190,7 @@ namespace dunetrigger {
 
       auto alg = factory_->build_maker(algname_);
       if (!alg)
-        throw cet::exception("TriggerActivityMakerTPC") << "Unknown algorithm: '" << algname_ << "'\n";
+        throw cet::exception("TriggerROPActivityMakerTPC") << "Unknown algorithm: '" << algname_ << "'\n";
 
       alg->configure(algconfigs_.at(rop_idx));
 
@@ -227,7 +227,7 @@ namespace dunetrigger {
 
   // buildAssociations 
 
-  void TriggerActivityMakerTPC::buildAssociations(
+  void TriggerROPActivityMakerTPC::buildAssociations(
                                                   const tpctriggeralgs::TriggerActivity &ta,
                                                   const std::vector<art::Ptr<TriggerPrimitive>> &plane_tps,
                                                   art::Ptr<TriggerActivityData> taPtr,
@@ -238,7 +238,7 @@ namespace dunetrigger {
       auto it = std::find_if(plane_tps.begin(), plane_tps.end(), [&](const art::Ptr<TriggerPrimitive> &t) { return sameTP(*t, in_tp); });
 
       if (it == plane_tps.end()) {
-        mf::LogWarning("TriggerActivityMakerTPC") << "TP recorded in TA not found in input list -- skipping association.";
+        mf::LogWarning("TriggerROPActivityMakerTPC") << "TP recorded in TA not found in input list -- skipping association.";
         continue;
       }
 
@@ -249,11 +249,11 @@ namespace dunetrigger {
         it = std::find_if(std::next(it), plane_tps.end(), [&](const art::Ptr<TriggerPrimitive> &t) { return sameTP(*t, in_tp); });
       }
       if (matches > 1)
-        mf::LogWarning("TriggerActivityMakerTPC") << matches << " matching TPs found -- possible duplicate in input list.";
+        mf::LogWarning("TriggerROPActivityMakerTPC") << matches << " matching TPs found -- possible duplicate in input list.";
     }
     assns.addMany(taPtr, ptrs);
   }
 
-} // namespace dunetrigger
+} // namespace dunetrigger::fdtpc
 
-DEFINE_ART_MODULE(dunetrigger::TriggerActivityMakerTPC)
+DEFINE_ART_MODULE(dunetrigger::fdtpc::TriggerROPActivityMakerTPC)
