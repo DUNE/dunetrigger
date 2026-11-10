@@ -42,7 +42,6 @@
 #include "ScalarFieldsBuffer.hh"
 #include "TriggerAnaTree_module.hh"
 
-#include "dunetrigger/TriggerSim/TPAlgTools/TPAlgTPCTool.hh"
 #include "lardata/ArtDataHelper/GetManyByRegexTag.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 #include <algorithm>
@@ -778,24 +777,6 @@ dunetrigger::ChannelInfo dunetrigger::TriggerAnaTree::get_channel_info_for_chann
   result.tpcset_id = rop.asTPCsetID().TPCset;
   result.view = geom->View(rop);
   return result;
-}
-
-// ---------------------------------------------------------------------------
-// Out-of-line method implementations for structs declared in
-// TriggerAnaTree_module.hh
-// ---------------------------------------------------------------------------
-
-void dunetrigger::TriggerPrimitiveRow::from_tp(const dunedaq::trgdataformats::TriggerPrimitive &tp) {
-  version = 2; // temp, since variables below are converted to v2 version while the TP version in TriggerSim is still 1.
-               // Go back to "= tp.version" after changing triggeralgs to v5 (and using TriggerPrimitive2.hpp as header)
-  flag = 0;
-  detid = tp.detid;
-  channel = tp.channel;
-  samples_over_threshold = tp.time_over_threshold / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-  time_start = tp.time_start;
-  samples_to_peak = (tp.time_peak - tp.time_start) / dunetrigger::TPAlgTPCTool::ADC_SAMPLING_RATE_IN_DTS;
-  adc_integral = tp.adc_integral;
-  adc_peak = tp.adc_peak;
 }
 
 DEFINE_ART_MODULE(dunetrigger::TriggerAnaTree)
