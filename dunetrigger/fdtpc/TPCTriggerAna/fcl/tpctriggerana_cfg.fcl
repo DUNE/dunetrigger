@@ -1,0 +1,23 @@
+# tpctriggerana_cfg.fcl
+
+# Prolog for the fdtpc TPCTriggerAnaTree analyzer, which writes only the
+# experimental TPC TriggerActivities and an event summary tree.
+# All prolog names are prefixed tpc_ to avoid clashing with TriggerAna.
+
+#include "tpctriggersim_common_cfg.fcl"
+
+BEGIN_PROLOG
+
+services_tpctriggerana: @local::services_tpctriggersim
+services_tpctriggerana.TFileService.fileName: "tpctriggerana.ntuple.root"
+
+source_tpctriggerana: @local::source_tpctriggersim
+
+tpc_triggerAnaTree: {
+  module_type: TPCTriggerAnaTree
+  # art InputTag "label:instance:process"; each field is a std::regex matched
+  # in full against that field of the product tag, and an empty field matches anything.
+  ta_tag_regex: ".*"
+}
+
+END_PROLOG

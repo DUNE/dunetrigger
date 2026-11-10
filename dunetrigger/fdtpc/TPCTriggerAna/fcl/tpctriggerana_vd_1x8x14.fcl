@@ -1,0 +1,26 @@
+# tpctriggerana_vd_1x8x14.fcl
+
+# Dump the experimental TPC TAs (e.g. from tpctriggersim_vd_1x8x14_swift.fcl)
+# for the VD 1x8x14 geometry.
+
+#include "tpctriggerana_cfg.fcl"
+# tools_dune.fcl is not prolog-only: include it after all the prolog files
+#include "tools_dune.fcl"
+
+process_name: TPCTriggerAna
+
+services: {
+  @table::services_tpctriggerana
+  @table::dunefdvd_1x8x14_3view_30deg_reco_services
+}
+services.TFileService.fileName: "tpctrigtree_%ifb.root"
+
+source: @local::source_tpctriggerana
+
+physics: {
+  analyzers: {
+    tpcTriggerAna: @local::tpc_triggerAnaTree
+  }
+  ana:       [ tpcTriggerAna ]
+  end_paths: [ ana ]
+}
