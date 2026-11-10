@@ -1,0 +1,259 @@
+////////////////////////////////////////////////////////////////////////
+// Class:       TriggerActivityMakerTPC
+// Plugin Type: producer
+// File:        TriggerActivityMakerTPC_module.cc
+//
+// Applies a configurable TriggerActivityMaker algorithm to each
+// Readout Plane (ROP) of every detector element (APA/CRP).
+// One algorithm instance per ROP is built in beginJob() 
+// so that each plane has independent internal state.
+////////////////////////////////////////////////////////////////////////
+
+#include "art/Framework/Core/EDProducer.h"
+#include "art/Framework/Core/ModuleMacros.h"
+#include "art/Framework/Principal/Event.h"
+#include "art/Framework/Principal/Handle.h"
+#include "art/Persistency/Common/PtrMaker.h"
+#include "canvas/Persistency/Common/Assns.h"
+#include "canvas/Persistency/Common/PtrVector.h"
+#include "canvas/Utilities/InputTag.h"
+#include "fhiclcpp/ParameterSet.h"
+#include "larcore/Geometry/WireReadout.h"
+#include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
+#include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
+#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
+
+#include "dunetrigger/fdtpc/TPCTriggerSim/Verbosity.hh"
+#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivity.hpp"
+#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityFactory.hpp"
+
+#include <nlohmann/json.hpp>
+#include <numeric>
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace dunetrigger {
+
+  using tpctriggeralgs::TriggerActivityData;
+  using tpctriggeralgs::TriggerPrimitive;
+
+  class TriggerActivityMakerTPC : public art::EDProducer {
+  public:
+    explicit TriggerActivityMakerTPC(fhicl::ParameterSet const &p);
+
+    TriggerActivityMakerTPC(TriggerActivityMakerTPC const &) = delete;
+    TriggerActivityMakerTPC(TriggerActivityMakerTPC &&) = delete;
+    TriggerActivityMakerTPC &operator=(TriggerActivityMakerTPC const &) = delete;
+    TriggerActivityMakerTPC &operator=(TriggerActivityMakerTPC &&) = delete;
+
+    void beginJob() override;
+    void produce(art::Event &e) override;
+
+  private:
+    const std::string algname_;
+    const art::InputTag tp_tag_;
+    const std::vector<raw::ChannelID_t> channel_mask_;
+    const int verbosity_;
+    const bool flush_;
+
+    // Geometry service handle, initialised once in the constructor.
+    geo::WireReadoutGeom const *geom_;
+
+    // Per-ROP algorithm config index.
+    // Built in the constructor using the geometry service and FHiCL input.
+    const std::map<unsigned int, nlohmann::json> algconfigs_;
+
+    // Algorithm factory instance
+    std::shared_ptr<tpctriggeralgs::AbstractFactory<tpctriggeralgs::TriggerActivityMaker>> factory_ = tpctriggeralgs::TriggerActivityFactory::get_instance();
+
+    // Convert a FHiCL parameter set to a JSON object understood by tpctriggeralgs.
+    static nlohmann::json toJson(const fhicl::ParameterSet &pset) {
+      nlohmann::json cfg;
+      for (const auto &key : pset.get_all_keys()) {
+        try {
+          cfg[key] = pset.get<uint64_t>(key);
+          continue;
+        } catch (const fhicl::exception &) {}
+        try {
+          cfg[key] = pset.get<bool>(key);
+          continue;
+        } catch (const fhicl::exception &) {
+          throw cet::exception("TriggerROPActivityMakerTPC") << "FHiCL parameter '" << key << "' is neither a uint64_t nor a bool.\n";
+        }
+      }
+      return cfg;
+    }
+
+    // Build the per-ROP config map from FHiCL and the geometry service. Called once during construction. 
+    // Only requested ROP IDs specified within "active_rops" list in config fcl are used in TAMaking. 
+    static std::map<unsigned int, nlohmann::json> buildAlgConfigs(fhicl::ParameterSet const &p, geo::WireReadoutGeom const &geom) {
+      std::vector<unsigned int> active_rops;
+
+      // If "active_rops" is missing from the FHiCL config, default to all ROPs present in the geo
+      if (!p.get_if_present("active_rops", active_rops)) {
+        active_rops.resize(geom.MaxROPs());
+        std::iota(active_rops.begin(), active_rops.end(), 0);
+      }
+
+      std::map<unsigned int, nlohmann::json> configs;
+      for (unsigned int r : active_rops) {
+        const std::string key = "algconfig_rop" + std::to_string(r);
+        if (!p.has_key(key)) {
+          throw cet::exception("TPCTriggerActivityMakerTPC") 
+            << "active_rops includes ROP " << r << " but no matching '" << key << "' was provided.\n";
+        }
+        configs[r] = toJson(p.get<fhicl::ParameterSet>(key));
+      }
+      return configs;
+    }
+
+    // Return true if two TriggerPrimitives represent the same hit.
+    static bool sameTP(const TriggerPrimitive &a, const TriggerPrimitive &b) {
+      return a.channel == b.channel && a.time_start == b.time_start && a.adc_integral == b.adc_integral;
+    }
+
+    // Comparator: sort art::Ptr<TriggerPrimitive>s by (time_start, channel).
+    // the old code sorted by channel - not sure if this is necessary
+    static bool earlierTP(const art::Ptr<TriggerPrimitive> &a, const art::Ptr<TriggerPrimitive> &b) {
+      return std::tie(a->time_start, a->channel) < std::tie(b->time_start, b->channel);
+    }
+
+    // Build art::Ptr associations between one output TA and its input TPs.
+    void buildAssociations(
+                           const tpctriggeralgs::TriggerActivity &ta,
+                           const std::vector<art::Ptr<TriggerPrimitive>> &plane_tps,
+                           art::Ptr<TriggerActivityData> taPtr,
+                           art::Assns<TriggerActivityData, TriggerPrimitive> &assns) const;
+  };
+
+  // Constructor
+
+  TriggerActivityMakerTPC::TriggerActivityMakerTPC(fhicl::ParameterSet const &p)
+    : EDProducer{p}
+    , algname_(p.get<std::string>("algorithm"))
+    , tp_tag_(p.get<art::InputTag>("tp_tag"))
+    , channel_mask_(p.get<std::vector<raw::ChannelID_t>>("channel_mask", {}))
+    , verbosity_(p.get<int>("verbosity", 1))
+    , flush_(p.get<bool>("flush", false))
+    , geom_(&art::ServiceHandle<geo::WireReadout>()->Get())
+    , algconfigs_(buildAlgConfigs(p, *geom_)) {
+
+      produces<std::vector<TriggerActivityData>>();
+      produces<art::Assns<TriggerActivityData, TriggerPrimitive>>();
+      consumes<std::vector<TriggerPrimitive>>(tp_tag_);
+    }
+
+  //  beginJob
+  void TriggerActivityMakerTPC::beginJob() {
+
+    std::cout << "Producing TAs for ROP planes: ";
+    for (const auto &[rop, _] : algconfigs_) std::cout << rop << " ";
+    std::cout << "(" << algconfigs_.size() << "/" << geom_->MaxROPs() << ")\n";
+
+    if (verbosity_ >= Verbosity::kInfo) {
+      std::cout << "Masked channels:";
+      for (auto ch : channel_mask_) std::cout << " " << ch;
+      std::cout << "\n";
+    }
+  }
+
+  // producer
+  void TriggerActivityMakerTPC::produce(art::Event &e) {
+
+    auto ta_vec = std::make_unique<std::vector<TriggerActivityData>>();
+    auto assns  = std::make_unique<art::Assns<TriggerActivityData, TriggerPrimitive>>();
+
+    art::PtrMaker<TriggerActivityData> taPtrMaker{e};
+    auto tpHandle = e.getValidHandle<std::vector<TriggerPrimitive>>(tp_tag_);
+
+    // Split TPs by ROPID, such that each TAMaker instance accepts TP data from single APA plane.
+    std::map<readout::ROPID, std::vector<art::Ptr<TriggerPrimitive>>> tps_by_plane;
+    for (size_t i = 0; i < tpHandle->size(); ++i) {
+      tps_by_plane[geom_->ChannelToROP((*tpHandle)[i].channel)].push_back(art::Ptr<TriggerPrimitive>(tpHandle, i));
+    }
+
+    // Run the TAMaker alg. on each plane
+    for (auto &[plane, plane_tps] : tps_by_plane) {
+      const unsigned int rop_idx = plane.ROP;
+
+      // Skip ROPs not listed in active_rops
+      if (algconfigs_.find(rop_idx) == algconfigs_.end()) continue;
+
+      std::sort(plane_tps.begin(), plane_tps.end(), earlierTP);
+
+      auto alg = factory_->build_maker(algname_);
+      if (!alg)
+        throw cet::exception("TriggerActivityMakerTPC") << "Unknown algorithm: '" << algname_ << "'\n";
+
+      alg->configure(algconfigs_.at(rop_idx));
+
+      if (verbosity_ >= Verbosity::kInfo) std::cout << "Running " << algname_ << " on plane " << plane << "\n";
+
+      // Feed TPs into the algorithm, skipping any masked channels.
+      std::vector<tpctriggeralgs::TriggerActivity> created_tas;
+      for (const auto &itp : plane_tps) {
+        if (std::binary_search(channel_mask_.begin(), channel_mask_.end(), itp->channel)) {
+          if (verbosity_ >= Verbosity::kDebug)
+            std::cout << "Skipping masked channel " << itp->channel << "\n";
+          continue;
+        }
+        (*alg)(*itp, created_tas);
+      }
+
+      // Optionally flush the algorithm window to ensure final in-progress window is evaluated before the event closes.
+      if (flush_) alg->flush(std::numeric_limits<uint64_t>::max(), created_tas);
+
+      if (verbosity_ >= Verbosity::kInfo && !created_tas.empty())
+        std::cout << "Created " << created_tas.size() << " TAs on plane " << plane << "\n";
+
+      // Store output TAs and build TP associations
+      for (const auto &ta : created_tas) {
+        auto taPtr = taPtrMaker(ta_vec->size());
+        ta_vec->emplace_back(ta);
+        buildAssociations(ta, plane_tps, taPtr, *assns);
+      }
+    }
+
+    e.put(std::move(ta_vec));
+    e.put(std::move(assns));
+  }
+
+  // buildAssociations 
+
+  void TriggerActivityMakerTPC::buildAssociations(
+                                                  const tpctriggeralgs::TriggerActivity &ta,
+                                                  const std::vector<art::Ptr<TriggerPrimitive>> &plane_tps,
+                                                  art::Ptr<TriggerActivityData> taPtr,
+                                                  art::Assns<TriggerActivityData, TriggerPrimitive> &assns) const {
+
+    art::PtrVector<TriggerPrimitive> ptrs;
+    for (const auto &in_tp : ta.inputs) {
+      auto it = std::find_if(plane_tps.begin(), plane_tps.end(), [&](const art::Ptr<TriggerPrimitive> &t) { return sameTP(*t, in_tp); });
+
+      if (it == plane_tps.end()) {
+        mf::LogWarning("TriggerActivityMakerTPC") << "TP recorded in TA not found in input list -- skipping association.";
+        continue;
+      }
+
+      size_t matches = 0;
+      while (it != plane_tps.end()) {
+        ptrs.push_back(*it);
+        ++matches;
+        it = std::find_if(std::next(it), plane_tps.end(), [&](const art::Ptr<TriggerPrimitive> &t) { return sameTP(*t, in_tp); });
+      }
+      if (matches > 1)
+        mf::LogWarning("TriggerActivityMakerTPC") << matches << " matching TPs found -- possible duplicate in input list.";
+    }
+    assns.addMany(taPtr, ptrs);
+  }
+
+} // namespace dunetrigger
+
+DEFINE_ART_MODULE(dunetrigger::TriggerActivityMakerTPC)
