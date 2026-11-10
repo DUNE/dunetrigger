@@ -1,17 +1,25 @@
 #include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/SWIFT/TriggerActivityMakerSWIFT.hpp"
 
+#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/ConfigUtils.hpp"
+
 #include "TRACE/trace.h"
 #define TRACE_NAME "TriggerActivityMakerSWIFTPlugin"
 
-#include <cassert>
 #include <iostream>
 #include <cmath>
+#include <stdexcept>
 
 namespace tpctriggeralgs {
 
   // configuration
   void TriggerActivityMakerSWIFT::configure(const nlohmann::json& config)
   {
+    check_known_keys(config,
+                     { "window_length", "inspect_energy_threshold_sadc", "accept_energy_threshold_sadc",
+                       "min_adc_peak", "min_samples_over_threshold",
+                       "cm_per_tick", "wire_pitch", "min_samples", "epsilon", "cluster_energy_cut_sadc" },
+                     TRACE_NAME);
+
     //window settings
     m_window_length                 = config.value("window_length", 32000); // in DTS ticks (32 * 1000 readout ticks @ 500ns/tick)
     m_inspect_energy_threshold_sadc = config.value("inspect_energy_threshold_sadc", 15000); 
@@ -26,10 +34,12 @@ namespace tpctriggeralgs {
     m_cm_per_tick              = config.value("cm_per_tick", 0.016 * 0.16); // sampling rate [us/tick] * drift velocity [cm/us]
     m_wire_pitch               = config.value("wire_pitch", 0.48); // cm
     m_db_min_samples           = config.value("min_samples", 2); //min. number of TPs for valid cluster
-    m_db_eps                   = config.value("epsilon", 2); //dbscan search radius in cm
+    m_db_eps                   = config.value("epsilon", 2.0f); //dbscan search radius in cm (float default: an int default would truncate configured values)
     m_cluster_energy_cut_sadc  = config.value("cluster_energy_cut_sadc", 22000); // min energy of dominant cluster eng. in window for acceptance
 
-    assert(m_window_length > 0); //inifite loop guard
+    // window_length is used as a divisor; must be checked at runtime (asserts are compiled out in prof builds)
+    if (m_window_length == 0)
+      throw std::invalid_argument(TRACE_NAME ": window_length must be > 0");
   }
 
   //TP refinement

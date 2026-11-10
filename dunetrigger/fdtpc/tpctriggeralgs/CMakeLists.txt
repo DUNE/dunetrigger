@@ -6,10 +6,8 @@ include_directories("${dunedetdataformats_DIR}/../../../include")
 basic_plugin(tpctriggeralgs module
   BASENAME_ONLY
   LIBRARIES
-  OfflineTPCChannelMap_module
   dunetrigger::TPCTriggerObjs
   SOURCE
   src/TriggerActivityMakerSWIFT.cpp
   src/TriggerActivityMakerPassthrough.cpp
-  src/TriggerCandidateMakerPassthrough.cpp
 )

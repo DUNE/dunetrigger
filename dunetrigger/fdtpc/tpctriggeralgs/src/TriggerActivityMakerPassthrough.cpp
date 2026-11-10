@@ -8,12 +8,15 @@
 
 #include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Passthrough/TriggerActivityMakerPassthrough.hpp"
 
+#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/ConfigUtils.hpp"
+
 #include "TRACE/trace.h"
 #define TRACE_NAME "TriggerActivityMakerPassthroughPlugin"
 
+#include <stdexcept>
 #include <vector>
 
-using namespace tpctriggeralgs;
+namespace tpctriggeralgs {
 
 using Logging::TLVL_DEBUG_MEDIUM;
 using Logging::TLVL_IMPORTANT;
@@ -50,12 +53,17 @@ TriggerActivityMakerPassthrough::operator()(const TriggerPrimitive& input_tp, st
 void
 TriggerActivityMakerPassthrough::configure(const nlohmann::json& config)
 {
-  // FIXME use some schema here
+  check_known_keys(config, { "prescale" }, TRACE_NAME);
   if (config.is_object() && config.contains("prescale")) {
     m_prescale = config["prescale"];
   }
+  // m_prescale is used as a modulus
+  if (m_prescale == 0)
+    throw std::invalid_argument(TRACE_NAME ": prescale must be > 0");
   TLOG_DEBUG(TLVL_IMPORTANT) << "[TAM:Pr] Using activity prescale " << m_prescale;
 }
 
 // Register algo in TA Factory
 REGISTER_TRIGGER_ACTIVITY_MAKER(TRACE_NAME, TriggerActivityMakerPassthrough)
+
+} // namespace tpctriggeralgs

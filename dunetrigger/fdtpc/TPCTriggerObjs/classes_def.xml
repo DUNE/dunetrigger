@@ -1,6 +1,6 @@
 <lcgdict>
 
-  <!-- The product itself (v11: type/algorithm changed from 4-byte enum class to uint8_t) -->
+  <!-- The product itself (v11: type/algorithm changed from 4-byte enum class to uint16_t) -->
   <class name="dunedaq::trgdataformats::exp::TriggerActivityData"             ClassVersion="11" >
    <version ClassVersion="11" checksum="4107819053"/>
    <version ClassVersion="10" checksum="2385474025"/>

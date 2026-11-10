@@ -33,6 +33,8 @@
 #include <nlohmann/json.hpp>
 #include <numeric>
 #include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <string>
@@ -73,22 +75,53 @@ namespace dunetrigger::fdtpc {
     // Algorithm factory instance
     std::shared_ptr<tpctriggeralgs::AbstractFactory<tpctriggeralgs::TriggerActivityMaker>> factory_ = tpctriggeralgs::TriggerActivityFactory::get_instance();
 
+    // Try to read `key` from `pset` as type T; on success store it in `out` and return true.
+    template <typename T>
+    static bool tryGet(const fhicl::ParameterSet &pset, const std::string &key, nlohmann::json &out) {
+      try {
+        out = pset.get<T>(key);
+        return true;
+      } catch (const fhicl::exception &) {
+        return false;
+      }
+    }
+
+    // Convert a FHiCL atom or sequence of atoms to JSON, trying the narrowest type first
+    // (signed int, unsigned int for values above INT64_MAX, double, bool, then string).
+    static nlohmann::json valueToJson(const fhicl::ParameterSet &pset, const std::string &key) {
+      nlohmann::json v;
+      if (pset.is_key_to_sequence(key)) {
+        if (tryGet<std::vector<int64_t>>(pset, key, v) || tryGet<std::vector<uint64_t>>(pset, key, v) ||
+            tryGet<std::vector<double>>(pset, key, v) || tryGet<std::vector<bool>>(pset, key, v) ||
+            tryGet<std::vector<std::string>>(pset, key, v))
+          return v;
+        throw cet::exception("TriggerROPActivityMakerTPC")
+          << "FHiCL sequence '" << key << "' must be a homogeneous sequence of atoms.\n";
+      }
+      if (tryGet<int64_t>(pset, key, v) || tryGet<uint64_t>(pset, key, v) || tryGet<double>(pset, key, v) ||
+          tryGet<bool>(pset, key, v) || tryGet<std::string>(pset, key, v))
+        return v;
+      throw cet::exception("TriggerROPActivityMakerTPC") << "Cannot convert FHiCL parameter '" << key << "' to JSON.\n";
+    }
+
     // Convert a FHiCL parameter set to a JSON object understood by tpctriggeralgs.
+    // Nested tables become nested JSON objects. Unknown keys are rejected by the algorithms themselves.
     static nlohmann::json toJson(const fhicl::ParameterSet &pset) {
-      nlohmann::json cfg;
-      for (const auto &key : pset.get_all_keys()) {
-        try {
-          cfg[key] = pset.get<uint64_t>(key);
-          continue;
-        } catch (const fhicl::exception &) {}
-        try {
-          cfg[key] = pset.get<bool>(key);
-          continue;
-        } catch (const fhicl::exception &) {
-          throw cet::exception("TriggerROPActivityMakerTPC") << "FHiCL parameter '" << key << "' is neither a uint64_t nor a bool.\n";
-        }
+      nlohmann::json cfg = nlohmann::json::object();
+      for (const auto &key : pset.get_names()) {
+        if (pset.is_key_to_table(key))
+          cfg[key] = toJson(pset.get<fhicl::ParameterSet>(key));
+        else
+          cfg[key] = valueToJson(pset, key);
       }
       return cfg;
+    }
+
+    // Sort and deduplicate the channel mask so it can be searched with std::binary_search.
+    static std::vector<raw::ChannelID_t> sortedUnique(std::vector<raw::ChannelID_t> v) {
+      std::sort(v.begin(), v.end());
+      v.erase(std::unique(v.begin(), v.end()), v.end());
+      return v;
     }
 
     // Build the per-ROP config map from FHiCL and the geometry service. Called once during construction. 
@@ -104,6 +137,10 @@ namespace dunetrigger::fdtpc {
 
       std::map<unsigned int, nlohmann::json> configs;
       for (unsigned int r : active_rops) {
+        if (r >= geom.MaxROPs()) {
+          throw cet::exception("TriggerROPActivityMakerTPC")
+            << "active_rops includes ROP " << r << " but the geometry has only " << geom.MaxROPs() << " ROPs per TPC set.\n";
+        }
         const std::string key = "algconfig_rop" + std::to_string(r);
         if (!p.has_key(key)) {
           throw cet::exception("TriggerROPActivityMakerTPC") 
@@ -139,11 +176,25 @@ namespace dunetrigger::fdtpc {
     : EDProducer{p}
     , algname_(p.get<std::string>("algorithm"))
     , tp_tag_(p.get<art::InputTag>("tp_tag"))
-    , channel_mask_(p.get<std::vector<raw::ChannelID_t>>("channel_mask", {}))
+    , channel_mask_(sortedUnique(p.get<std::vector<raw::ChannelID_t>>("channel_mask", {})))
     , verbosity_(p.get<int>("verbosity", 1))
-    , flush_(p.get<bool>("flush", false))
+    , flush_(p.get<bool>("flush", true))
     , geom_(&art::ServiceHandle<geo::WireReadout>()->Get())
     , algconfigs_(buildAlgConfigs(p, *geom_)) {
+
+      // Validate the algorithm name and every per-ROP config at construction time,
+      // so configuration errors surface at job start rather than on the first event.
+      for (const auto &[rop, cfg] : algconfigs_) {
+        auto alg = factory_->build_maker(algname_);
+        if (!alg)
+          throw cet::exception("TriggerROPActivityMakerTPC") << "Unknown algorithm: '" << algname_ << "'\n";
+        try {
+          alg->configure(cfg);
+        } catch (const std::exception &ex) {
+          throw cet::exception("TriggerROPActivityMakerTPC")
+            << "Invalid configuration 'algconfig_rop" << rop << "' for " << algname_ << ": " << ex.what() << "\n";
+        }
+      }
 
       produces<std::vector<TriggerActivityData>>();
       produces<art::Assns<TriggerActivityData, TriggerPrimitive>>();

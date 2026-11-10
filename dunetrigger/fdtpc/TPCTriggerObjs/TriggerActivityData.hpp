@@ -6,8 +6,8 @@
  * received with this code.
  */
 
-#ifndef TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_TRIGGERACTIVITYDATA_HPP_
-#define TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_TRIGGERACTIVITYDATA_HPP_
+#ifndef DUNETRIGGER_FDTPC_TPCTRIGGEROBJS_TRIGGERACTIVITYDATA_HPP_
+#define DUNETRIGGER_FDTPC_TPCTRIGGEROBJS_TRIGGERACTIVITYDATA_HPP_
 
 #include "detdataformats/trigger/Types.hpp"
 #include <cstdint>
@@ -19,7 +19,7 @@ struct TriggerActivityData
 {
 
   // Storage types of the TriggerActivityData::type / ::algorithm fields.
-  // The wire/in-memory representation is a bare uint8_t; the semantic values are
+  // The wire/in-memory representation is a bare uint16_t; the semantic values are
   // the Type / Algorithm enums below.
   using type_t = uint16_t;      // NOLINT(build/unsigned)
   using algorithm_t = uint16_t; // NOLINT(build/unsigned)
@@ -65,6 +65,6 @@ struct TriggerActivityData
   algorithm_t algorithm = static_cast<algorithm_t>(Algorithm::kUnknown); // NOLINT(build/unsigned)
 };
 
-} // namespace dunedaq::trgdataformats
+} // namespace dunedaq::trgdataformats::exp
 
-#endif // TRGDATAFORMATS_INCLUDE_TRGDATAFORMATS_TRIGGERACTIVITYDATA_HPP_
+#endif // DUNETRIGGER_FDTPC_TPCTRIGGEROBJS_TRIGGERACTIVITYDATA_HPP_
