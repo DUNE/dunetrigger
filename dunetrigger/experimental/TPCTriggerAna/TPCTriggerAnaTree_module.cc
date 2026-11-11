@@ -4,19 +4,23 @@
 // File:        TPCTriggerAnaTree_module.cc
 //
 // Minimal experimental counterpart of TriggerAna/TriggerAnaTree: writes only the
-// experimental TPC TriggerActivities (dunedaq::trgdataformats::exp::TriggerActivityROPData),
-// the TPs associated to them, and an event summary tree.
+// experimental TPC per-ROP TriggerActivities (dunedaq::trgdataformats::exp::TriggerActivityROPData),
+// the TPs associated to them, the experimental TriggerActivities
+// (dunedaq::trgdataformats::exp::TriggerActivityData), and an event summary tree.
 // No truth, SimChannel, standalone TP or TC information.
 //
 // Output (TFileService), ':' in tags replaced by '_' in tree names:
-//   event_summary                       one entry per event: run/subrun/event + TA counts
-//   TriggerActivities/<tag>             one tree per TA collection matching ta_tag_regex;
-//                                       one entry per event, one vector element per TA
-//                                       (TA fields + n_tps)
-//   TriggerPrimitives/<label>_<instance>inTAs_<process>
-//                                       TPs associated to the TAs of that collection;
-//                                       one entry per TA, one vector element per TP
-//                                       (TP fields + channel info + ta_number = TA index)
+//   event_summary                       one entry per event: run/subrun/event + ROP TA and TA counts
+//   TriggerActivityROPs/<tag>           one tree per TriggerActivityROPData collection matching
+//                                       ta_rop_tag_regex; one entry per event, one vector element
+//                                       per ROP TA (ROP TA fields + n_tps)
+//   TriggerPrimitives/<label>_<instance>inTAROPs_<process>
+//                                       TPs associated to the ROP TAs of that collection;
+//                                       one entry per ROP TA, one vector element per TP
+//                                       (TP fields + channel info + ta_rop_number = ROP TA index)
+//   TriggerActivities/<tag>             one tree per TriggerActivityData collection matching
+//                                       ta_tag_regex; one entry per event, one vector
+//                                       element per TA (version, time_start, time_end)
 ////////////////////////////////////////////////////////////////////////
 
 #include "TPCTriggerAnaTree_module.hh"
@@ -43,11 +47,13 @@ std::string assn_tag(const art::InputTag &parent, const char *suffix) {
 
 dunetrigger::experimental::TPCTriggerAnaTree::TPCTriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p},
+    ta_rop_tag_regex(p.get<std::string>("ta_rop_tag_regex", ".*")),
     ta_tag_regex(p.get<std::string>("ta_tag_regex", ".*"))
 {
   // Products read by analyze()
+  consumesMany<std::vector<TriggerActivityROP>>();
+  mayConsumeMany<art::Assns<TriggerActivityROP, TriggerPrimitive>>();   // FindManyP ROP TA->TP
   consumesMany<std::vector<TriggerActivity>>();
-  mayConsumeMany<art::Assns<TriggerActivity, TriggerPrimitive>>();   // FindManyP TA->TP
 }
 
 void dunetrigger::experimental::TPCTriggerAnaTree::beginJob() {
@@ -66,56 +72,82 @@ void dunetrigger::experimental::TPCTriggerAnaTree::analyze(art::Event const &e) 
 
   evsummary_buf.reset();
 
-  // Clear all TP and TA writers
+  // Clear all TP, ROP TA and TA writers
   for (auto &[tag, ts] : tp_trees) ts.writers.clear();
+  for (auto &[tag, ts] : ta_rop_trees) ts.writers.clear();
   for (auto &[tag, ts] : ta_trees) ts.writers.clear();
 
   // get a service handle for geometry
   geo::WireReadoutGeom const *geom = &art::ServiceHandle<geo::WireReadout>()->Get();
 
-  fillTAs(e, geom);
+  fillTAROPs(e, geom);
+  fillTAs(e);
   fillEventSummary();
 }
 
-// fillTAs
-// Reads:    exp::TriggerActivityROPData collections matching ta_tag_regex,
-//           TA->TriggerPrimitive assns from the same module label
-// Produces: TA trees (ta_trees[<tag>]), inTAs TP trees (tp_trees[<tag>inTAs]),
-//           evsummary_buf (ta_collections_count, tas_count)
+// fillTAROPs
+// Reads:    exp::TriggerActivityROPData collections matching ta_rop_tag_regex,
+//           ROP TA->TriggerPrimitive assns from the same module label
+// Produces: ROP TA trees (ta_rop_trees[<tag>]), inTAROPs TP trees (tp_trees[<tag>inTAROPs]),
+//           evsummary_buf (ta_rop_collections_count, ta_rops_count)
 // Requires: nothing
 // Note: trees whose collection is absent from an event are not filled for that event.
-//       inTAs trees are created and filled only for collections with TA->TP assns.
-void dunetrigger::experimental::TPCTriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
-  auto taHandles = lar::util::getManyByRegexTag<std::vector<TriggerActivity>>(e, ta_tag_regex);
+//       inTAROPs trees are created and filled only for collections with ROP TA->TP assns.
+void dunetrigger::experimental::TPCTriggerAnaTree::fillTAROPs(art::Event const &e, geo::WireReadoutGeom const *geom) {
+  auto taRopHandles = lar::util::getManyByRegexTag<std::vector<TriggerActivityROP>>(e, ta_rop_tag_regex);
 
-  for (auto const &taHandle : taHandles) {
+  for (auto const &taRopHandle : taRopHandles) {
 
-    art::FindManyP<TriggerPrimitive> assns(taHandle, e, taHandle.provenance()->moduleLabel());
-    const std::string tag = taHandle.provenance()->inputTag().encode();
-    auto &ta_ts = get_or_create_tree(ta_trees, "TriggerActivities", "Trigger Activity Trees", tag);
-    const std::string tpInTaTag = assn_tag(taHandle.provenance()->inputTag(), "inTAs");
+    art::FindManyP<TriggerPrimitive> assns(taRopHandle, e, taRopHandle.provenance()->moduleLabel());
+    const std::string tag = taRopHandle.provenance()->inputTag().encode();
+    auto &ta_rop_ts = get_or_create_tree(ta_rop_trees, "TriggerActivityROPs", "Trigger Activity ROP Trees", tag);
+    const std::string tpInTaRopTag = assn_tag(taRopHandle.provenance()->inputTag(), "inTAROPs");
 
-    ta_ts.writers.ta.reserve(taHandle->size());
-    ta_ts.writers.assn.reserve(taHandle->size());
-    for (size_t i = 0; i < taHandle->size(); i++) {
+    ta_rop_ts.writers.ta_rop.reserve(taRopHandle->size());
+    ta_rop_ts.writers.assn.reserve(taRopHandle->size());
+    for (size_t i = 0; i < taRopHandle->size(); i++) {
       if (assns.isValid()) {
         std::vector<art::Ptr<TriggerPrimitive>> matched_tps = assns.at(i);
 
-        auto &tp_ts = get_or_create_tree(tp_trees, "TriggerPrimitives", "Trigger Primitive Trees", tpInTaTag);
+        auto &tp_ts = get_or_create_tree(tp_trees, "TriggerPrimitives", "Trigger Primitive Trees", tpInTaRopTag);
         for (art::Ptr<TriggerPrimitive> tp : matched_tps) {
           fill_tp_row(tp_ts.writers, *tp, geom);
-          tp_ts.writers.assn->ta_number = i;
+          tp_ts.writers.assn->ta_rop_number = i;
           tp_ts.writers.assn.push_back();
         }
         tp_ts.tree->Fill();
         tp_ts.writers.clear();
 
-        ta_ts.writers.assn->n_tps = static_cast<int>(matched_tps.size());
+        ta_rop_ts.writers.assn->n_tps = static_cast<int>(matched_tps.size());
       } else {
-        ta_ts.writers.assn->n_tps = INVALID_NUM;
+        ta_rop_ts.writers.assn->n_tps = INVALID_NUM;
       }
-      ta_ts.writers.assn.push_back();
-      ta_ts.writers.ta.push_back((*taHandle)[i]);
+      ta_rop_ts.writers.assn.push_back();
+      ta_rop_ts.writers.ta_rop.push_back((*taRopHandle)[i]);
+    }
+    ta_rop_ts.tree->Fill();
+
+    ++evsummary_buf->ta_rop_collections_count;
+    evsummary_buf->ta_rops_count += static_cast<int>(taRopHandle->size());
+  }
+}
+
+// fillTAs
+// Reads:    exp::TriggerActivityData collections matching ta_tag_regex
+// Produces: TA trees (ta_trees[<tag>]),
+//           evsummary_buf (ta_collections_count, tas_count)
+// Requires: nothing
+// Note: trees whose collection is absent from an event are not filled for that event.
+void dunetrigger::experimental::TPCTriggerAnaTree::fillTAs(art::Event const &e) {
+  auto taHandles = lar::util::getManyByRegexTag<std::vector<TriggerActivity>>(e, ta_tag_regex);
+
+  for (auto const &taHandle : taHandles) {
+    const std::string tag = taHandle.provenance()->inputTag().encode();
+    auto &ta_ts = get_or_create_tree(ta_trees, "TriggerActivities", "Trigger Activity Trees", tag);
+
+    ta_ts.writers.ta.reserve(taHandle->size());
+    for (auto const &ta : *taHandle) {
+      ta_ts.writers.ta.push_back(ta);
     }
     ta_ts.tree->Fill();
 
@@ -127,7 +159,7 @@ void dunetrigger::experimental::TPCTriggerAnaTree::fillTAs(art::Event const &e, 
 // fillEventSummary
 // Reads:    nothing from the event
 // Produces: summary_tree entry
-// Requires: evsummary_buf counters (fillTAs)
+// Requires: evsummary_buf counters (fillTAROPs, fillTAs)
 void dunetrigger::experimental::TPCTriggerAnaTree::fillEventSummary() {
   summary_tree->Fill();
 }
