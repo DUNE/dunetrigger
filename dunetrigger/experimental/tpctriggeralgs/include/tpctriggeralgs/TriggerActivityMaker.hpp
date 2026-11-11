@@ -9,11 +9,11 @@
 #ifndef tpctriggeralgs_INCLUDE_tpctriggeralgs_TRIGGERACTIVITYMAKER_HPP_
 #define tpctriggeralgs_INCLUDE_tpctriggeralgs_TRIGGERACTIVITYMAKER_HPP_
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Issues.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Logging.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivity.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Types.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/Issues.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/Logging.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivity.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/Types.hpp"
 
 #include <atomic>
 #include <chrono>

@@ -1,7 +1,7 @@
-#ifndef DUNETRIGGER_FDTPC_TPCTRIGGERSIM_VERBOSITY_HH
-#define DUNETRIGGER_FDTPC_TPCTRIGGERSIM_VERBOSITY_HH
+#ifndef DUNETRIGGER_EXPERIMENTAL_TPCTRIGGERSIM_VERBOSITY_HH
+#define DUNETRIGGER_EXPERIMENTAL_TPCTRIGGERSIM_VERBOSITY_HH
 
-namespace dunetrigger::fdtpc {
+namespace dunetrigger::experimental {
 enum Verbosity {
   // these would all implicitly have these values
   // but it's best to explicitly define things
@@ -11,6 +11,6 @@ enum Verbosity {
   kDebug = 2,
   kVerbose = 3
 };
-} // namespace dunetrigger::fdtpc
+} // namespace dunetrigger::experimental
 
 #endif

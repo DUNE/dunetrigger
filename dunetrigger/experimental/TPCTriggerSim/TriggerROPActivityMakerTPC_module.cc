@@ -23,12 +23,12 @@
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityData.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
 
-#include "dunetrigger/fdtpc/TPCTriggerSim/Verbosity.hh"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivity.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityFactory.hpp"
+#include "dunetrigger/experimental/TPCTriggerSim/Verbosity.hh"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivity.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityFactory.hpp"
 
 #include <nlohmann/json.hpp>
 #include <numeric>
@@ -41,7 +41,7 @@
 #include <utility>
 #include <vector>
 
-namespace dunetrigger::fdtpc {
+namespace dunetrigger::experimental {
 
   using tpctriggeralgs::TriggerActivityData;
   using tpctriggeralgs::TriggerPrimitive;
@@ -305,6 +305,6 @@ namespace dunetrigger::fdtpc {
     assns.addMany(taPtr, ptrs);
   }
 
-} // namespace dunetrigger::fdtpc
+} // namespace dunetrigger::experimental
 
-DEFINE_ART_MODULE(dunetrigger::fdtpc::TriggerROPActivityMakerTPC)
+DEFINE_ART_MODULE(dunetrigger::experimental::TriggerROPActivityMakerTPC)

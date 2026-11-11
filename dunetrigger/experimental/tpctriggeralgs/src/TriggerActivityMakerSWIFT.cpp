@@ -1,6 +1,6 @@
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/SWIFT/TriggerActivityMakerSWIFT.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/SWIFT/TriggerActivityMakerSWIFT.hpp"
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/ConfigUtils.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/ConfigUtils.hpp"
 
 #include "TRACE/trace.h"
 #define TRACE_NAME "TriggerActivityMakerSWIFTPlugin"

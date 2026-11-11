@@ -8,7 +8,7 @@
 #ifndef tpctriggeralgs_TRIGGER_ACTIVITY_FACTORY_HPP_
 #define tpctriggeralgs_TRIGGER_ACTIVITY_FACTORY_HPP_
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityMaker.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityMaker.hpp"
 #include "AbstractFactory.hpp"
 
 #define REGISTER_TRIGGER_ACTIVITY_MAKER(tam_name, tam_class)                                                                                      \

@@ -9,8 +9,8 @@
 #ifndef tpctriggeralgs_INCLUDE_tpctriggeralgs_TRIGGERACTIVITY_HPP_
 #define tpctriggeralgs_INCLUDE_tpctriggeralgs_TRIGGERACTIVITY_HPP_
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityData.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
 
 #include <vector>
 

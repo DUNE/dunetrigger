@@ -1,6 +1,6 @@
 # tpctriggerana_cfg.fcl
 
-# Prolog for the fdtpc TPCTriggerAnaTree analyzer, which writes only the
+# Prolog for the experimental TPCTriggerAnaTree analyzer, which writes only the
 # experimental TPC TriggerActivities and an event summary tree.
 # All prolog names are prefixed tpc_ to avoid clashing with TriggerAna.
 

@@ -5,7 +5,7 @@ add_subdirectory(triggeralgs)
 add_subdirectory(TriggerSim)
 add_subdirectory(TriggerAna)
 add_subdirectory(TriggerTools)
-add_subdirectory(fdtpc)
+add_subdirectory(experimental)
 
 install_headers()
 install_source()

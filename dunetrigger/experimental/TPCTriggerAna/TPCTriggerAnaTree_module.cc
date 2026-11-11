@@ -3,7 +3,7 @@
 // Plugin Type: analyzer
 // File:        TPCTriggerAnaTree_module.cc
 //
-// Minimal fdtpc counterpart of TriggerAna/TriggerAnaTree: writes only the
+// Minimal experimental counterpart of TriggerAna/TriggerAnaTree: writes only the
 // experimental TPC TriggerActivities (dunedaq::trgdataformats::exp::TriggerActivityData),
 // the TPs associated to them, and an event summary tree.
 // No truth, SimChannel, standalone TP or TC information.
@@ -41,7 +41,7 @@ std::string assn_tag(const art::InputTag &parent, const char *suffix) {
 }
 } // namespace
 
-dunetrigger::fdtpc::TPCTriggerAnaTree::TPCTriggerAnaTree(fhicl::ParameterSet const &p)
+dunetrigger::experimental::TPCTriggerAnaTree::TPCTriggerAnaTree(fhicl::ParameterSet const &p)
     : EDAnalyzer{p},
     ta_tag_regex(p.get<std::string>("ta_tag_regex", ".*"))
 {
@@ -50,14 +50,14 @@ dunetrigger::fdtpc::TPCTriggerAnaTree::TPCTriggerAnaTree(fhicl::ParameterSet con
   mayConsumeMany<art::Assns<TriggerActivity, TriggerPrimitive>>();   // FindManyP TA->TP
 }
 
-void dunetrigger::fdtpc::TPCTriggerAnaTree::beginJob() {
+void dunetrigger::experimental::TPCTriggerAnaTree::beginJob() {
   // Summary tree - always created
   summary_tree = tfs->make<TTree>("event_summary", "event_summary");
   ev_sbuf.make_branches(*summary_tree);
   evsummary_buf.make_branches(*summary_tree);
 }
 
-void dunetrigger::fdtpc::TPCTriggerAnaTree::analyze(art::Event const &e) {
+void dunetrigger::experimental::TPCTriggerAnaTree::analyze(art::Event const &e) {
 
   ev_sbuf.reset();
   ev_sbuf->run = e.run();
@@ -85,7 +85,7 @@ void dunetrigger::fdtpc::TPCTriggerAnaTree::analyze(art::Event const &e) {
 // Requires: nothing
 // Note: trees whose collection is absent from an event are not filled for that event.
 //       inTAs trees are created and filled only for collections with TA->TP assns.
-void dunetrigger::fdtpc::TPCTriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
+void dunetrigger::experimental::TPCTriggerAnaTree::fillTAs(art::Event const &e, geo::WireReadoutGeom const *geom) {
   auto taHandles = lar::util::getManyByRegexTag<std::vector<TriggerActivity>>(e, ta_tag_regex);
 
   for (auto const &taHandle : taHandles) {
@@ -128,14 +128,14 @@ void dunetrigger::fdtpc::TPCTriggerAnaTree::fillTAs(art::Event const &e, geo::Wi
 // Reads:    nothing from the event
 // Produces: summary_tree entry
 // Requires: evsummary_buf counters (fillTAs)
-void dunetrigger::fdtpc::TPCTriggerAnaTree::fillEventSummary() {
+void dunetrigger::experimental::TPCTriggerAnaTree::fillEventSummary() {
   summary_tree->Fill();
 }
 
 // fill_tp_row
 // Fills the TP staging row from `tp` plus its channel info and commits it.
 // The TP conversion is the shared TriggerPrimitiveRow::from_tp (dunetrigger::TriggerAna library).
-void dunetrigger::fdtpc::TPCTriggerAnaTree::fill_tp_row(TPWriters &writers,
+void dunetrigger::experimental::TPCTriggerAnaTree::fill_tp_row(TPWriters &writers,
                                                         const TriggerPrimitive &tp,
                                                         geo::WireReadoutGeom const *geom) {
   auto &tpw = writers.tp;
@@ -148,7 +148,7 @@ void dunetrigger::fdtpc::TPCTriggerAnaTree::fill_tp_row(TPWriters &writers,
 }
 
 template <typename Writers>
-dunetrigger::fdtpc::TPCTriggerAnaTree::TreeSet<Writers> &dunetrigger::fdtpc::TPCTriggerAnaTree::get_or_create_tree(
+dunetrigger::experimental::TPCTriggerAnaTree::TreeSet<Writers> &dunetrigger::experimental::TPCTriggerAnaTree::get_or_create_tree(
     std::map<std::string, TreeSet<Writers>> &trees, const std::string &dir_name, const std::string &dir_title,
     const std::string &tag) {
   auto it = trees.find(tag);
@@ -169,7 +169,7 @@ dunetrigger::fdtpc::TPCTriggerAnaTree::TreeSet<Writers> &dunetrigger::fdtpc::TPC
   return ts;
 }
 
-dunetrigger::ChannelInfo dunetrigger::fdtpc::TPCTriggerAnaTree::get_channel_info_for_channel(
+dunetrigger::ChannelInfo dunetrigger::experimental::TPCTriggerAnaTree::get_channel_info_for_channel(
     geo::WireReadoutGeom const *geom, raw::ChannelID_t channel) {
   readout::ROPID rop = geom->ChannelToROP(channel);
   ChannelInfo result;
@@ -179,4 +179,4 @@ dunetrigger::ChannelInfo dunetrigger::fdtpc::TPCTriggerAnaTree::get_channel_info
   return result;
 }
 
-DEFINE_ART_MODULE(dunetrigger::fdtpc::TPCTriggerAnaTree)
+DEFINE_ART_MODULE(dunetrigger::experimental::TPCTriggerAnaTree)

@@ -6,9 +6,9 @@
  * received with this code.
  */
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Passthrough/TriggerActivityMakerPassthrough.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/Passthrough/TriggerActivityMakerPassthrough.hpp"
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/ConfigUtils.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/ConfigUtils.hpp"
 
 #include "TRACE/trace.h"
 #define TRACE_NAME "TriggerActivityMakerPassthroughPlugin"

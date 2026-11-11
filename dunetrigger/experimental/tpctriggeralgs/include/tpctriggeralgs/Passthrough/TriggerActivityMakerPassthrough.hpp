@@ -9,7 +9,7 @@
 #ifndef tpctriggeralgs_PASSTHROUGH_TRIGGERACTIVITYMAKERPASSTHROUGH_HPP_
 #define tpctriggeralgs_PASSTHROUGH_TRIGGERACTIVITYMAKERPASSTHROUGH_HPP_
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityFactory.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityFactory.hpp"
 
 #include <vector>
 

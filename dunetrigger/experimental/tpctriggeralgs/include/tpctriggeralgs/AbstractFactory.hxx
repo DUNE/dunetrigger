@@ -8,7 +8,7 @@
 #ifndef tpctriggeralgs_ABSTRACT_FACTORY_HXX_
 #define tpctriggeralgs_ABSTRACT_FACTORY_HXX_
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Issues.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/Issues.hpp"
 
 namespace tpctriggeralgs {
 

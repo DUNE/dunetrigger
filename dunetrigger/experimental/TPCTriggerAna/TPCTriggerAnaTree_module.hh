@@ -1,5 +1,5 @@
-#ifndef DUNETRIGGER_FDTPC_TPCTRIGGERANATREE_MODULE_HH
-#define DUNETRIGGER_FDTPC_TPCTRIGGERANATREE_MODULE_HH
+#ifndef DUNETRIGGER_EXPERIMENTAL_TPCTRIGGERANATREE_MODULE_HH
+#define DUNETRIGGER_EXPERIMENTAL_TPCTRIGGERANATREE_MODULE_HH
 
 #include "art/Framework/Core/EDAnalyzer.h"
 #include "art/Framework/Principal/Event.h"
@@ -11,7 +11,7 @@
 #include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
 
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
-#include "dunetrigger/fdtpc/TPCTriggerObjs/TriggerActivityData.hpp"
+#include "dunetrigger/experimental/TPCTriggerObjs/TriggerActivityData.hpp"
 
 // Tree-writing helpers and row types shared with TriggerAna
 // (EventMetaData, ChannelInfo, TriggerPrimitiveRow, TriggerPrimitiveAssociationRow,
@@ -35,7 +35,7 @@ REGISTER_FIELD_NAMES(dunedaq::trgdataformats::exp::TriggerActivityData,
                      channel_start, channel_end, channel_peak,
                      adc_integral, adc_peak, detid, type, algorithm);
 
-namespace fdtpc {
+namespace experimental {
 
 //-----------------------------------------------------------------------
 // Per-event summary stored next to EventMetaData in event_summary
@@ -50,19 +50,19 @@ struct TriggerActivityTPCountRow {
   int n_tps = INVALID_NUM; // TPs associated to the TA; INVALID_NUM if the collection has no TA->TP assns
 };
 
-} // namespace fdtpc
+} // namespace experimental
 
-REGISTER_FIELD_NAMES(fdtpc::TPCEventSummaryData,
+REGISTER_FIELD_NAMES(experimental::TPCEventSummaryData,
                      ta_collections_count,
                      tas_count);
 
-REGISTER_FIELD_NAMES(fdtpc::TriggerActivityTPCountRow,
+REGISTER_FIELD_NAMES(experimental::TriggerActivityTPCountRow,
                      n_tps);
 
-namespace fdtpc {
+namespace experimental {
 
 //-----------------------------------------------------------------------
-// Minimal fdtpc counterpart of dunetrigger::TriggerAnaTree: writes only the
+// Minimal experimental counterpart of dunetrigger::TriggerAnaTree: writes only the
 // experimental TPC TriggerActivities, their TP association counts, the TPs
 // associated to them, and an event summary.
 class TPCTriggerAnaTree : public art::EDAnalyzer {
@@ -136,7 +136,7 @@ private:
   ScalarFieldsBuffer<TPCEventSummaryData> evsummary_buf;
 };
 
-} // namespace fdtpc
+} // namespace experimental
 } // namespace dunetrigger
 
-#endif // DUNETRIGGER_FDTPC_TPCTRIGGERANATREE_MODULE_HH
+#endif // DUNETRIGGER_EXPERIMENTAL_TPCTRIGGERANATREE_MODULE_HH

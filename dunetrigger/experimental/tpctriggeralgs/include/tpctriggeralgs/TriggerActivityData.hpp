@@ -10,7 +10,7 @@
 #define tpctriggeralgs_INCLUDE_tpctriggeralgs_TRIGGERACTIVITY_DATA_HPP_
 
 // #include "detdataformats/trigger/TriggerActivityData.hpp"
-#include "dunetrigger/fdtpc/TPCTriggerObjs/TriggerActivityData.hpp"
+#include "dunetrigger/experimental/TPCTriggerObjs/TriggerActivityData.hpp"
 
 #include <vector>
 

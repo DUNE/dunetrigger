@@ -1,4 +1,4 @@
-# dunetrigger/fdtpc/TPCTriggerObjs/CMakeLists.txt
+# dunetrigger/experimental/TPCTriggerObjs/CMakeLists.txt
 
 
 include_directories("${dunedaqdataformats_DIR}/../../../include")

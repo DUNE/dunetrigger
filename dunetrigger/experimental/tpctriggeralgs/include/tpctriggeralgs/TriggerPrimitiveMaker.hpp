@@ -9,8 +9,8 @@
 #ifndef tpctriggeralgs_INCLUDE_tpctriggeralgs_TRIGGERPRIMITIVEMAKER_HPP_
 #define tpctriggeralgs_INCLUDE_tpctriggeralgs_TRIGGERPRIMITIVEMAKER_HPP_
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Issues.hpp"
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/Logging.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/Issues.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/Logging.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 
 #include <nlohmann/json.hpp>

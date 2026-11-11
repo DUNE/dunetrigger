@@ -44,6 +44,6 @@ class AbstractFactory
 
 } /* namespace tpctriggeralgs */
 
-#include "dunetrigger/fdtpc/tpctriggeralgs/include/tpctriggeralgs/AbstractFactory.hxx"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/AbstractFactory.hxx"
 
 #endif // tpctriggeralgs_ABSTRACT_FACTORY_HPP_
