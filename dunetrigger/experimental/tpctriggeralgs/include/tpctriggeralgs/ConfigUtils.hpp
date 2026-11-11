@@ -34,6 +34,16 @@ check_known_keys(const nlohmann::json& config, std::initializer_list<std::string
   }
 }
 
+// Return config[key] converted to T; throw if `key` is missing.
+template<typename T>
+T
+get_required(const nlohmann::json& config, const std::string& key, std::string_view algorithm)
+{
+  if (!config.is_object() || !config.contains(key))
+    throw std::invalid_argument(std::string(algorithm) + ": missing required configuration parameter '" + key + "'");
+  return config.at(key).get<T>();
+}
+
 } // namespace tpctriggeralgs
 
 #endif // tpctriggeralgs_INCLUDE_tpctriggeralgs_CONFIGUTILS_HPP_

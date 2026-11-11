@@ -20,22 +20,23 @@ namespace tpctriggeralgs {
                        "cm_per_tick", "wire_pitch", "min_samples", "epsilon", "cluster_energy_cut_sadc" },
                      TRACE_NAME);
 
+    // All parameters are required: no defaults
     //window settings
-    m_window_length                 = config.value("window_length", 32000); // in DTS ticks (32 * 1000 readout ticks @ 500ns/tick)
-    m_inspect_energy_threshold_sadc = config.value("inspect_energy_threshold_sadc", 15000); 
-    m_accept_energy_threshold_sadc  = config.value("accept_energy_threshold_sadc", 55000); 
+    m_window_length                 = get_required<uint64_t>(config, "window_length", TRACE_NAME); // in DTS ticks
+    m_inspect_energy_threshold_sadc = get_required<uint64_t>(config, "inspect_energy_threshold_sadc", TRACE_NAME);
+    m_accept_energy_threshold_sadc  = get_required<uint64_t>(config, "accept_energy_threshold_sadc", TRACE_NAME);
 
     //tp filtering settings
-    m_min_adc_peak               = config.value("min_adc_peak", 80); //ADC
-    m_min_samples_over_threshold = config.value("min_samples_over_threshold", 256); // 8 * 32 DTS ticks while still using TPv1 FIXME
+    m_min_adc_peak               = get_required<uint16_t>(config, "min_adc_peak", TRACE_NAME); //ADC
+    m_min_samples_over_threshold = get_required<uint16_t>(config, "min_samples_over_threshold", TRACE_NAME); // in DTS ticks while still using TPv1 FIXME
 
     //clustering
-    //these depend on detector properties. default values for HD
-    m_cm_per_tick              = config.value("cm_per_tick", 0.016 * 0.16); // sampling rate [us/tick] * drift velocity [cm/us]
-    m_wire_pitch               = config.value("wire_pitch", 0.48); // cm
-    m_db_min_samples           = config.value("min_samples", 2); //min. number of TPs for valid cluster
-    m_db_eps                   = config.value("epsilon", 2.0f); //dbscan search radius in cm (float default: an int default would truncate configured values)
-    m_cluster_energy_cut_sadc  = config.value("cluster_energy_cut_sadc", 22000); // min energy of dominant cluster eng. in window for acceptance
+    //these depend on detector properties
+    m_cm_per_tick              = get_required<float>(config, "cm_per_tick", TRACE_NAME); // DTS tick period [us/tick] * drift velocity [cm/us]
+    m_wire_pitch               = get_required<float>(config, "wire_pitch", TRACE_NAME); // cm
+    m_db_min_samples           = get_required<int>(config, "min_samples", TRACE_NAME); //min. number of TPs for valid cluster
+    m_db_eps                   = get_required<float>(config, "epsilon", TRACE_NAME); //dbscan search radius in cm
+    m_cluster_energy_cut_sadc  = get_required<uint64_t>(config, "cluster_energy_cut_sadc", TRACE_NAME); // min energy of dominant cluster eng. in window for acceptance
 
     // window_length is used as a divisor; must be checked at runtime (asserts are compiled out in prof builds)
     if (m_window_length == 0)

@@ -12,6 +12,11 @@ tpc_ta_algconfig_swift_vd: {
   min_adc_peak: 45
   min_samples_over_threshold: 10
   cluster_energy_cut_sadc: 22000
+  cm_per_tick: 0.000256 # 8 * 32 DTS ticks while still using TPv1 
+  wire_pitch: 0.51,
+  min_samples: 2,
+  cluster_energy_cut_sadc: 22000
+
 }
 
 tpc_tamakerTPC_SWIFT_vd: {

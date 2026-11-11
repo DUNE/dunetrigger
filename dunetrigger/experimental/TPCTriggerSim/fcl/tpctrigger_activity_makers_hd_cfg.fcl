@@ -13,6 +13,10 @@ tpc_ta_algconfig_swift_hd: {
   accept_energy_threshold_sadc: 55000
   min_adc_peak: 80
   min_samples_over_threshold: 256
+  cm_per_tick: 0.00256 # DTS tick period 0.016 us * drift velocity 0.16 cm/us
+  wire_pitch: 0.48     # cm
+  min_samples: 2
+  epsilon: 2.0         # cm
   cluster_energy_cut_sadc: 22000
 }
 
