@@ -4,7 +4,7 @@
 // File:        TPCTriggerAnaTree_module.cc
 //
 // Minimal experimental counterpart of TriggerAna/TriggerAnaTree: writes only the
-// experimental TPC TriggerActivities (dunedaq::trgdataformats::exp::TriggerActivityData),
+// experimental TPC TriggerActivities (dunedaq::trgdataformats::exp::TriggerActivityROPData),
 // the TPs associated to them, and an event summary tree.
 // No truth, SimChannel, standalone TP or TC information.
 //
@@ -78,7 +78,7 @@ void dunetrigger::experimental::TPCTriggerAnaTree::analyze(art::Event const &e) 
 }
 
 // fillTAs
-// Reads:    exp::TriggerActivityData collections matching ta_tag_regex,
+// Reads:    exp::TriggerActivityROPData collections matching ta_tag_regex,
 //           TA->TriggerPrimitive assns from the same module label
 // Produces: TA trees (ta_trees[<tag>]), inTAs TP trees (tp_trees[<tag>inTAs]),
 //           evsummary_buf (ta_collections_count, tas_count)

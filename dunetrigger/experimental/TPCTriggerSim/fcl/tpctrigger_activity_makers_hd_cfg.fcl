@@ -19,7 +19,7 @@ tpc_ta_algconfig_swift_hd: {
 tpc_tamakerTPC_SWIFT_hd: {
   module_type: TriggerROPActivityMakerTPC
   # tp_tag is set by the producer chain that uses this maker, next to the TP maker label
-  algorithm: "TriggerActivityMakerSWIFTPlugin"
+  algorithm: "TriggerActivityROPMakerSWIFTPlugin"
   #active_rops: []
   algconfig_rop0: @local::tpc_ta_algconfig_swift_hd # induction 1
   algconfig_rop1: @local::tpc_ta_algconfig_swift_hd # induction 2

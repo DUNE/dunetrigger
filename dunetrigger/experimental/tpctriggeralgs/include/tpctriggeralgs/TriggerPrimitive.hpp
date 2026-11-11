@@ -12,7 +12,7 @@
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 
 namespace tpctriggeralgs {
-// TriggerPrimitive looks a bit difference to TriggerActivity and
+// TriggerPrimitive looks a bit difference to TriggerActivityROP and
 // TriggerCandidate: the latter two have distinct overlay and
 // non-overlay versions, but TriggerPrimitive does not. So whereas TA
 // and TC have (non-overlay) definitions in tpctriggeralgs, TP has a

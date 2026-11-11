@@ -1,13 +1,13 @@
 /**
- * @file TriggerActivityData.hpp
+ * @file TriggerActivityROPData.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#ifndef DUNETRIGGER_EXPERIMENTAL_TPCTRIGGEROBJS_TRIGGERACTIVITYDATA_HPP_
-#define DUNETRIGGER_EXPERIMENTAL_TPCTRIGGEROBJS_TRIGGERACTIVITYDATA_HPP_
+#ifndef DUNETRIGGER_EXPERIMENTAL_TPCTRIGGEROBJS_TRIGGERACTIVITYROPDATA_HPP_
+#define DUNETRIGGER_EXPERIMENTAL_TPCTRIGGEROBJS_TRIGGERACTIVITYROPDATA_HPP_
 
 #include "detdataformats/trigger/Types.hpp"
 #include <cstdint>
@@ -15,10 +15,10 @@
 namespace dunedaq::trgdataformats::exp {
 
 
-struct TriggerActivityData
+struct TriggerActivityROPData
 {
 
-  // Storage types of the TriggerActivityData::type / ::algorithm fields.
+  // Storage types of the TriggerActivityROPData::type / ::algorithm fields.
   // The wire/in-memory representation is a bare uint16_t; the semantic values are
   // the Type / Algorithm enums below.
   using type_t = uint16_t;      // NOLINT(build/unsigned)
@@ -34,16 +34,9 @@ struct TriggerActivityData
   enum class Algorithm : uint8_t
   {
     kUnknown = 0,
-    kSupernova = 1,
-    kPassthrough = 2,
-    kADCSimpleWindow = 3,
-    kHorizontalMuon = 4,
-    kMichelElectron = 5,
-    kDBSCAN = 6,
-    kPlaneCoincidence = 7,
-    kChannelDistance = 8,
-    kBundle = 9,
-    kChannelAdjacency = 10,
+    kPassthrough = 1,
+    kADCSimpleWindow = 2,
+    kSWIFT = 3,
   };
   
 
@@ -67,4 +60,4 @@ struct TriggerActivityData
 
 } // namespace dunedaq::trgdataformats::exp
 
-#endif // DUNETRIGGER_EXPERIMENTAL_TPCTRIGGEROBJS_TRIGGERACTIVITYDATA_HPP_
+#endif // DUNETRIGGER_EXPERIMENTAL_TPCTRIGGEROBJS_TRIGGERACTIVITYROPDATA_HPP_

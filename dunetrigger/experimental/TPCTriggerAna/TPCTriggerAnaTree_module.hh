@@ -11,7 +11,7 @@
 #include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
 
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
-#include "dunetrigger/experimental/TPCTriggerObjs/TriggerActivityData.hpp"
+#include "dunetrigger/experimental/TPCTriggerObjs/TriggerActivityROPData.hpp"
 
 // Tree-writing helpers and row types shared with TriggerAna
 // (EventMetaData, ChannelInfo, TriggerPrimitiveRow, TriggerPrimitiveAssociationRow,
@@ -30,7 +30,7 @@ namespace dunetrigger {
 
 // Field names of the experimental TA, used as branch names (C++17 path; no-op in C++20).
 // Must be in namespace dunetrigger, where the FieldNames trait lives.
-REGISTER_FIELD_NAMES(dunedaq::trgdataformats::exp::TriggerActivityData,
+REGISTER_FIELD_NAMES(dunedaq::trgdataformats::exp::TriggerActivityROPData,
                      version, time_start, time_end, time_peak, time_activity,
                      channel_start, channel_end, channel_peak,
                      adc_integral, adc_peak, detid, type, algorithm);
@@ -80,7 +80,7 @@ public:
   void analyze(art::Event const &e) override;
 
 private:
-  using TriggerActivity = dunedaq::trgdataformats::exp::TriggerActivityData;
+  using TriggerActivity = dunedaq::trgdataformats::exp::TriggerActivityROPData;
   using TriggerPrimitive = dunedaq::trgdataformats::TriggerPrimitive;
 
   using TriggerPrimitiveWriter = VectorFieldsBuffer<TriggerPrimitiveRow>;

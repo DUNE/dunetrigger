@@ -1,9 +1,9 @@
-#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/SWIFT/TriggerActivityMakerSWIFT.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/SWIFT/TriggerActivityROPMakerSWIFT.hpp"
 
 #include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/ConfigUtils.hpp"
 
 #include "TRACE/trace.h"
-#define TRACE_NAME "TriggerActivityMakerSWIFTPlugin"
+#define TRACE_NAME "TriggerActivityROPMakerSWIFTPlugin"
 
 #include <iostream>
 #include <cmath>
@@ -12,7 +12,7 @@
 namespace tpctriggeralgs {
 
   // configuration
-  void TriggerActivityMakerSWIFT::configure(const nlohmann::json& config)
+  void TriggerActivityROPMakerSWIFT::configure(const nlohmann::json& config)
   {
     check_known_keys(config,
                      { "window_length", "inspect_energy_threshold_sadc", "accept_energy_threshold_sadc",
@@ -43,13 +43,13 @@ namespace tpctriggeralgs {
   }
 
   //TP refinement
-  bool TriggerActivityMakerSWIFT::preprocess( const TriggerPrimitive& input_tp) const{
+  bool TriggerActivityROPMakerSWIFT::preprocess( const TriggerPrimitive& input_tp) const{
     //FIXME: change TOT -> SOT after updating to TP v2.
     return (input_tp.adc_peak > m_min_adc_peak) && (input_tp.time_over_threshold > m_min_samples_over_threshold);
   }
 
   // Reset window state
-  void TriggerActivityMakerSWIFT::reset_window_state(uint64_t new_window_start) {
+  void TriggerActivityROPMakerSWIFT::reset_window_state(uint64_t new_window_start) {
     m_window_start       = new_window_start;
     m_window_energy_sadc = 0;
     m_tp_count           = 0;
@@ -59,7 +59,7 @@ namespace tpctriggeralgs {
 
   //main function for binning TPs into fixed-size time windows
   // **assumes TPs are strictly time ordered**
-  void TriggerActivityMakerSWIFT::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_tas)
+  void TriggerActivityROPMakerSWIFT::operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivityROP>& output_tas)
   {
     // Apply TP filtering
     if (!preprocess(input_tp)) {
@@ -73,7 +73,7 @@ namespace tpctriggeralgs {
     if (!m_initialised) {
 
       //create TA instance once at run start
-       m_current_ta = TriggerActivity();
+       m_current_ta = TriggerActivityROP();
 
       //reset window state
       reset_window_state(tp_window_start);
@@ -99,7 +99,7 @@ namespace tpctriggeralgs {
 
   //function which gets called when the window is closed.
   //main window categorisation & TA generation happens here
-  void TriggerActivityMakerSWIFT::close_window(std::vector<TriggerActivity>& output_tas) {
+  void TriggerActivityROPMakerSWIFT::close_window(std::vector<TriggerActivityROP>& output_tas) {
 
     if (m_current_ta.inputs.empty()) return;
 
@@ -123,7 +123,7 @@ namespace tpctriggeralgs {
   //Clustering function: density-based clustering in t-z, where both coordinates are expressed in cm.
   //returns only max eng. for now, as that's the param. based on which decision is made.
   //FIXME eventually want this step to return nclusrers, mean cluster eng. etc.
-  uint64_t TriggerActivityMakerSWIFT::extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples){
+  uint64_t TriggerActivityROPMakerSWIFT::extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples){
 
     struct Point {
       float z;
@@ -209,7 +209,7 @@ namespace tpctriggeralgs {
 
 
   //TA feature extraction - FIXME most of these fields are somewhat useless
-  void TriggerActivityMakerSWIFT::set_ta_attributes()
+  void TriggerActivityROPMakerSWIFT::set_ta_attributes()
   {
     m_current_ta.time_start = m_window_start;
     m_current_ta.time_end   = m_window_start + m_window_length;
@@ -217,8 +217,8 @@ namespace tpctriggeralgs {
 
     const TriggerPrimitive& first_tp = m_current_ta.inputs.front();
     m_current_ta.detid = first_tp.detid;
-    m_current_ta.type = static_cast<uint8_t>(dunedaq::trgdataformats::exp::TriggerActivityData::Type::kTPC);
-    m_current_ta.algorithm = static_cast<uint8_t>(dunedaq::trgdataformats::exp::TriggerActivityData::Algorithm::kUnknown);
+    m_current_ta.type = static_cast<uint8_t>(dunedaq::trgdataformats::exp::TriggerActivityROPData::Type::kTPC);
+    m_current_ta.algorithm = static_cast<uint8_t>(dunedaq::trgdataformats::exp::TriggerActivityROPData::Algorithm::kUnknown);
 
 
     tpctriggeralgs::channel_t min_ch = first_tp.channel;
@@ -244,12 +244,12 @@ namespace tpctriggeralgs {
   }
 
 
-  void TriggerActivityMakerSWIFT::flush(timestamp_t /*until*/, std::vector<TriggerActivity>& output_tas)
+  void TriggerActivityROPMakerSWIFT::flush(timestamp_t /*until*/, std::vector<TriggerActivityROP>& output_tas)
   {
     if (!m_initialised) return;
     close_window(output_tas);
   }
 
-  REGISTER_TRIGGER_ACTIVITY_MAKER(TRACE_NAME, TriggerActivityMakerSWIFT)
+  REGISTER_TRIGGER_ACTIVITY_ROP_MAKER(TRACE_NAME, TriggerActivityROPMakerSWIFT)
 
 } // namespace tpctriggeralgs

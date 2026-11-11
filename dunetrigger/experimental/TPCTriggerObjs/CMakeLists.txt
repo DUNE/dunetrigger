@@ -8,7 +8,7 @@ cet_make_library(
   LIBRARY_NAME TPCTriggerObjs
   INTERFACE
   SOURCE
-  TriggerActivityData.hpp # no .cc files — header-only data product
+  TriggerActivityROPData.hpp # no .cc files — header-only data product
   # lardataobj::RecoBase
   # ROOT::EG
 )

@@ -1,29 +1,29 @@
 /*
- * @file TriggerActivityMakerSWIFT.hpp
+ * @file TriggerActivityROPMakerSWIFT.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2021.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#ifndef tpctriggeralgs_SWIFT_TRIGGERACTIVITYMAKERSWIFT_HPP_
-#define tpctriggeralgs_SWIFT_TRIGGERACTIVITYMAKERSWIFT_HPP_
+#ifndef tpctriggeralgs_SWIFT_TRIGGERACTIVITYROPMAKERSWIFT_HPP_
+#define tpctriggeralgs_SWIFT_TRIGGERACTIVITYROPMAKERSWIFT_HPP_
 
-#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityFactory.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityROPFactory.hpp"
 #include <algorithm>
 
 namespace tpctriggeralgs {
 
-  class TriggerActivityMakerSWIFT : public TriggerActivityMaker {
+  class TriggerActivityROPMakerSWIFT : public TriggerActivityROPMaker {
   public:
-    void operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivity>& output_tas) override;
+    void operator()(const TriggerPrimitive& input_tp, std::vector<TriggerActivityROP>& output_tas) override;
     void configure(const nlohmann::json& config) override;
     void set_ta_attributes();
-    void flush(timestamp_t until, std::vector<TriggerActivity>& output_tas) override;
+    void flush(timestamp_t until, std::vector<TriggerActivityROP>& output_tas) override;
     bool preprocess( const TriggerPrimitive& input_tp) const;
 
   private:
-    TriggerActivity m_current_ta;
+    TriggerActivityROP m_current_ta;
     
     // -- Algortihm configuration --
     // static variables which get set once at run start & kept fixed afterwards
@@ -55,10 +55,10 @@ namespace tpctriggeralgs {
 
     //Additional SWIFT-specific functions and classes
     enum class WindowDecision { kReject, kInspect, kAccept };
-    void close_window(std::vector<TriggerActivity>& output_tas);
+    void close_window(std::vector<TriggerActivityROP>& output_tas);
     void reset_window_state(uint64_t new_window_start);
     uint64_t extract_dominant_cluster_energy(const std::vector<TriggerPrimitive>& tps, float eps, int min_samples);
   };
 } // namespace tpctriggeralgs
 
-#endif // tpctriggeralgs_SWIFT_TRIGGERACTIVITYMAKERSWIFT_HPP_
+#endif // tpctriggeralgs_SWIFT_TRIGGERACTIVITYROPMAKERSWIFT_HPP_

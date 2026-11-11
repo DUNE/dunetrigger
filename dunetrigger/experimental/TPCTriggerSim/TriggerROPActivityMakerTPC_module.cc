@@ -3,7 +3,7 @@
 // Plugin Type: producer
 // File:        TriggerROPActivityMakerTPC_module.cc
 //
-// Applies a configurable TriggerActivityMaker algorithm to each
+// Applies a configurable TriggerActivityROPMaker algorithm to each
 // Readout Plane (ROP) of every detector element (APA/CRP).
 // A fresh algorithm instance is built for each ROP in every event,
 // so that each plane has independent internal state.
@@ -23,12 +23,12 @@
 #include "larcoreobj/SimpleTypesAndConstants/readout_types.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
-#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityData.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityROPData.hpp"
 #include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerPrimitive.hpp"
 
 #include "dunetrigger/experimental/TPCTriggerSim/Verbosity.hh"
-#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivity.hpp"
-#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityFactory.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityROP.hpp"
+#include "dunetrigger/experimental/tpctriggeralgs/include/tpctriggeralgs/TriggerActivityROPFactory.hpp"
 
 #include <nlohmann/json.hpp>
 #include <numeric>
@@ -43,7 +43,7 @@
 
 namespace dunetrigger::experimental {
 
-  using tpctriggeralgs::TriggerActivityData;
+  using tpctriggeralgs::TriggerActivityROPData;
   using tpctriggeralgs::TriggerPrimitive;
 
   class TriggerROPActivityMakerTPC : public art::EDProducer {
@@ -73,7 +73,7 @@ namespace dunetrigger::experimental {
     const std::map<unsigned int, nlohmann::json> algconfigs_;
 
     // Algorithm factory instance
-    std::shared_ptr<tpctriggeralgs::AbstractFactory<tpctriggeralgs::TriggerActivityMaker>> factory_ = tpctriggeralgs::TriggerActivityFactory::get_instance();
+    std::shared_ptr<tpctriggeralgs::AbstractFactory<tpctriggeralgs::TriggerActivityROPMaker>> factory_ = tpctriggeralgs::TriggerActivityROPFactory::get_instance();
 
     // Try to read `key` from `pset` as type T; on success store it in `out` and return true.
     template <typename T>
@@ -164,10 +164,10 @@ namespace dunetrigger::experimental {
 
     // Build art::Ptr associations between one output TA and its input TPs.
     void buildAssociations(
-                           const tpctriggeralgs::TriggerActivity &ta,
+                           const tpctriggeralgs::TriggerActivityROP &ta,
                            const std::vector<art::Ptr<TriggerPrimitive>> &plane_tps,
-                           art::Ptr<TriggerActivityData> taPtr,
-                           art::Assns<TriggerActivityData, TriggerPrimitive> &assns) const;
+                           art::Ptr<TriggerActivityROPData> taPtr,
+                           art::Assns<TriggerActivityROPData, TriggerPrimitive> &assns) const;
   };
 
   // Constructor
@@ -196,8 +196,8 @@ namespace dunetrigger::experimental {
         }
       }
 
-      produces<std::vector<TriggerActivityData>>();
-      produces<art::Assns<TriggerActivityData, TriggerPrimitive>>();
+      produces<std::vector<TriggerActivityROPData>>();
+      produces<art::Assns<TriggerActivityROPData, TriggerPrimitive>>();
       consumes<std::vector<TriggerPrimitive>>(tp_tag_);
     }
 
@@ -218,10 +218,10 @@ namespace dunetrigger::experimental {
   // producer
   void TriggerROPActivityMakerTPC::produce(art::Event &e) {
 
-    auto ta_vec = std::make_unique<std::vector<TriggerActivityData>>();
-    auto assns  = std::make_unique<art::Assns<TriggerActivityData, TriggerPrimitive>>();
+    auto ta_vec = std::make_unique<std::vector<TriggerActivityROPData>>();
+    auto assns  = std::make_unique<art::Assns<TriggerActivityROPData, TriggerPrimitive>>();
 
-    art::PtrMaker<TriggerActivityData> taPtrMaker{e};
+    art::PtrMaker<TriggerActivityROPData> taPtrMaker{e};
     auto tpHandle = e.getValidHandle<std::vector<TriggerPrimitive>>(tp_tag_);
 
     // Split TPs by ROPID, such that each TAMaker instance accepts TP data from single APA plane.
@@ -248,7 +248,7 @@ namespace dunetrigger::experimental {
       if (verbosity_ >= Verbosity::kInfo) std::cout << "Running " << algname_ << " on plane " << plane << "\n";
 
       // Feed TPs into the algorithm, skipping any masked channels.
-      std::vector<tpctriggeralgs::TriggerActivity> created_tas;
+      std::vector<tpctriggeralgs::TriggerActivityROP> created_tas;
       for (const auto &itp : plane_tps) {
         if (std::binary_search(channel_mask_.begin(), channel_mask_.end(), itp->channel)) {
           if (verbosity_ >= Verbosity::kDebug)
@@ -279,10 +279,10 @@ namespace dunetrigger::experimental {
   // buildAssociations 
 
   void TriggerROPActivityMakerTPC::buildAssociations(
-                                                  const tpctriggeralgs::TriggerActivity &ta,
+                                                  const tpctriggeralgs::TriggerActivityROP &ta,
                                                   const std::vector<art::Ptr<TriggerPrimitive>> &plane_tps,
-                                                  art::Ptr<TriggerActivityData> taPtr,
-                                                  art::Assns<TriggerActivityData, TriggerPrimitive> &assns) const {
+                                                  art::Ptr<TriggerActivityROPData> taPtr,
+                                                  art::Assns<TriggerActivityROPData, TriggerPrimitive> &assns) const {
 
     art::PtrVector<TriggerPrimitive> ptrs;
     for (const auto &in_tp : ta.inputs) {

@@ -1,5 +1,5 @@
 // classes.h — includes every header whose classes appear in classes_def.xml
-#include "dunetrigger/experimental/TPCTriggerObjs/TriggerActivityData.hpp"
+#include "dunetrigger/experimental/TPCTriggerObjs/TriggerActivityROPData.hpp"
 #include "detdataformats/trigger/TriggerPrimitive.hpp"
 #include "canvas/Persistency/Common/Wrapper.h"
 #include "canvas/Persistency/Common/Assns.h"

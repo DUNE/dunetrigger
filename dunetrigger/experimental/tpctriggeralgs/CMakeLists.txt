@@ -8,6 +8,6 @@ basic_plugin(tpctriggeralgs module
   LIBRARIES
   dunetrigger::TPCTriggerObjs
   SOURCE
-  src/TriggerActivityMakerSWIFT.cpp
-  src/TriggerActivityMakerPassthrough.cpp
+  src/TriggerActivityROPMakerSWIFT.cpp
+  src/TriggerActivityROPMakerPassthrough.cpp
 )
