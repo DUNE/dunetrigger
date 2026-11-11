@@ -1,6 +1,17 @@
 <lcgdict>
 
-  <!-- The product itself. Renamed from exp::TriggerActivityData, so its version history starts again at 10 -->
+  <!-- Minimal experimental TA: version, time_start, time_end -->
+  <class name="dunedaq::trgdataformats::exp::TriggerActivityData"             ClassVersion="10" >
+   <version ClassVersion="10" checksum="429057959"/>
+  </class>
+  <class name="art::Wrapper<dunedaq::trgdataformats::exp::TriggerActivityData>"               />
+  <class name="std::vector<dunedaq::trgdataformats::exp::TriggerActivityData>"                />
+  <class name="art::Wrapper<std::vector<dunedaq::trgdataformats::exp::TriggerActivityData>>"  />
+  <class name="art::Ptr<dunedaq::trgdataformats::exp::TriggerActivityData>"                   />
+  <class name="std::vector<art::Ptr<dunedaq::trgdataformats::exp::TriggerActivityData>>"      />
+
+  <!-- Per-ROP experimental TA. It was called exp::TriggerActivityData (up to ClassVersion 11) before that name
+       was reused for the minimal TA above, so its version history starts again at 10 -->
   <class name="dunedaq::trgdataformats::exp::TriggerActivityROPData"             ClassVersion="10" >
    <version ClassVersion="10" checksum="2366468556"/>
   </class>
