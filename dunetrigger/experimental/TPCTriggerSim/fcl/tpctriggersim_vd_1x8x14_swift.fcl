@@ -1,18 +1,10 @@
 # tpctriggersim_vd_1x8x14_swift.fcl
 
-#include "tpctriggersim_vd_cfg.fcl"
-# tools_dune.fcl is not prolog-only: include it after all the prolog files
-#include "tools_dune.fcl"
+# As tpctriggersim_vd_1x8x14_simpleThr_swift.fcl, but runs only the experimental
+# SWIFT TA maker, on the tpmakerTPCSimpleThreshold TPs already in the input.
+
+#include "tpctriggersim_vd_1x8x14_simpleThr_swift.fcl"
 
 process_name: tap
 
-services: {
-  @table::services_tpctriggersim
-  @table::dunefdvd_1x8x14_3view_30deg_reco_services
-}
-
-source:  @local::source_tpctriggersim
-outputs: @local::outputs_tpctriggersim
-physics: @local::physics_tpctriggersim_vd_simpleThr_swift
-
-outputs.out1.outputCommands: [ "keep *_*_*_*", "drop raw::RawDigit*_*_*_*" ]
+physics.makers: [ tamakerTPCSWIFT ]

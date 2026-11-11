@@ -1,0 +1,32 @@
+# tpctrigger_activity_makers_hd_cfg.fcl
+
+# Experimental HD TA makers and their algorithm configs.
+# HD has 4 ROPs: induction 1, induction 2, and the collection planes facing either side.
+# All prolog names are prefixed tpc_ to avoid clashing with TriggerSim.
+
+BEGIN_PROLOG
+
+# Starting values: the standard HD SWIFT config (ta_algconfig_swift in TriggerSim)
+tpc_ta_algconfig_swift_hd: {
+  window_length: 32000
+  inspect_energy_threshold_sadc: 15000
+  accept_energy_threshold_sadc: 55000
+  min_adc_peak: 80
+  min_samples_over_threshold: 256
+  cluster_energy_cut_sadc: 22000
+}
+
+tpc_tamakerTPC_SWIFT_hd: {
+  module_type: TriggerROPActivityMakerTPC
+  # tp_tag is set by the producer chain that uses this maker, next to the TP maker label
+  algorithm: "TriggerActivityMakerSWIFTPlugin"
+  #active_rops: []
+  algconfig_rop0: @local::tpc_ta_algconfig_swift_hd # induction 1
+  algconfig_rop1: @local::tpc_ta_algconfig_swift_hd # induction 2
+  algconfig_rop2: @local::tpc_ta_algconfig_swift_hd # collection facing one side
+  algconfig_rop3: @local::tpc_ta_algconfig_swift_hd # collection facing the other side
+  flush: true
+  verbosity: 0
+}
+
+END_PROLOG

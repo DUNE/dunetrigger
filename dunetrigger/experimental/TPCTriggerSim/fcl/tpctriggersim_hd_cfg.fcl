@@ -1,0 +1,35 @@
+# tpctriggersim_hd_cfg.fcl
+
+# This is the high-level configuration file for the experimental HD trigger
+# tools, the counterpart of tpctriggersim_vd_cfg.fcl. It must never include VD files.
+# The detector-independent services/source/outputs live in tpctriggersim_common_cfg.fcl
+
+#include "tpctriggersim_common_cfg.fcl"
+
+# Standard (TriggerSim) TP makers: the experimental chains reuse them unchanged
+#include "trigger_primitive_makers_hd_cfg.fcl"
+#include "tpctrigger_activity_makers_hd_cfg.fcl"
+
+BEGIN_PROLOG
+
+# Producer chains. Each chain picks the module labels and sets every
+# consumer's input tag (tp_tag/ta_tag) to match, so the maker prologs stay
+# label-agnostic. makers_* is the matching trigger path.
+
+# Standard SimpleThreshold TP maker + experimental SWIFT TA maker
+producers_tpctriggersim_hd_simpleThr_swift: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold
+  tamakerTPCSWIFT: { @table::tpc_tamakerTPC_SWIFT_hd tp_tag: "tpmakerTPCSimpleThreshold" }
+}
+makers_tpctriggersim_hd_simpleThr_swift: [ tpmakerTPCSimpleThreshold, tamakerTPCSWIFT ]
+
+# this does not have analyzers! Add them
+physics_tpctriggersim_hd_simpleThr_swift: {
+  producers: @local::producers_tpctriggersim_hd_simpleThr_swift
+  makers: @local::makers_tpctriggersim_hd_simpleThr_swift
+  trigger_paths: [ makers ]
+  stream1: [ out1 ]
+  end_paths: [ stream1 ]
+}
+
+END_PROLOG

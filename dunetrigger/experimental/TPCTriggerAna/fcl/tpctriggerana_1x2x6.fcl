@@ -1,0 +1,39 @@
+# tpctriggerana_1x2x6.fcl
+
+# HD 1x2x6 counterpart of tpctriggerana_vd_1x8x14.fcl: run on the output of
+# tpctriggersim_1x2x6_simpleThr_swift.fcl with two analyzers writing to the same file:
+#  - triggerAna:    standard TriggerAnaTree (TPs, truth, backtracking),
+#                   with the standard TA/TC dumps disabled;
+#  - tpcTriggerAna: experimental TPCTriggerAnaTree (experimental TPC TAs,
+#                   the TPs in each TA, and an event summary).
+
+#include "triggerana_common.fcl"
+#include "tpctriggerana_cfg.fcl"
+# tools_dune.fcl is not prolog-only: include it after all the prolog files
+#include "tools_dune.fcl"
+
+process_name: TPCTriggerAna
+
+services: {
+  @table::services_tpctriggerana
+  @table::dunefd_1x2x6_reco_services
+}
+services.TFileService.fileName: "tpctrigtree_%ifb.root"
+# Must match simchannel_tag of triggerAna below (checked every event)
+services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC.*"
+
+source: @local::source_tpctriggerana
+
+physics: {
+  analyzers: {
+    triggerAna: {
+      @table::triggerAnaTree_dumpAll
+      dump_ta: false
+      dump_tc: false
+      simchannel_tag: "tpcrawdecoder:simpleSC.*"
+    }
+    tpcTriggerAna: @local::tpc_triggerAnaTree
+  }
+  ana:       [ triggerAna, tpcTriggerAna ]
+  end_paths: [ ana ]
+}

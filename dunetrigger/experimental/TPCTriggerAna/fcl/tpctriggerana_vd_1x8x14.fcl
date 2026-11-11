@@ -1,8 +1,13 @@
 # tpctriggerana_vd_1x8x14.fcl
 
-# Dump the experimental TPC TAs (e.g. from tpctriggersim_vd_1x8x14_swift.fcl)
-# for the VD 1x8x14 geometry.
+# Analyse the output of tpctriggersim_vd_1x8x14_simpleThr_swift.fcl (or _swift.fcl)
+# for the VD 1x8x14 geometry with two analyzers writing to the same TFileService file:
+#  - triggerAna:    the standard TriggerAnaTree (TPs, truth, backtracking),
+#                   with the standard TA/TC dumps disabled;
+#  - tpcTriggerAna: the experimental TPCTriggerAnaTree (experimental TPC TAs,
+#                   the TPs in each TA, and an event summary).
 
+#include "triggerana_common.fcl"
 #include "tpctriggerana_cfg.fcl"
 # tools_dune.fcl is not prolog-only: include it after all the prolog files
 #include "tools_dune.fcl"
@@ -14,13 +19,31 @@ services: {
   @table::dunefdvd_1x8x14_3view_30deg_reco_services
 }
 services.TFileService.fileName: "tpctrigtree_%ifb.root"
+# Must match simchannel_tag of triggerAna below (checked every event)
+services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC.*:.*"
 
 source: @local::source_tpctriggerana
 
 physics: {
   analyzers: {
+    triggerAna: {
+      @table::triggerAnaTree_dumpAll
+      dump_ta: false
+      dump_tc: false
+      simchannel_tag: "tpcrawdecoder:simpleSC.*:.*"
+      # Label-only art InputTag regex: TP algorithm names live in the module label.
+      tp_tag_regex: ".*SimpleThreshold.*"
+      bt_window_offsets: [
+        {
+          tool_type: "TPAlgTPCSimpleThreshold"
+          roview_0: 8
+          roview_1: 1
+          roview_2: -7
+        }
+      ]
+    }
     tpcTriggerAna: @local::tpc_triggerAnaTree
   }
-  ana:       [ tpcTriggerAna ]
+  ana:       [ triggerAna, tpcTriggerAna ]
   end_paths: [ ana ]
 }

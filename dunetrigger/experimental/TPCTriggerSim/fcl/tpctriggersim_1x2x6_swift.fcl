@@ -1,0 +1,10 @@
+# tpctriggersim_1x2x6_swift.fcl
+
+# As tpctriggersim_1x2x6_simpleThr_swift.fcl, but runs only the experimental
+# SWIFT TA maker, on the tpmakerTPCSimpleThreshold TPs already in the input.
+
+#include "tpctriggersim_1x2x6_simpleThr_swift.fcl"
+
+process_name: tap
+
+physics.makers: [ tamakerTPCSWIFT ]

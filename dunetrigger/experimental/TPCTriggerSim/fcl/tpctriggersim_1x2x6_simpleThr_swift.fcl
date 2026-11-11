@@ -1,0 +1,22 @@
+# tpctriggersim_1x2x6_simpleThr_swift.fcl
+
+# Experimental trigger simulation for HD 1x2x6, starting from RawDigits:
+#   tpmakerTPCSimpleThreshold: standard TriggerPrimitiveMakerTPC (TriggerSim)
+#   tamakerTPCSWIFT:           experimental TriggerROPActivityMakerTPC with SWIFT
+
+#include "tpctriggersim_hd_cfg.fcl"
+# tools_dune.fcl is not prolog-only: include it after all the prolog files
+#include "tools_dune.fcl"
+
+process_name: TPCTriggerSim
+
+services: {
+  @table::services_tpctriggersim
+  @table::dunefd_1x2x6_reco_services
+}
+
+source:  @local::source_tpctriggersim
+outputs: @local::outputs_tpctriggersim
+physics: @local::physics_tpctriggersim_hd_simpleThr_swift
+
+outputs.out1.outputCommands: [ "keep *_*_*_*", "drop raw::RawDigit*_*_*_*" ]

@@ -1,12 +1,13 @@
 # tpctriggersim_vd_cfg.fcl
 
-# This is the high-level configuration file for the VD dunetrigger tools,
-# the counterpart of triggersim_hd_cfg.fcl. It must never include HD files.
-# The detector-independent services/source/outputs live in triggersim_common_cfg.fcl
+# This is the high-level configuration file for the experimental VD trigger
+# tools, the counterpart of tpctriggersim_hd_cfg.fcl. It must never include HD files.
+# The detector-independent services/source/outputs live in tpctriggersim_common_cfg.fcl
 
 #include "tpctriggersim_common_cfg.fcl"
 
-# #include "trigger_primitive_makers_vd_cfg.fcl"
+# Standard (TriggerSim) TP makers: the experimental chains reuse them unchanged
+#include "trigger_primitive_makers_vd_cfg.fcl"
 #include "tpctrigger_activity_makers_vd_cfg.fcl"
 
 BEGIN_PROLOG
@@ -15,10 +16,12 @@ BEGIN_PROLOG
 # consumer's input tag (tp_tag/ta_tag) to match, so the maker prologs stay
 # label-agnostic. makers_* is the matching trigger path.
 
+# Standard SimpleThreshold TP maker + experimental SWIFT TA maker
 producers_tpctriggersim_vd_simpleThr_swift: {
+  tpmakerTPCSimpleThreshold: @local::tpmakerTPC_SimpleThreshold_vd
   tamakerTPCSWIFT: { @table::tpc_tamakerTPC_SWIFT_vd tp_tag: "tpmakerTPCSimpleThreshold" }
 }
-makers_tpctriggersim_vd_simpleThr_swift: [ tamakerTPCSWIFT ]
+makers_tpctriggersim_vd_simpleThr_swift: [ tpmakerTPCSimpleThreshold, tamakerTPCSWIFT ]
 
 # this does not have analyzers! Add them
 physics_tpctriggersim_vd_simpleThr_swift: {
