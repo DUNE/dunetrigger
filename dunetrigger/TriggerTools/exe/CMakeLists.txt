@@ -9,3 +9,16 @@ cet_make_exec(geo_inspector
     larcore::Geometry_Geometry_service
     ROOT::Tree
 )
+
+cet_make_exec(channel_dumper
+  SOURCE
+    channel_dumper.cxx
+  LIBRARIES
+    dunecore::ArtSupport
+    dunecore::Geometry
+    larcorealg::Geometry
+    larcore::headers
+    larcore::Geometry_Geometry_service
+    ROOT::Tree
+    Boost::program_options
+)
