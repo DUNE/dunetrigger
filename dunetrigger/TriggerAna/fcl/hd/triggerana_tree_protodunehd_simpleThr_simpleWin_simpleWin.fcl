@@ -12,6 +12,8 @@ services:   {
     @table::services_triggersim
     @table::protodunehd_reco_services
 }
+# Must match simchannel_tag of the analyzer (checked every event)
+services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC.*"
 
 source:     @local::source_triggerana_tree
 
