@@ -31,9 +31,10 @@ namespace dunetrigger {
 // Field names of the experimental TAs, used as branch names (C++17 path; no-op in C++20).
 // Must be in namespace dunetrigger, where the FieldNames trait lives.
 REGISTER_FIELD_NAMES(dunedaq::trgdataformats::exp::TriggerActivityROPData,
-                     version, time_start, time_end, time_peak, time_activity,
+                     version, type, algorithm, time_start, time_end, time_peak, time_activity,
                      channel_start, channel_end, channel_peak,
-                     adc_integral, adc_peak, detid, type, algorithm);
+                     adc_integral, adc_peak, detid, 
+                     ch_mean, ch_std, t_mean, t_std, ch_wmean, ch_wstd, t_wmean, t_wstd);
 
 REGISTER_FIELD_NAMES(dunedaq::trgdataformats::exp::TriggerActivityData,
                      version, time_start, time_end);
