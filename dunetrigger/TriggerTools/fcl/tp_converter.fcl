@@ -1,0 +1,63 @@
+# tp_converter.fcl
+#
+# Convert a v1 TriggerPrimitive collection (std::vector<dunedaq::trgdataformats::
+# TriggerPrimitive>, e.g. from TriggerPrimitiveMakerTPC) into the v2 format
+# (std::vector<dunedaq::trgdataformats2::TriggerPrimitive>). Run on an art file
+# that already contains the v1 collection, e.g.:
+#
+#   lar -c tp_converter.fcl -o tps_v2.root input.root
+
+#include "services_dune.fcl"
+
+process_name: TPConverter
+
+source:
+{
+  module_type: RootInput
+  maxEvents:   -1
+}
+
+services:
+{
+  # No geometry or detector services: the converter only reinterprets TP fields,
+  # so this job runs on input from any detector.
+  message: @local::dune_message_services_prod
+}
+# dune_message_services_prod sets default limit 0 on stdout and ERROR threshold
+# on stderr, which would hide the converter's narrowing warnings (and its
+# verbosity >= 1 LogInfo). Let the module's own category through.
+services.message.destinations.LogStandardOut.categories.TriggerPrimitiveConverter.limit: -1
+
+physics:
+{
+  producers:
+  {
+    tpconverter:
+    {
+      module_type: TriggerPrimitiveConverter
+      input_tag:   "tpmakerTPCSimpleThreshold"
+      dts_ticks_per_sample: 32     # 62.5 MHz DTS / TPC ADC sampling
+      allow_non_tpc:        false  # throw on non-TPC TPs (v2 has no type field)
+      verbosity:   0
+    }
+  }
+
+  tpconv_path: [tpconverter]
+  trigger_paths: [tpconv_path]
+  stream1:   [out1]
+  end_paths: [stream1]
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: RootOutput
+    fileName:    "tp_converter_%ifb.root"
+    compressionLevel: 1
+    saveMemoryObjectThreshold: 0
+    outputCommands: [
+      "keep *_*_*_*"
+    ]
+  }
+}

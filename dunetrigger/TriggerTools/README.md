@@ -8,11 +8,13 @@ a raw-waveform analyzer and a geometry dump executable.
 ```
 HydraFilter_module.cc     art filter: keep events with energy deposits in a chosen TPC set (APA/CRM)
 RawDigitTreeDumper_module.cc     art analyzer: ADC histograms and (optionally) waveforms from RawDigits
+TriggerPrimitiveConverter_module.cc     art producer: convert v1 TriggerPrimitives to the v2 format
 exe/geo_config.h          shared geometry shortcuts and wire readout selection for the executables
 exe/geo_inspector.cxx     standalone executable: print a detector geometry and save it as JSON
 exe/channel_dumper.cxx    standalone executable: dump the channel-to-wire mapping of a TPC/plane or TPC set/ROP
 fcl/
   hydra_filter.fcl                                   HydraFilter job (VD 1x8x14)
+  tp_converter.fcl                                   TriggerPrimitiveConverter job
   save_vd_<geom>_3view_30deg_rawdigit_hists.fcl       RawDigitTreeDumper jobs, histograms only
   save_vd_<geom>_3view_30deg_rawdigit_waveforms.fcl   RawDigitTreeDumper jobs, histograms + waveform tree
 ```
@@ -69,6 +71,49 @@ The `fcl/save_vd_*` files run it on the VD 1x8x6 and 1x8x14 3-view 30° geometri
 set `save_waveforms: false` and write `trigger_digits_hists_%ifb.root`, the `_waveforms` jobs keep the
 default and write `trigger_digits_waves_%ifb.root`. Waveform output is large (one branch per channel):
 restrict it to a few events or use `save_channels_with_ides_only`.
+
+## TriggerPrimitiveConverter (producer)
+
+Converts a v1 TriggerPrimitive collection (`std::vector<dunedaq::trgdataformats::TriggerPrimitive>`,
+e.g. from `TriggerPrimitiveMakerTPC`) into the packed v2 format
+(`std::vector<dunedaq::trgdataformats2::TriggerPrimitive>`), for tools that consume TP v2.
+
+| Parameter    | Type     | Description                                        |
+|--------------|----------|----------------------------------------------------|
+| `input_tag`  | InputTag | v1 TriggerPrimitive collection to convert          |
+| `dts_ticks_per_sample` | uint64 | `32`: DTS clock ticks per ADC sample (62.5 MHz DTS, TPC sampling); must be > 0 |
+| `allow_non_tpc` | bool  | `false`: throw if any TP is not `Type::kTPC`, since v2 has no type field; `true` converts them with a warning |
+| `verbosity`  | int      | `0`; at `>= 1` log (`LogInfo`) the converted TP count and invalid-field count per event |
+
+The output collection is written under the module label. Field conversion:
+
+| v1 field              | v2 field                | Conversion                                                     |
+|-----------------------|-------------------------|----------------------------------------------------------------|
+| `version`             | `version`               | `2`                                                            |
+| `flag` (16 bit)       | `flag` (8 bit)          | low 8 bits (bits 8–15 are unassigned today)                    |
+| `detid` (16 bit)      | `detid` (8 bit)         | `INVALID_DETID`/`WHOLE_DETECTOR` mapped to their v2 values; any other value above 253 becomes `INVALID_DETID` |
+| `channel`             | `channel_*byte`         | 24-bit channel split over three bytes; invalid/out-of-range becomes `INVALID_TP_CHANNEL` |
+| `time_start`          | `time_start`            | copied (DTS ticks)                                             |
+| `time_over_threshold` | `samples_over_threshold`| DTS ticks / `dts_ticks_per_sample`, rounded down               |
+| `time_peak`           | `samples_to_peak`       | `(time_peak - time_start)` DTS ticks / `dts_ticks_per_sample`, rounded down; invalid if either timestamp is invalid or `time_peak < time_start` |
+| `adc_integral`, `adc_peak` | `adc_integral`, `adc_peak` | copied                                                  |
+| `type`                | —                       | **dropped**: no v2 counterpart; non-`kTPC` TPs are rejected unless `allow_non_tpc` |
+| `algorithm`           | —                       | **dropped**: no v2 counterpart                                 |
+
+v1 invalid sentinels (`INVALID_CHANNEL`, `INVALID_DETID`, `INVALID_TIMESTAMP` in
+`time_over_threshold`, `time_start` or `time_peak`) map to the matching v2 sentinels. This is
+lossless, so it is only counted in the `verbosity >= 1` `LogInfo` line. Valid values that v2
+cannot hold are lossy: an interval longer than 65534 samples becomes `INVALID_SAMPLES_*`, an
+interval that is not a whole number of samples is rounded down, a `time_peak` before
+`time_start` becomes `INVALID_SAMPLES_TO_PEAK`, non-TPC TPs (with `allow_non_tpc: true`) lose
+their type, and the flag, detid and channel are narrowed as in the table above. Each lossy case is counted and reported in one
+`LogWarning` per event. At end of job the module logs a summary with the totals: a
+`LogWarning` if any conversion was lossy, otherwise a `LogInfo`. Note that `TriggerPrimitive2.hpp::Channel()` mis-assembles the high byte
+(shifts by 12 instead of 16), so the module sets the channel bytes directly.
+
+`fcl/tp_converter.fcl` runs the converter on `tpmakerTPCSimpleThreshold` (the label used by the
+TriggerSim TP makers) and writes the full event content, including both TP collections, to
+`tp_converter_%ifb.root`.
 
 ## geo_inspector (executable)
 

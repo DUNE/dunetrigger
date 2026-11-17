@@ -34,8 +34,8 @@ namespace dunetrigger {
       this_tp.flag = 0;
       
       this_tp.time_start = start_time;
-      this_tp.time_over_threshold = start_time + adcs.size()*this->ADC_SAMPLING_RATE_IN_DTS;
-      this_tp.time_peak = adcs.size()*this->ADC_SAMPLING_RATE_IN_DTS / 2;
+      this_tp.time_over_threshold = adcs.size()*this->ADC_SAMPLING_RATE_IN_DTS;
+      this_tp.time_peak = start_time + adcs.size()*this->ADC_SAMPLING_RATE_IN_DTS / 2;
       
       this_tp.adc_integral = 0;
       this_tp.adc_peak = 0;
