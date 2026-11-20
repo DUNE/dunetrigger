@@ -180,34 +180,42 @@ uniform in the group, and written as `dz` (smallest value) in the JSON groups. W
 (`|sin| < 1e-6`) give `nan` and are ignored in the range. Channels are only printed to stdout with `--table`.
 
 `--table` prints one row per selected channel, sorted by channel, with the plane (TPC mode) or ROP
-(ROP mode), the number of wires, `i_z`, `ch-i_z`, `ch+i_z` and the `z0` (cm) of each wire in the channel's wire order.
+(ROP mode), the number of wires, `i_z`, `ch-i_z`, `ch+i_z`, the wire center `(y,z)` (cm, `WireGeo::GetCenter()`)
+and the `z0` (cm) of each wire in the channel's wire order.
 `i_z = (z0 - z0_min) / dz` is the wire index along z, rounded to the nearest integer (`std::lround`) in this
 table only; `z0_min` is taken from the channel's group in the summary table and `dz` is computed for the
 wire itself. `ch-i_z` is `channel - i_z` and `ch+i_z` is `channel + i_z` (signed integers, from the rounded
 `i_z`): `ch-i_z` is constant where channel number and z increase together, and `ch+i_z` is constant where
 they run in opposite directions (the other one then changes by 2 per channel). For single-wire channels both are shown in
 their columns; for multi-wire channels they show `-` and the last column lists the z0 values, then
-`| i_z`, `| ch-i_z` and `| ch+i_z` with one value per wire, then the wire IDs in parentheses, so each value can be
+`| i_z`, `| ch-i_z`, `| ch+i_z` and `| center (y,z)` with one value per wire, then the wire IDs in parentheses, so each value can be
 matched to its wire. Non-finite values print as `nan`. Neighbouring wires of a plane are `dz` apart in z0,
 not `pitch` apart, for angled wires; dividing by `dz` makes `i_z` step by about 1 per channel on all
 planes. In ROP mode wires from several TPCs share one `z0_min`, so their `i_z` need not be a clean index.
-The CSV and JSON files are not affected.
+The CSV and JSON files always carry the same per-channel values, whether or not `--table` is given.
 
 ```
-  channel  view  rop  n_wires  i_z  ch-i_z  ch+i_z  z0 [cm]
-  -------  ----  ---  -------  ---  ------  ------  -------
-      800     V    1        3    -       -       -  661.017, -200.473, 201.204 | i_z 1899, 400, 1099 | ch-i_z -1099, 400, -299 | ch+i_z 2699, 1200, 1899 (0:0:1:0, 0:1:1:400, 0:0:1:800)
-     1600     Z    2        1    0    1600    1600  0.598
+  channel  view  plane  n_wires  i_z  ch-i_z  ch+i_z   center (y,z) [cm]  z0 [cm]
+  -------  ----  -----  -------  ---  ------  ------  ------------------  -------
+        0     U      0        1  748    -748     748  (-439.696,115.319)  431.389
+      400     U      0        2    -       -       -                   -  661.296, 201.482 | i_z 1148, 348 | ch-i_z -748, 52 | ch+i_z 1548, 748 | center (y,z) (-599.561,230.309), (-140.641,100.384) (0:1:0:0, 0:1:0:800)
 ```
 
 Output files are `<prefix>.csv` and/or `<prefix>.json`. The default prefix is
 `<geoid>_tpc<T>[_plane<P>]` or `<geoid>_tpcset<S>[_rop<R>]`, where `<geoid>` is the resolved geometry
 table name.
 
-- CSV: header `channel,view,n_wires,wires` (ROP mode adds a trailing `rop` column), wires joined by `;`:
-  `800,V,3,0:0:1:0;0:1:1:400;0:0:1:800,1`
+Both files carry the `--table` columns. Per-wire values come in the channel's wire order, so the n-th
+value of each list belongs to the n-th wire ID.
+
+- CSV: header `channel,view,n_wires,wires,<plane|rop>,z0,i_z,ch-i_z,ch+i_z,center_y,center_z`
+  (`plane` in TPC mode, `rop` in ROP mode). Per-wire values are joined by `;`, lengths and coordinates
+  are in cm with 3 decimals, and non-finite values print as `nan`:
+  `400,U,2,0:1:0:0;0:1:0:800,0,661.296;201.482,1148;348,-748;52,1548;748,-599.561;-140.641,230.309;100.384`
 - JSON: `{"detector", "selection": {"mode", "cryo", "tpc"/"plane" or "tpcset"/"rop"}, "summary": {...},
-  "channels": [{"channel", "view", "wires": [...]}]}`; ROP mode adds `"rop"` to each channel.
+  "channels": [{"channel", "view", "plane"|"rop", "wires", "z0", "i_z", "ch-i_z", "ch+i_z", "center_y",
+  "center_z"}]}`. Every per-wire key is a list with one entry per wire, values are at full precision,
+  and non-finite values are `null`.
 
 Exit codes: 0 on success or `-h`, 1 for command-line errors (message plus usage on stderr), 2 if the
 cryostat, TPC, plane, TPC set or ROP does not exist.

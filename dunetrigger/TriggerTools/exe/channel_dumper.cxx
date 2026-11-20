@@ -248,23 +248,6 @@ ChannelMap collect_tpcset(Options const& opt, geo::WireReadoutGeom const& readou
   return channels;
 }
 
-std::vector<std::string> wire_strings(ChannelRecord const& rec)
-{
-  std::vector<std::string> out;
-  for (auto const& w : rec.wires) out.push_back(wire_string(w));
-  return out;
-}
-
-std::string join(std::vector<std::string> const& v, char sep)
-{
-  std::string out;
-  for (size_t i = 0; i < v.size(); ++i) {
-    if (i) out += sep;
-    out += v[i];
-  }
-  return out;
-}
-
 // Channels (and the z0 of their wires) belonging to one plane (TPC mode) or ROP (ROP mode).
 struct Group {
   int id = 0;
@@ -639,13 +622,6 @@ double wire_iz(Group const& g, double dz, double z0)
   return (z0 - g.z0_min) / dz;
 }
 
-std::string join_values(std::vector<double> const& values, int precision)
-{
-  std::ostringstream os;
-  for (size_t i = 0; i < values.size(); ++i) os << (i ? ", " : "") << fixed_string(values[i], precision);
-  return os.str();
-}
-
 // i_z rounded to the nearest integer; empty if it is not finite.
 std::optional<long> rounded_iz(double iz)
 {
@@ -653,64 +629,103 @@ std::optional<long> rounded_iz(double iz)
   return std::lround(iz);
 }
 
+// channel + sign * i_z; empty if i_z is.
+std::optional<long> channel_offset(raw::ChannelID_t ch, std::optional<long> iz, int sign)
+{
+  if (!iz) return std::nullopt;
+  return static_cast<long>(ch) + sign * *iz;
+}
+
+// Per-wire quantities of a channel, shared by the table and the CSV/JSON files.
+struct WireInfo {
+  geo::WireID id;
+  double z0;                    // z at y = 0 (cm)
+  std::optional<long> iz;       // rounded i_z; empty if not finite
+  std::optional<long> ch_minus; // channel - i_z
+  std::optional<long> ch_plus;  // channel + i_z
+  geo::Point_t center;          // wire center (cm)
+};
+
+struct ChannelInfo {
+  raw::ChannelID_t channel;
+  std::string view;
+  int group; // plane (TPC mode) or ROP (ROP mode) of the channel's first wire
+  std::vector<WireInfo> wires;
+};
+
+std::vector<ChannelInfo> channel_infos(Options const& opt, ChannelMap const& channels,
+                                       std::vector<Group> const& groups,
+                                       geo::WireReadoutGeom const& readout)
+{
+  std::vector<ChannelInfo> out;
+  for (auto const& [ch, rec] : channels) {
+    ChannelInfo info{ch, view_name(readout, ch), group_id(opt, rec, rec.wires.front()), {}};
+    auto const z0s = channel_z0s(rec, readout);
+    for (size_t i = 0; i < rec.wires.size(); ++i) {
+      geo::WireID const& wire = rec.wires[i];
+      Group const* g = find_group(groups, group_id(opt, rec, wire));
+      auto const iz = rounded_iz(g ? wire_iz(*g, wire_dz(readout, wire), z0s[i]) : std::nan(""));
+      info.wires.push_back({wire, z0s[i], iz, channel_offset(ch, iz, -1), channel_offset(ch, iz, +1),
+                            readout.Wire(wire).GetCenter()});
+    }
+    out.push_back(std::move(info));
+  }
+  return out;
+}
+
 std::string int_string(std::optional<long> v)
 {
   return v ? std::to_string(*v) : "nan";
 }
 
-// channel + sign * round(i_z); "nan" if i_z is not finite.
-std::string channel_offset_string(raw::ChannelID_t ch, double iz, int sign)
+// "(y,z)" of a wire center.
+std::string center_string(geo::Point_t const& c)
 {
-  auto const r = rounded_iz(iz);
-  return r ? std::to_string(static_cast<long>(ch) + sign * *r) : "nan";
+  return "(" + fixed_string(c.Y(), 3) + "," + fixed_string(c.Z(), 3) + ")";
 }
 
-std::string join_strings(std::vector<std::string> const& v)
+// Joins f(wire) over the channel's wires with sep.
+template <typename F>
+std::string join_wires(ChannelInfo const& info, std::string const& sep, F f)
 {
   std::string out;
-  for (size_t i = 0; i < v.size(); ++i) out += (i ? ", " : "") + v[i];
+  for (size_t i = 0; i < info.wires.size(); ++i) out += (i ? sep : "") + f(info.wires[i]);
   return out;
 }
 
-// Single-wire channels: just the z0. Multi-wire channels: z0 list | i_z | ch-i_z | ch+i_z lists (wire IDs).
-std::string z0_cell(raw::ChannelID_t ch, ChannelRecord const& rec, std::vector<double> const& z0s,
-                    std::vector<double> const& izs)
+std::string z0_of(WireInfo const& w) { return fixed_string(w.z0, 3); }
+std::string iz_of(WireInfo const& w) { return int_string(w.iz); }
+std::string ch_minus_of(WireInfo const& w) { return int_string(w.ch_minus); }
+std::string ch_plus_of(WireInfo const& w) { return int_string(w.ch_plus); }
+std::string center_of(WireInfo const& w) { return center_string(w.center); }
+std::string center_y_of(WireInfo const& w) { return fixed_string(w.center.Y(), 3); }
+std::string center_z_of(WireInfo const& w) { return fixed_string(w.center.Z(), 3); }
+std::string id_of(WireInfo const& w) { return wire_string(w.id); }
+
+// Single-wire channels: just the z0. Multi-wire channels:
+// z0 list | i_z | ch-i_z | ch+i_z | center (y,z) lists (wire IDs).
+std::string z0_cell(ChannelInfo const& info)
 {
-  std::ostringstream os;
-  os << join_values(z0s, 3);
-  if (z0s.size() > 1) {
-    std::vector<std::string> iz_strings, minus_strings, plus_strings, wire_ids;
-    for (size_t i = 0; i < izs.size(); ++i) {
-      iz_strings.push_back(int_string(rounded_iz(izs[i])));
-      minus_strings.push_back(channel_offset_string(ch, izs[i], -1));
-      plus_strings.push_back(channel_offset_string(ch, izs[i], +1));
-      wire_ids.push_back(wire_string(rec.wires[i]));
-    }
-    os << " | i_z " << join_strings(iz_strings) << " | ch-i_z " << join_strings(minus_strings) << " | ch+i_z "
-       << join_strings(plus_strings) << " ("
-       << join_strings(wire_ids) << ')';
+  std::string out = join_wires(info, ", ", z0_of);
+  if (info.wires.size() > 1) {
+    out += " | i_z " + join_wires(info, ", ", iz_of) + " | ch-i_z " + join_wires(info, ", ", ch_minus_of) +
+           " | ch+i_z " + join_wires(info, ", ", ch_plus_of) + " | center (y,z) " +
+           join_wires(info, ", ", center_of) + " (" + join_wires(info, ", ", id_of) + ')';
   }
-  return os.str();
+  return out;
 }
 
-void print_table(Options const& opt, ChannelMap const& channels, std::vector<Group> const& groups,
-                 geo::WireReadoutGeom const& readout)
+void print_table(Options const& opt, std::vector<ChannelInfo> const& infos)
 {
-  TextTable table({"channel", "view", group_label(opt), "n_wires", "i_z", "ch-i_z", "ch+i_z", "z0 [cm]"},
+  TextTable table({"channel", "view", group_label(opt), "n_wires", "i_z", "ch-i_z", "ch+i_z",
+                   "center (y,z) [cm]", "z0 [cm]"},
                   LastColumn::Free);
-  for (auto const& [ch, rec] : channels) {
-    int const group = group_id(opt, rec, rec.wires.front());
-    auto const z0s = channel_z0s(rec, readout);
-    std::vector<double> izs;
-    for (size_t i = 0; i < z0s.size(); ++i) {
-      Group const* g = find_group(groups, group_id(opt, rec, rec.wires[i]));
-      izs.push_back(g ? wire_iz(*g, wire_dz(readout, rec.wires[i]), z0s[i]) : std::nan(""));
-    }
-    bool const single = z0s.size() == 1;
-    table.add_row({std::to_string(ch), view_name(readout, ch), std::to_string(group),
-                   std::to_string(rec.wires.size()), single ? int_string(rounded_iz(izs[0])) : "-",
-                   single ? channel_offset_string(ch, izs[0], -1) : "-",
-                   single ? channel_offset_string(ch, izs[0], +1) : "-", z0_cell(ch, rec, z0s, izs)});
+  for (ChannelInfo const& info : infos) {
+    bool const single = info.wires.size() == 1;
+    WireInfo const& w = info.wires.front();
+    table.add_row({std::to_string(info.channel), info.view, std::to_string(info.group),
+                   std::to_string(info.wires.size()), single ? iz_of(w) : "-", single ? ch_minus_of(w) : "-",
+                   single ? ch_plus_of(w) : "-", single ? center_of(w) : "-", z0_cell(info)});
   }
   std::cout << "\n";
   table.print(std::cout);
@@ -747,8 +762,32 @@ json groups_json(Options const& opt, std::vector<Group> const& groups)
   return out;
 }
 
+json optional_json(std::optional<long> v)
+{
+  return v ? json(*v) : json(nullptr);
+}
+
+// Per channel: the table's columns, with one list entry per wire in the channel's wire order.
+json channel_json(Options const& opt, ChannelInfo const& info)
+{
+  json c = {{"channel", info.channel}, {"view", info.view}, {group_label(opt), info.group}};
+  for (char const* key : {"wires", "z0", "i_z", "ch-i_z", "ch+i_z", "center_y", "center_z"}) {
+    c[key] = json::array();
+  }
+  for (WireInfo const& w : info.wires) {
+    c["wires"].push_back(wire_string(w.id));
+    c["z0"].push_back(w.z0);
+    c["i_z"].push_back(optional_json(w.iz));
+    c["ch-i_z"].push_back(optional_json(w.ch_minus));
+    c["ch+i_z"].push_back(optional_json(w.ch_plus));
+    c["center_y"].push_back(w.center.Y());
+    c["center_z"].push_back(w.center.Z());
+  }
+  return c;
+}
+
 void write_json(std::string const& path, std::string const& detector, Options const& opt,
-                ChannelMap const& channels, Summary const& s, geo::WireReadoutGeom const& readout)
+                std::vector<ChannelInfo> const& infos, Summary const& s)
 {
   json j;
   j["detector"] = detector;
@@ -761,25 +800,23 @@ void write_json(std::string const& path, std::string const& detector, Options co
                   {"n_channels_multi_wire", s.n_multi_wire},
                   {"groups", groups_json(opt, s.groups)}};
   j["channels"] = json::array();
-  for (auto const& [ch, rec] : channels) {
-    json c = {{"channel", ch}, {"view", view_name(readout, ch)}, {"wires", wire_strings(rec)}};
-    if (rec.rop) c["rop"] = *rec.rop;
-    j["channels"].push_back(std::move(c));
-  }
+  for (ChannelInfo const& info : infos) j["channels"].push_back(channel_json(opt, info));
   std::ofstream(path) << std::setw(2) << j << std::endl;
   std::cout << "Wrote " << path << std::endl;
 }
 
-void write_csv(std::string const& path, ChannelMap const& channels, bool with_rop,
-               geo::WireReadoutGeom const& readout)
+// The table's columns; per-wire values are joined by ';' in the channel's wire order.
+void write_csv(std::string const& path, Options const& opt, std::vector<ChannelInfo> const& infos)
 {
   std::ofstream out(path);
-  out << "channel,view,n_wires,wires" << (with_rop ? ",rop" : "") << "\n";
-  for (auto const& [ch, rec] : channels) {
-    out << ch << ',' << view_name(readout, ch) << ',' << rec.wires.size() << ','
-        << join(wire_strings(rec), ';');
-    if (with_rop) out << ',' << *rec.rop;
-    out << "\n";
+  out << "channel,view,n_wires,wires," << group_label(opt)
+      << ",z0,i_z,ch-i_z,ch+i_z,center_y,center_z\n";
+  for (ChannelInfo const& info : infos) {
+    out << info.channel << ',' << info.view << ',' << info.wires.size() << ','
+        << join_wires(info, ";", id_of) << ',' << info.group << ',' << join_wires(info, ";", z0_of) << ','
+        << join_wires(info, ";", iz_of) << ',' << join_wires(info, ";", ch_minus_of) << ','
+        << join_wires(info, ";", ch_plus_of) << ',' << join_wires(info, ";", center_y_of) << ','
+        << join_wires(info, ";", center_z_of) << "\n";
   }
   std::cout << "Wrote " << path << std::endl;
 }
@@ -823,14 +860,15 @@ int main(int argc, char** argv)
   Summary const summary = summarize(opt, channels, readout);
   print_summary(geom.DetectorName(), opt, summary);
   if (!tpc_mode) print_tpc_summaries(geom.DetectorName(), opt, channels, summary, readout);
-  if (opt.table) print_table(opt, channels, summary.groups, readout);
+  std::vector<ChannelInfo> const infos = channel_infos(opt, channels, summary.groups, readout);
+  if (opt.table) print_table(opt, infos);
 
   std::string const prefix = opt.prefix.empty() ? default_prefix(opt, geo_id) : opt.prefix;
   if (opt.format == "csv" || opt.format == "both") {
-    write_csv(prefix + ".csv", channels, !tpc_mode, readout);
+    write_csv(prefix + ".csv", opt, infos);
   }
   if (opt.format == "json" || opt.format == "both") {
-    write_json(prefix + ".json", geom.DetectorName(), opt, channels, summary, readout);
+    write_json(prefix + ".json", geom.DetectorName(), opt, infos, summary);
   }
   return 0;
 }
