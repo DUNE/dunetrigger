@@ -152,7 +152,14 @@ row per group, one group per plane in TPC mode (also with `--plane`) and one per
       2     Z   480    2080    2559      0.4790   0.4790        0.598      230.039
 ```
 
-The first column is `rop` in ROP mode, and column widths follow the content. An `n_nonfinite` column
+The first column is `rop` in ROP mode, and column widths follow the content. In ROP mode the summary also
+has a `TPCs in set` line (`TPCsetToTPCs`) after `Selection`, and the group table gets a last, left-aligned
+`tpcs` column with the TPCs of each ROP (`ROPtoTPCs`), e.g. `0,1`. The JSON has `selection.tpcs` for the set
+and `tpcs` in each ROP group.
+
+With `--tpcset`, the summary of each TPC of the set follows the set summary (`--- TPC T of TPC set S ---`).
+These are TPC-mode summaries (per plane) built from the selected channels only (so `--rop` restricts them
+too), counting only the wires that sit in that TPC. They are not written to the CSV or JSON files. An `n_nonfinite` column
 appears only if some group has non-finite `z0` values.
 
 Each row gives the number of channels, their channel range, the wire pitch and the range of `z0` over all wires of
@@ -173,20 +180,24 @@ uniform in the group, and written as `dz` (smallest value) in the JSON groups. W
 (`|sin| < 1e-6`) give `nan` and are ignored in the range. Channels are only printed to stdout with `--table`.
 
 `--table` prints one row per selected channel, sorted by channel, with the plane (TPC mode) or ROP
-(ROP mode), the number of wires, `i_z` and the `z0` (cm) of each wire in the channel's wire order.
-`i_z = (z0 - z0_min) / dz` is the wire index along z. It is not rounded (2 decimals), with `z0_min` taken
-from the channel's group in the summary table and `dz` computed for the wire itself. For single-wire channels `i_z` is shown in its column; for multi-wire
-channels the column shows `-` and the last column lists the z0 values, then `| i_z` with one value per
-wire, then the wire IDs in parentheses, so each value can be matched to its wire. Non-finite values
-print as `nan`/`inf`. Neighbouring wires of a plane are `dz` apart in z0, not `pitch` apart, for angled
-wires; dividing by `dz` makes `i_z` step by about 1 per channel on all planes. In ROP mode wires from
-several TPCs share one `z0_min`, so their `i_z` need not be integer. The CSV and JSON files are not affected.
+(ROP mode), the number of wires, `i_z`, `ch-i_z`, `ch+i_z` and the `z0` (cm) of each wire in the channel's wire order.
+`i_z = (z0 - z0_min) / dz` is the wire index along z, rounded to the nearest integer (`std::lround`) in this
+table only; `z0_min` is taken from the channel's group in the summary table and `dz` is computed for the
+wire itself. `ch-i_z` is `channel - i_z` and `ch+i_z` is `channel + i_z` (signed integers, from the rounded
+`i_z`): `ch-i_z` is constant where channel number and z increase together, and `ch+i_z` is constant where
+they run in opposite directions (the other one then changes by 2 per channel). For single-wire channels both are shown in
+their columns; for multi-wire channels they show `-` and the last column lists the z0 values, then
+`| i_z`, `| ch-i_z` and `| ch+i_z` with one value per wire, then the wire IDs in parentheses, so each value can be
+matched to its wire. Non-finite values print as `nan`. Neighbouring wires of a plane are `dz` apart in z0,
+not `pitch` apart, for angled wires; dividing by `dz` makes `i_z` step by about 1 per channel on all
+planes. In ROP mode wires from several TPCs share one `z0_min`, so their `i_z` need not be a clean index.
+The CSV and JSON files are not affected.
 
 ```
-  channel  view  rop  n_wires     i_z  z0 [cm]
-  -------  ----  ---  -------  ------  -------
-      800     V    1        3       -  661.017, -200.473, 201.204 | i_z 1898.85, 400.00, 1098.85 (0:0:1:0, 0:1:1:400, 0:0:1:800)
-     1600     Z    2        1    0.00  0.598
+  channel  view  rop  n_wires  i_z  ch-i_z  ch+i_z  z0 [cm]
+  -------  ----  ---  -------  ---  ------  ------  -------
+      800     V    1        3    -       -       -  661.017, -200.473, 201.204 | i_z 1899, 400, 1099 | ch-i_z -1099, 400, -299 | ch+i_z 2699, 1200, 1899 (0:0:1:0, 0:1:1:400, 0:0:1:800)
+     1600     Z    2        1    0    1600    1600  0.598
 ```
 
 Output files are `<prefix>.csv` and/or `<prefix>.json`. The default prefix is

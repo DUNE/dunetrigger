@@ -275,6 +275,7 @@ struct Group {
   size_t n_non_finite_z0 = 0;
   double dz_min = std::numeric_limits<double>::infinity();
   double dz_max = -std::numeric_limits<double>::infinity();
+  std::vector<int> tpcs; // TPCs read out by the ROP (ROP mode only)
   std::map<geo::PlaneID, double> pitches; // wire pitch (cm) of each plane the group's wires use
 
   double pitch_min() const { return std::min_element(pitches.begin(), pitches.end(), by_pitch)->second; }
@@ -314,6 +315,7 @@ struct Summary {
   raw::ChannelID_t max_channel = 0;
   std::map<std::string, size_t> per_view;
   std::vector<Group> groups;
+  std::vector<int> set_tpcs; // TPCs of the selected TPC set (ROP mode only)
 };
 
 // z0 (cm) of each wire of the channel, in the order of the channel's wire list.
@@ -397,10 +399,32 @@ std::string group_label(Options const& opt)
   return opt.mode == Mode::Tpc ? "plane" : "rop";
 }
 
+std::vector<int> tpc_numbers(std::vector<geo::TPCID> const& ids)
+{
+  std::vector<int> out;
+  for (geo::TPCID const& id : ids) out.push_back(static_cast<int>(id.TPC));
+  return out;
+}
+
+std::string join_ints(std::vector<int> const& v, std::string const& sep)
+{
+  std::string out;
+  for (size_t i = 0; i < v.size(); ++i) out += (i ? sep : "") + std::to_string(v[i]);
+  return out;
+}
+
 Summary summarize(Options const& opt, ChannelMap const& channels, geo::WireReadoutGeom const& readout)
 {
   Summary s;
   s.groups = group_channels(opt, channels, readout);
+  if (opt.mode == Mode::TpcSet) {
+    geo::CryostatID const cryo{static_cast<geo::CryostatID::CryostatID_t>(opt.cryo)};
+    readout::TPCsetID const setid{cryo, static_cast<readout::TPCsetID::TPCsetID_t>(opt.tpcset)};
+    s.set_tpcs = tpc_numbers(readout.TPCsetToTPCs(setid));
+    for (Group& g : s.groups) {
+      g.tpcs = tpc_numbers(readout.ROPtoTPCs(readout::ROPID{setid, static_cast<readout::ROPID::ROPID_t>(g.id)}));
+    }
+  }
   s.n_channels = channels.size();
   if (channels.empty()) return s;
   s.min_channel = channels.begin()->first;
@@ -429,12 +453,15 @@ std::string selection_string(Options const& opt)
 }
 
 // Plain-text table with column widths computed from the header and the cells. Columns are
-// right-aligned; with free_last the last column is left-aligned and not padded. A row may carry a
-// note, printed indented below it.
+// right-aligned by default. The last column can instead be left-aligned and unpadded, either sized
+// by its content (Left) or with a rule as wide as its header only (Free, for long free-form text).
+// A row may carry a note, printed indented below it.
+enum class LastColumn { Right, Left, Free };
+
 class TextTable {
 public:
-  explicit TextTable(std::vector<std::string> header, bool free_last = false)
-    : header_(std::move(header)), free_last_(free_last)
+  explicit TextTable(std::vector<std::string> header, LastColumn last = LastColumn::Right)
+    : header_(std::move(header)), last_(last)
   {}
 
   void add_row(std::vector<std::string> cells, std::string note = "")
@@ -469,7 +496,7 @@ private:
       for (size_t i = 0; i < widths.size(); ++i) widths[i] = std::max(widths[i], row.cells[i].size());
     }
     // A free-form last column keeps its header width so the rule does not follow the longest row.
-    if (free_last_) widths.back() = header_.back().size();
+    if (last_ == LastColumn::Free) widths.back() = header_.back().size();
     return widths;
   }
 
@@ -480,7 +507,7 @@ private:
     for (size_t i = 0; i < cells.size(); ++i) {
       bool const last = i + 1 == cells.size();
       if (i) os << "  ";
-      if (last && free_last_) {
+      if (last && last_ != LastColumn::Right) {
         os << cells[i];
       }
       else {
@@ -491,7 +518,7 @@ private:
   }
 
   std::vector<std::string> header_;
-  bool free_last_;
+  LastColumn last_;
   std::vector<Row> rows_;
 };
 
@@ -512,7 +539,9 @@ void print_group_table(Options const& opt, std::vector<Group> const& groups)
   std::vector<std::string> header = {group_label(opt), "view", "n_ch", "ch_min", "ch_max",
                                      "pitch [cm]", "dz [cm]", "z0_min [cm]", "z0_max [cm]"};
   if (any_non_finite) header.push_back("n_nonfinite");
-  TextTable table(header);
+  bool const with_tpcs = opt.mode == Mode::TpcSet;
+  if (with_tpcs) header.push_back("tpcs");
+  TextTable table(header, with_tpcs ? LastColumn::Left : LastColumn::Right);
   for (Group const& g : groups) {
     std::vector<std::string> row = {std::to_string(g.id),
                                     g.view,
@@ -524,6 +553,7 @@ void print_group_table(Options const& opt, std::vector<Group> const& groups)
                                     fixed_string(g.z0_min, 3),
                                     fixed_string(g.z0_max, 3)};
     if (any_non_finite) row.push_back(std::to_string(g.n_non_finite_z0));
+    if (with_tpcs) row.push_back(join_ints(g.tpcs, ","));
     table.add_row(std::move(row), g.pitch_uniform() ? "" : pitch_note(g));
   }
   table.print(std::cout);
@@ -532,8 +562,11 @@ void print_group_table(Options const& opt, std::vector<Group> const& groups)
 void print_summary(std::string const& detector, Options const& opt, Summary const& s)
 {
   std::cout << "Detector        : " << detector << "\n"
-            << "Selection       : " << selection_string(opt) << "\n"
-            << "Channels        : " << s.n_channels << "\n"
+            << "Selection       : " << selection_string(opt) << "\n";
+  if (opt.mode == Mode::TpcSet) {
+    std::cout << "TPCs in set     : " << join_ints(s.set_tpcs, ", ") << "\n";
+  }
+  std::cout << "Channels        : " << s.n_channels << "\n"
             << "Wires           : " << s.n_wires << "\n"
             << "Channel range   : [" << s.min_channel << ", " << s.max_channel << "]\n"
             << "Channels / view :";
@@ -543,7 +576,41 @@ void print_summary(std::string const& detector, Options const& opt, Summary cons
   std::cout << std::flush;
 }
 
-json selection_json(Options const& opt)
+// Keeps, for each channel, only the wires in the given TPC; channels without any are dropped.
+ChannelMap restrict_to_tpc(ChannelMap const& channels, int cryo, int tpc)
+{
+  ChannelMap out;
+  for (auto const& [ch, rec] : channels) {
+    for (geo::WireID const& wire : rec.wires) {
+      if (static_cast<int>(wire.Cryostat) == cryo && static_cast<int>(wire.TPC) == tpc) {
+        ChannelRecord& r = out[ch];
+        r.rop = rec.rop;
+        r.wires.push_back(wire);
+      }
+    }
+  }
+  return out;
+}
+
+// For a TPC set selection, prints the TPC-mode summary of each TPC of the set, restricted to the
+// selected channels.
+void print_tpc_summaries(std::string const& detector, Options const& opt, ChannelMap const& channels,
+                         Summary const& set_summary, geo::WireReadoutGeom const& readout)
+{
+  for (int const tpc : set_summary.set_tpcs) {
+    ChannelMap const tpc_channels = restrict_to_tpc(channels, opt.cryo, tpc);
+    if (tpc_channels.empty()) continue;
+    Options tpc_opt = opt;
+    tpc_opt.mode = Mode::Tpc;
+    tpc_opt.tpc = tpc;
+    tpc_opt.plane.reset();
+    tpc_opt.rop.reset();
+    std::cout << "\n--- TPC " << tpc << " of TPC set " << opt.tpcset << " ---\n";
+    print_summary(detector, tpc_opt, summarize(tpc_opt, tpc_channels, readout));
+  }
+}
+
+json selection_json(Options const& opt, std::vector<int> const& set_tpcs)
 {
   json sel = {{"cryo", opt.cryo}};
   if (opt.mode == Mode::Tpc) {
@@ -554,6 +621,7 @@ json selection_json(Options const& opt)
   else {
     sel["mode"] = "tpcset";
     sel["tpcset"] = opt.tpcset;
+    sel["tpcs"] = set_tpcs;
     if (opt.rop) sel["rop"] = *opt.rop;
   }
   return sel;
@@ -578,16 +646,49 @@ std::string join_values(std::vector<double> const& values, int precision)
   return os.str();
 }
 
-// Single-wire channels: just the z0. Multi-wire channels: z0 list, i_z list and wire IDs.
-std::string z0_cell(ChannelRecord const& rec, std::vector<double> const& z0s,
+// i_z rounded to the nearest integer; empty if it is not finite.
+std::optional<long> rounded_iz(double iz)
+{
+  if (!std::isfinite(iz)) return std::nullopt;
+  return std::lround(iz);
+}
+
+std::string int_string(std::optional<long> v)
+{
+  return v ? std::to_string(*v) : "nan";
+}
+
+// channel + sign * round(i_z); "nan" if i_z is not finite.
+std::string channel_offset_string(raw::ChannelID_t ch, double iz, int sign)
+{
+  auto const r = rounded_iz(iz);
+  return r ? std::to_string(static_cast<long>(ch) + sign * *r) : "nan";
+}
+
+std::string join_strings(std::vector<std::string> const& v)
+{
+  std::string out;
+  for (size_t i = 0; i < v.size(); ++i) out += (i ? ", " : "") + v[i];
+  return out;
+}
+
+// Single-wire channels: just the z0. Multi-wire channels: z0 list | i_z | ch-i_z | ch+i_z lists (wire IDs).
+std::string z0_cell(raw::ChannelID_t ch, ChannelRecord const& rec, std::vector<double> const& z0s,
                     std::vector<double> const& izs)
 {
   std::ostringstream os;
   os << join_values(z0s, 3);
   if (z0s.size() > 1) {
-    os << " | i_z " << join_values(izs, 2) << " (";
-    for (size_t i = 0; i < rec.wires.size(); ++i) os << (i ? ", " : "") << wire_string(rec.wires[i]);
-    os << ')';
+    std::vector<std::string> iz_strings, minus_strings, plus_strings, wire_ids;
+    for (size_t i = 0; i < izs.size(); ++i) {
+      iz_strings.push_back(int_string(rounded_iz(izs[i])));
+      minus_strings.push_back(channel_offset_string(ch, izs[i], -1));
+      plus_strings.push_back(channel_offset_string(ch, izs[i], +1));
+      wire_ids.push_back(wire_string(rec.wires[i]));
+    }
+    os << " | i_z " << join_strings(iz_strings) << " | ch-i_z " << join_strings(minus_strings) << " | ch+i_z "
+       << join_strings(plus_strings) << " ("
+       << join_strings(wire_ids) << ')';
   }
   return os.str();
 }
@@ -595,7 +696,8 @@ std::string z0_cell(ChannelRecord const& rec, std::vector<double> const& z0s,
 void print_table(Options const& opt, ChannelMap const& channels, std::vector<Group> const& groups,
                  geo::WireReadoutGeom const& readout)
 {
-  TextTable table({"channel", "view", group_label(opt), "n_wires", "i_z", "z0 [cm]"}, true);
+  TextTable table({"channel", "view", group_label(opt), "n_wires", "i_z", "ch-i_z", "ch+i_z", "z0 [cm]"},
+                  LastColumn::Free);
   for (auto const& [ch, rec] : channels) {
     int const group = group_id(opt, rec, rec.wires.front());
     auto const z0s = channel_z0s(rec, readout);
@@ -604,9 +706,11 @@ void print_table(Options const& opt, ChannelMap const& channels, std::vector<Gro
       Group const* g = find_group(groups, group_id(opt, rec, rec.wires[i]));
       izs.push_back(g ? wire_iz(*g, wire_dz(readout, rec.wires[i]), z0s[i]) : std::nan(""));
     }
+    bool const single = z0s.size() == 1;
     table.add_row({std::to_string(ch), view_name(readout, ch), std::to_string(group),
-                   std::to_string(rec.wires.size()), z0s.size() == 1 ? fixed_string(izs[0], 2) : "-",
-                   z0_cell(rec, z0s, izs)});
+                   std::to_string(rec.wires.size()), single ? int_string(rounded_iz(izs[0])) : "-",
+                   single ? channel_offset_string(ch, izs[0], -1) : "-",
+                   single ? channel_offset_string(ch, izs[0], +1) : "-", z0_cell(ch, rec, z0s, izs)});
   }
   std::cout << "\n";
   table.print(std::cout);
@@ -629,6 +733,7 @@ json groups_json(Options const& opt, std::vector<Group> const& groups)
                    {"dz", g.dz_min}});
     if (opt.mode == Mode::TpcSet) {
       json& entry = out.back();
+      entry["tpcs"] = g.tpcs;
       entry["pitch_min"] = g.pitch_min();
       entry["pitch_max"] = g.pitch_max();
       entry["planes"] = json::array();
@@ -647,7 +752,7 @@ void write_json(std::string const& path, std::string const& detector, Options co
 {
   json j;
   j["detector"] = detector;
-  j["selection"] = selection_json(opt);
+  j["selection"] = selection_json(opt, s.set_tpcs);
   j["summary"] = {{"n_channels", s.n_channels},
                   {"n_wires", s.n_wires},
                   {"min_channel", s.min_channel},
@@ -717,6 +822,7 @@ int main(int argc, char** argv)
   ChannelMap const channels = tpc_mode ? collect_tpc(opt, readout) : collect_tpcset(opt, readout);
   Summary const summary = summarize(opt, channels, readout);
   print_summary(geom.DetectorName(), opt, summary);
+  if (!tpc_mode) print_tpc_summaries(geom.DetectorName(), opt, channels, summary, readout);
   if (opt.table) print_table(opt, channels, summary.groups, readout);
 
   std::string const prefix = opt.prefix.empty() ? default_prefix(opt, geo_id) : opt.prefix;
