@@ -145,7 +145,8 @@ get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
 template<typename Struct>
 std::array<std::string, boost::pfr::tuple_size_v<Struct>>
 get_field_names() {
-#if __cplusplus >= 202002L
+//#if __cplusplus >= 202002L
+#if __cplusplus >= 202002L && BOOST_VERSION >= 108400
     constexpr auto pfr_names = boost::pfr::names_as_array<Struct>();
     return get_names_impl<Struct>(pfr_names,
         std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
