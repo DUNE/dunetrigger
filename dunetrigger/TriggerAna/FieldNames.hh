@@ -84,7 +84,7 @@ constexpr std::size_t count(std::initializer_list<std::size_t> o) { return o.siz
 //  and merely warns, hence the targeted -Winvalid-offsetof suppression.
 // ---------------------------------------------------------------------------
 #if __cplusplus >= 202002L
-static_assert(BOOST_VERSION >= 108400,
+static_assert(BOOST_VERSION >= 108200,
     "FieldNames.hh: the C++20 path needs boost::pfr::names_as_array (Boost >= 1.84). "
     "This stack has an older Boost; build in C++17 mode or upgrade Boost.");
 #define REGISTER_FIELD_NAMES(StructType, ...) static_assert(true)
