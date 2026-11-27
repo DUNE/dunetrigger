@@ -83,10 +83,7 @@ constexpr std::size_t count(std::initializer_list<std::size_t> o) { return o.siz
 //  (rows with std::string) is only conditionally supported; GCC supports it
 //  and merely warns, hence the targeted -Winvalid-offsetof suppression.
 // ---------------------------------------------------------------------------
-#if __cplusplus >= 202002L
-static_assert(BOOST_VERSION >= 108400,
-    "FieldNames.hh: the C++20 path needs boost::pfr::names_as_array (Boost >= 1.84). "
-    "This stack has an older Boost; build in C++17 mode or upgrade Boost.");
+#if __cplusplus >= 202002L && BOOST_VERSION >= 108400
 #define REGISTER_FIELD_NAMES(StructType, ...) static_assert(true)
 #else
 #define REGISTER_FIELD_NAMES(StructType, ...)                                   \
@@ -130,7 +127,7 @@ _Pragma("GCC diagnostic pop")
 // ---------------------------------------------------------------------------
 namespace trg_detail {
 
-#if __cplusplus >= 202002L
+#if __cplusplus >= 202002L && BOOST_VERSION >= 108400
 template<typename Struct, typename NamesArray, std::size_t... Is>
 std::array<std::string, sizeof...(Is)>
 get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
@@ -142,7 +139,7 @@ get_names_impl(const NamesArray& pfr_names, std::index_sequence<Is...>) {
 template<typename Struct>
 std::array<std::string, boost::pfr::tuple_size_v<Struct>>
 get_field_names() {
-#if __cplusplus >= 202002L
+#if __cplusplus >= 202002L && BOOST_VERSION >= 108400
     constexpr auto pfr_names = boost::pfr::names_as_array<Struct>();
     return get_names_impl<Struct>(pfr_names,
         std::make_index_sequence<boost::pfr::tuple_size_v<Struct>>{});
