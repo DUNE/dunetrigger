@@ -238,7 +238,12 @@ public:
     /// @brief Pre-allocate all column vectors.
     /// @param n Number of rows to reserve.
     void reserve(std::size_t n) {
-        std::apply([n](auto&... vecs) { (vecs.reserve(n), ...); }, arrays_);
+      // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125863
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+      std::apply([n](auto&... vecs) { (vecs.reserve(n), ...); }, arrays_);
+#pragma GCC diagnostic pop
     }
 
     /// @brief Empty storage and zero-initialise the staging row.
